@@ -8,7 +8,7 @@ const RefreshToken = sequelize.define('RefreshToken', {
   expires_at: { type: DataTypes.DATE, allowNull: false },
   is_revoked: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, {
-  tableName: 'refresh_token',
+  tableName: 'refresh_tokens',
   timestamps: true,
   createdAt: 'created_at', 
   updatedAt: 'updated_at',
