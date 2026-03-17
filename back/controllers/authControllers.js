@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { User, RefreshToken } = require('../models');
 
@@ -51,8 +50,6 @@ exports.login = async (req, res) => {
     token: hashedToken,
     expires_at: expiresAt,
     is_revoked: false,
-    created_at: new Date(),
-    updated_at: new Date(),
   });
 
   // [back-mem-login-2] Set-Cookie로 응답 (httpOnly)
