@@ -16,6 +16,7 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
-    "@types/multer": "^2.1.0"
+    "@types/multer": "^2.1.0",
+    "nodemon": "^3.1.14"
   }
 }
