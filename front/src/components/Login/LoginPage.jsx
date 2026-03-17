@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import clsx from 'clsx'
 import Logo from '../Logo/Logo'
 import useLoginForm from '../../hooks/useLoginForm'
@@ -36,11 +35,9 @@ const ArrowIcon = () => (
 
 const LoginPage = () => {
   const { email, handleEmailChange, isLoading, error, handleSubmit } = useLoginForm()
-  const [inputFocused, setInputFocused] = useState(false)
-
   return (
     <div className={styles.page}>
-      {/* 배경 이미지 — Vite가 빌드 시 경로를 안전하게 처리 */}
+      {/* 배경 이미지 */}
       <div
         className={styles.bg}
         style={{ backgroundImage: `url(${bgImg})` }}
@@ -57,8 +54,7 @@ const LoginPage = () => {
             <div
               className={clsx(
                 styles.inputGroup,
-                inputFocused && styles.inputGroupFocused,
-                error        && styles.inputGroupError,
+                error && styles.inputGroupError,
               )}
             >
               <span className={styles.inputIcon} aria-hidden="true">
@@ -71,8 +67,6 @@ const LoginPage = () => {
                 placeholder="이메일을 입력하세요"
                 value={email}
                 onChange={handleEmailChange}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
                 autoComplete="email"
                 required
                 aria-describedby={error ? 'login-error' : undefined}

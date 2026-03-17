@@ -85,7 +85,7 @@
 }
 
 /* 포커스 시 아이콘 색상 변경 */
-.inputGroupFocused .inputIcon {
+.inputGroup:focus-within .inputIcon {
   color: var(--color-accent);
 }
 
