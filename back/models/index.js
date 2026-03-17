@@ -1,5 +1,5 @@
 const User = require('./User');
-const RefreshToken = require('./refresh_tokens');
+const RefreshToken = require('./RefreshToken');
 
 // 관계 설정
 User.hasMany(RefreshToken, { foreignKey: 'user_id' });
