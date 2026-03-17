@@ -1,10 +1,9 @@
-require('dotenv').config();
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const sequelize = require('./config/db');
-const User = require('./models/User');
-
-const authRoutes = require('./routes/authRoutes');
+require("dotenv").config();
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const sequelize = require("./config/db");
+const errorHandler = require("./middleware/errorHandler");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -12,12 +11,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 // 라우트
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
+app.use(errorHandler);
 
 // DB 연결
-sequelize.authenticate()
+sequelize
+  .authenticate()
   .then(() => {
-    console.log('MariaDB 연결 성공');
+    console.log("MariaDB 연결 성공");
     return sequelize.sync({ alter: false });
   })
   .then(() => {
@@ -26,7 +27,6 @@ sequelize.authenticate()
     });
   })
   .catch((err) => {
-    console.error('DB 연결 실패:', err);
+    console.error("DB 연결 실패:", err);
     process.exit(1);
   });
-
