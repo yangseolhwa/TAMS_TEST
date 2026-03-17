@@ -26,6 +26,7 @@ sequelize.authenticate()
     });
   })
   .catch((err) => {
-    console.log('DB 연결 실패:', err);
+    console.error('DB 연결 실패:', err);
+    process.exit(1);
   });
 
