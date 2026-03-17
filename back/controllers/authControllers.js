@@ -18,14 +18,14 @@ exports.login = asyncWrapper(async (req, res) => {
   if (!trimmedEmail) {
     return res.status(400).json({ message: "이메일을 입력해주세요." });
   }
-  if (!EMAIL_REGEX.test(email)) {
+  if (!EMAIL_REGEX.test(trimmedEmail)) {
     return res
       .status(400)
       .json({ message: "이메일 형식이 올바르지 않습니다." });
   }
 
   // [back-mem-login-1] DB에서 이메일 존재 여부 확인
-  const user = await User.findOne({ where: { email } });
+  const user = await User.findOne({ where: { email: trimmedEmail } });
   if (!user) {
     return res.status(401).json({ message: "등록되지 않은 이메일입니다." });
   }
@@ -48,10 +48,7 @@ exports.login = asyncWrapper(async (req, res) => {
   );
 
   // [back-mem-login-2] Refresh Token 발급 (랜덤 해시, DB 저장)
-  const refreshTokenValue = crypto
-    .randomBytes(32)
-    .toString("hex")
-    .padStart(64, "0");
+  const refreshTokenValue = crypto.randomBytes(32).toString("hex");
   const hashedToken = crypto
     .createHash("sha256")
     .update(refreshTokenValue)
@@ -77,7 +74,7 @@ exports.login = asyncWrapper(async (req, res) => {
       ...cookieOptions,
       maxAge: ACCESS_TOKEN_EXPIRATION_MS,
     })
-    .cookie("refreshToken", hashedToken, {
+    .cookie("refreshToken", refreshTokenValue, {
       ...cookieOptions,
       maxAge: REFRESH_TOKEN_EXPIRATION_MS,
     })
@@ -89,8 +86,12 @@ exports.logout = asyncWrapper(async (req, res) => {
   const { refreshToken } = req.cookies;
 
   if (refreshToken) {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
     const tokenRecord = await RefreshToken.findOne({
-      where: { token: refreshToken, is_revoked: false },
+      where: { token: hashedToken, is_revoked: false },
     });
 
     if (tokenRecord) {
@@ -104,7 +105,7 @@ exports.logout = asyncWrapper(async (req, res) => {
     .clearCookie("accessToken")
     .clearCookie("refreshToken")
     .status(200)
-    .json({ message: "로그아웃 되었습니다. " });
+    .json({ message: "로그아웃 되었습니다." });
 });
 
 exports.refresh = asyncWrapper(async (req, res) => {
@@ -117,8 +118,12 @@ exports.refresh = asyncWrapper(async (req, res) => {
   }
 
   // DB에서 RT 조회
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
   const tokenRecord = await RefreshToken.findOne({
-    where: { token: refreshToken },
+    where: { token: hashedToken },
   });
 
   // RT 존재 여부 확인
@@ -147,7 +152,6 @@ exports.refresh = asyncWrapper(async (req, res) => {
   }
 
   // 새 Access Token 발급
-  const { User } = require("../models");
   const user = await User.findByPk(tokenRecord.user_id);
 
   if (!user) {
