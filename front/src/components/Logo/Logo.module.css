@@ -1,0 +1,28 @@
+.wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+}
+
+.img {
+  width: auto;
+  height: auto;
+  max-width: 320px;
+  max-height: 160px;
+  display: block;
+  object-fit: contain;
+  animation: logoFadeIn 0.8s ease forwards;
+}
+
+@keyframes logoFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .img {
+    max-width: 240px;
+    max-height: 120px;
+  }
+}

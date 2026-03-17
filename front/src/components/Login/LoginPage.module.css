@@ -1,0 +1,252 @@
+/* ── Page ── */
+.page {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 20, 40, 0.35);
+}
+
+/* ── Container ── */
+.container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 2rem 1.5rem;
+}
+
+/* ── Card ── */
+.card {
+  width: 100%;
+  max-width: 800px;
+  padding: 6rem 7rem;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border: none;
+  border-radius: 28px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.28),
+    0 1px 0 rgba(255, 255, 255, 1) inset;
+  animation: cardEntrance 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes cardEntrance {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ── Form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Input group ── */
+.inputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  color: #b0bec5;
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.inputIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 포커스 시 아이콘 색상 변경 */
+.inputGroupFocused .inputIcon {
+  color: var(--color-accent);
+}
+
+.input {
+  width: 100%;
+  padding: 20px 20px 20px 54px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1.5px solid rgba(0, 0, 0, 0.09);
+  border-radius: 14px;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: #1a2030;
+  letter-spacing: 0.01em;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow   var(--transition-fast),
+    background   var(--transition-fast);
+}
+
+.input::placeholder {
+  color: #b0bec5;
+  font-weight: 300;
+}
+
+.input:focus {
+  border-color: var(--color-accent-hover);
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
+  background: #fff;
+}
+
+/* 에러 상태 */
+.inputGroupError .input {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 4px var(--color-error-ring);
+}
+
+/* ── Error message ── */
+.errorMsg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-error);
+  font-size: 0.875rem;
+  animation: errorFade 0.2s ease;
+}
+
+.errorMsg svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+@keyframes errorFade {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Button ── */
+.btn {
+  position: relative;
+  width: 100%;
+  padding: 20px 28px;
+  margin-top: 0.5rem;
+  background: #1a2540;
+  border: none;
+  border-radius: 14px;
+  color: #f0f6ff;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    background  var(--transition-fast),
+    box-shadow  var(--transition-fast),
+    transform   var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) {
+  background: #243050;
+  box-shadow: 0 8px 30px rgba(26, 37, 64, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnText {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btnArrow {
+  width: 17px;
+  height: 17px;
+  transition: transform var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) .btnArrow {
+  transform: translateX(4px);
+}
+
+/* ── Spinner ── */
+.spinner {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: 2px solid rgba(240, 246, 255, 0.25);
+  border-top-color: #f0f6ff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (min-width: 481px) and (max-width: 1024px) {
+  .card {
+    max-width: 700px;
+    padding: 5rem 5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1.25rem;
+    align-items: center;
+  }
+
+  .card {
+    padding: 3rem 2rem;
+    border-radius: 22px;
+  }
+
+  .input {
+    font-size: 1rem; /* iOS 자동 줌 방지 */
+    padding: 17px 16px 17px 50px;
+  }
+
+  .btn {
+    padding: 18px 20px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .card {
+    max-width: 880px;
+    padding: 7rem 8.5rem;
+  }
+}
