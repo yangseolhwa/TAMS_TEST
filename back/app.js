@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const sequelize = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/authRoutes");
+const assetRoutes = require('./routes/assetRoutes');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(cookieParser());
 
 // 라우트
 app.use("/api/auth", authRoutes);
+app.use("/api/assets", assetRoutes);
 app.use(errorHandler);
 
 // DB 연결
