@@ -7,7 +7,13 @@ const DefaultLayout = ({ children }) => {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
-          {/* 로고 추가 예정*/}
+          <span className={styles.logoTitle}>
+            <span className={styles.logoAccent}>T</span>AMS
+          </span>
+          <div className={styles.logoSubtitle}>
+            <span>TBOG</span>
+            <span>Asset Management System</span>
+          </div>
         </div>
         <div className={styles.headerRight}>
           {/* 유저 정보 + 로그아웃 추가 예정 */}
