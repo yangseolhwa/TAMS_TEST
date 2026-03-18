@@ -1,15 +1,23 @@
+import { useState } from 'react'
 import logoImg from '../../assets/logo.png'
 import { PersonCircle } from 'react-bootstrap-icons'
 import styles from './DefaultLayout.module.css'
 
+const TABS = [
+  { id: 'my-assets', label: '내 자산 관리' },
+  { id: 'df-assets', label: 'DF 자산 관리' },
+]
+
 const DefaultLayout = ({ children }) => {
+  const [activeTab, setActiveTab] = useState(TABS[0].id)
+
   return (
     <div className={styles.wrapper}>
 
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
-          <img src={logoImg} alt="TBOG" className={styles.logoImg} />
+          <img src={logoImg} alt="TAMS" className={styles.logoImg} />
         </div>
         <div className={styles.headerRight}>
           <div className={styles.profile}>
@@ -23,8 +31,15 @@ const DefaultLayout = ({ children }) => {
       {/* Navigation Tab Bar */}
       <nav className={styles.nav}>
         <div className={styles.navTabs}>
-          <button className={`${styles.tab} ${styles.tabActive}`}>내 자산 관리</button>
-          <button className={styles.tab}>DF 자산 관리</button>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </nav>
 
