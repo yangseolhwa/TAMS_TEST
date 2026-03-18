@@ -8,7 +8,7 @@ const TABS = [
   { id: 'df-assets', label: 'DF 자산 관리' },
 ]
 
-const DefaultLayout = ({ children }) => {
+const DefaultLayout = ({ children, role }) => {
   const [activeTab, setActiveTab] = useState(TABS[0].id)
 
   return (
@@ -22,7 +22,7 @@ const DefaultLayout = ({ children }) => {
         <div className={styles.headerRight}>
           <div className={styles.profile}>
             <PersonCircle className={styles.profileIcon} />
-            <span className={styles.profileName}>김철수 님</span>
+            <span className={styles.profileName}>{role}</span>
           </div>
           <button className={styles.logoutBtn}>로그아웃</button>
         </div>
