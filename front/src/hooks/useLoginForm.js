@@ -37,7 +37,7 @@ const useLoginForm = () => {
 
     try {
       await login(email)
-      //  로그인 성공 시 처리 navigate('/@@@')
+      // 화면 이동 로직 추가예정
     } catch (err) {
       setError(err.message ?? '로그인에 실패했습니다. 다시 시도해주세요.')
     } finally {
