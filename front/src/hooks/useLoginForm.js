@@ -36,8 +36,7 @@ const useLoginForm = () => {
     setIsLoading(true)
 
     try {
-      const data = await login(email)
-      console.log(data);
+      await login(email)
       // 화면 이동 로직 추가예정
     } catch (err) {
       setError(err.message ?? '로그인에 실패했습니다. 다시 시도해주세요.')
