@@ -100,7 +100,7 @@
   padding: 0 20px;
   height: 36px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-border);
   background-color: var(--color-surface);
   border: 1px solid transparent;
@@ -117,7 +117,6 @@
 
 .tabActive {
   color: var(--color-primary);
-  font-weight: 600;
   background-color: var(--color-surface);
   border-color: var(--color-border-light);
 }
