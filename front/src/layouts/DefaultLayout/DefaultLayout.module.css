@@ -1,0 +1,107 @@
+/* =====================
+   전체 래퍼
+   ===================== */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+/* =====================
+   Header
+   ===================== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background-color: var(--color-surface);
+  border-bottom: 2px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.headerLogo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* =====================
+   Navigation Tab Bar
+   ===================== */
+.nav {
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+}
+
+.navTabs {
+  display: flex;
+  align-items: flex-end;
+  height: 44px;
+  padding: 0 24px;
+  gap: 4px;
+}
+
+/* =====================
+   Main Content
+   ===================== */
+.main {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* =====================
+   Footer
+   ===================== */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 24px;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+/* =====================
+   반응형
+   ===================== */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+    height: 48px;
+  }
+
+  .navTabs {
+    padding: 0 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .navTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 12px;
+  }
+}

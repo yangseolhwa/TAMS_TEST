@@ -14,6 +14,13 @@
   --color-error-ring:   rgba(239, 68, 68, 0.08);
   --color-focus-ring:   rgba(59, 130, 246, 0.1);
 
+  /* Layout Colors */
+  --color-bg:           #F0F2F5;
+  --color-surface:      #ffffff;
+  --color-primary:      #1E2D45;
+  --color-border:       #A0AEC0;
+  --color-border-light: #E2E8F0;
+
   /* Spacing */
   --space-xs:  0.5rem;
   --space-sm:  0.75rem;
