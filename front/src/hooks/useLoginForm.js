@@ -13,7 +13,7 @@ const validate = (value) => {
  * useLoginForm
  * 이메일 상태, 유효성 검사, UI 로직 담당
  */
-const useLoginForm = () => {
+const useLoginForm = ({ onLoginSuccess }) => {
   const [email,     setEmail]     = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error,     setError]     = useState('')
@@ -36,8 +36,13 @@ const useLoginForm = () => {
     setIsLoading(true)
 
     try {
-      await login(email)
-      // 화면 이동 로직 추가예정
+      const data = await login(email)
+
+      if (data?.role) {
+        onLoginSuccess?.(data.role)
+      } else {
+        throw new Error('로그인 응답이 올바르지 않습니다.')
+      }
     } catch (err) {
       setError(err.message ?? '로그인에 실패했습니다. 다시 시도해주세요.')
     } finally {

@@ -33,11 +33,11 @@ const ArrowIcon = () => (
   </svg>
 )
 
-const LoginPage = () => {
-  const { email, handleEmailChange, isLoading, error, handleSubmit } = useLoginForm()
+const LoginPage = ({ onLoginSuccess }) => {
+  const { email, handleEmailChange, isLoading, error, handleSubmit } = useLoginForm({ onLoginSuccess })
+
   return (
     <div className={styles.page}>
-      {/* 배경 이미지 */}
       <div
         className={styles.bg}
         style={{ backgroundImage: `url(${bgImg})` }}
@@ -50,7 +50,6 @@ const LoginPage = () => {
           <Logo />
 
           <form className={styles.form} onSubmit={handleSubmit} noValidate>
-            {/* 입력 그룹 */}
             <div
               className={clsx(
                 styles.inputGroup,
@@ -73,7 +72,6 @@ const LoginPage = () => {
               />
             </div>
 
-            {/* 에러 메시지 */}
             {error && (
               <p className={styles.errorMsg} id="login-error" role="alert">
                 <ErrorIcon />
@@ -81,7 +79,6 @@ const LoginPage = () => {
               </p>
             )}
 
-            {/* 제출 버튼 */}
             <button
               type="submit"
               className={styles.btn}
