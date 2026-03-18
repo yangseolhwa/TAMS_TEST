@@ -15,11 +15,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 0 24px;
+  height: 60px;
+  padding: 0 32px;
   background-color: var(--color-surface);
+  box-shadow: 0 1px 0 var(--color-border-light), 0 2px 8px rgba(30, 45, 69, 0.06);
   border-bottom: 2px solid var(--color-border);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .headerLogo {
@@ -81,16 +84,42 @@
    ===================== */
 .nav {
   background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border-light);
   flex-shrink: 0;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .navTabs {
   display: flex;
   align-items: flex-end;
   height: 44px;
-  padding: 0 24px;
   gap: 4px;
+}
+
+.tab {
+  padding: 0 20px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-border);
+  background-color: var(--color-surface);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--color-primary);
+}
+
+.tabActive {
+  color: var(--color-primary);
+  font-weight: 600;
+  background-color: var(--color-surface);
+  border-color: var(--color-border-light);
 }
 
 /* =====================
@@ -98,7 +127,7 @@
    ===================== */
 .main {
   flex: 1;
-  padding: 24px;
+  padding: 28px 32px;
   overflow-y: auto;
 }
 
@@ -112,7 +141,7 @@
   height: 48px;
   padding: 0 24px;
   background-color: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-light);
   flex-shrink: 0;
 }
 
@@ -121,28 +150,31 @@
    ===================== */
 @media (max-width: 768px) {
   .header {
-    padding: 0 16px;
-    height: 48px;
+    padding: 0 20px;
+    height: 56px;
   }
 
-  .navTabs {
-    padding: 0 16px;
+  .nav {
+    padding: 0 20px;
     overflow-x: auto;
-    white-space: nowrap;
     scrollbar-width: none;
   }
 
-  .navTabs::-webkit-scrollbar {
+  .nav::-webkit-scrollbar {
     display: none;
   }
 
   .main {
-    padding: 16px;
+    padding: 20px;
+  }
+
+  .footer {
+    padding: 0 20px;
   }
 }
 
 @media (max-width: 480px) {
   .main {
-    padding: 12px;
+    padding: 16px;
   }
 }

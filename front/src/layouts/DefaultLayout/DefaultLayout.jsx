@@ -23,7 +23,8 @@ const DefaultLayout = ({ children }) => {
       {/* Navigation Tab Bar */}
       <nav className={styles.nav}>
         <div className={styles.navTabs}>
-          {/* 탭 추가 예정 */}
+          <button className={`${styles.tab} ${styles.tabActive}`}>내 자산 관리</button>
+          <button className={styles.tab}>DF 자산 관리</button>
         </div>
       </nav>
 
