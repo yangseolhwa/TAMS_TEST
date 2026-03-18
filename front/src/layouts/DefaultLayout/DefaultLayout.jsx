@@ -1,3 +1,4 @@
+import logoImg from '../../assets/logo.png'
 import { PersonCircle } from 'react-bootstrap-icons'
 import styles from './DefaultLayout.module.css'
 
@@ -8,13 +9,7 @@ const DefaultLayout = ({ children }) => {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
-          <span className={styles.logoTitle}>
-            <span className={styles.logoAccent}>T</span>AMS
-          </span>
-          <div className={styles.logoSubtitle}>
-            <span>TBOG</span>
-            <span>Asset Management System</span>
-          </div>
+          <img src={logoImg} alt="TAMS" className={styles.logoImg} />
         </div>
         <div className={styles.headerRight}>
           <div className={styles.profile}>
@@ -28,7 +23,7 @@ const DefaultLayout = ({ children }) => {
       {/* Navigation Tab Bar */}
       <nav className={styles.nav}>
         <div className={styles.navTabs}>
-          {/* 탭 추가 예정 */}
+          {/* 탭 영역 */}
         </div>
       </nav>
 

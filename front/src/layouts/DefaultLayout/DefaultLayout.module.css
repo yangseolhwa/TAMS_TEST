@@ -25,34 +25,13 @@
 .headerLogo {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-width: 160px;
 }
 
-.logoTitle {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: -0.5px;
-  line-height: 1;
-}
-
-.logoAccent {
-  color: var(--color-green);
-  font-weight: 700;
-}
-
-.logoSubtitle {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding-left: 4px;
-  border-left: 1px solid var(--color-border-light);
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--color-border);
-  letter-spacing: 0.2px;
-  line-height: 1.4;
+.logoImg {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
 }
 
 .headerRight {
