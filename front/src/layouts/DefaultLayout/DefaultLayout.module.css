@@ -18,7 +18,7 @@
   height: 60px;
   padding: 0 32px;
   background-color: var(--color-surface);
-  box-shadow: 0 1px 0 var(--color-border-light), 0 2px 8px rgba(30, 45, 69, 0.06);
+  box-shadow: var(--shadow-sm);
   border-bottom: 2px solid var(--color-border);
   flex-shrink: 0;
   position: relative;
