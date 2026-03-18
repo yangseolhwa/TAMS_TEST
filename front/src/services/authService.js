@@ -3,23 +3,20 @@
  * 인증 관련 API 통신 담당
  */
 
+import api from './httpClient'
 import { ENDPOINTS } from './endpoints'
 
 /**
  * @param {string} email
- * @returns {Promise<{ token: string }>}
+ * @returns {Promise<{ role: string }>}
  * @throws {Error} 로그인 실패 시
  */
 export const login = async (email) => {
-  const res = await fetch(ENDPOINTS.AUTH.LOGIN, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  })
-  if (!res.ok) {
-    const { message } = await res.json().catch(() => ({}))
-    throw new Error(message ?? '로그인에 실패했습니다.')
+  try {
+    const { data } = await api.post(ENDPOINTS.AUTH.LOGIN, { email })
+    return data
+  } catch (error) {
+    const message = error.response?.data?.message ?? '로그인에 실패했습니다.'
+    throw new Error(message)
   }
-  return res.json()
-
 }
