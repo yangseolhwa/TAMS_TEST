@@ -12,6 +12,11 @@ import { ENDPOINTS } from './endpoints'
  * @throws {Error} 로그인 실패 시
  */
 export const login = async (email) => {
-  const { data } = await api.post(ENDPOINTS.AUTH.LOGIN, { email })
-  return data
+  try {
+    const { data } = await api.post(ENDPOINTS.AUTH.LOGIN, { email })
+    return data
+  } catch (error) {
+    const message = error.response?.data?.message ?? '로그인에 실패했습니다.'
+    throw new Error(message)
+  }
 }
