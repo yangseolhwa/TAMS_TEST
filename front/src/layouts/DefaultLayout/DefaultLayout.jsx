@@ -1,3 +1,4 @@
+import { PersonCircle } from 'react-bootstrap-icons'
 import styles from './DefaultLayout.module.css'
 
 const DefaultLayout = ({ children }) => {
@@ -16,7 +17,11 @@ const DefaultLayout = ({ children }) => {
           </div>
         </div>
         <div className={styles.headerRight}>
-          {/* 유저 정보 + 로그아웃 추가 예정 */}
+          <div className={styles.profile}>
+            <PersonCircle className={styles.profileIcon} />
+            <span className={styles.profileName}>김철수 님</span>
+          </div>
+          <button className={styles.logoutBtn}>로그아웃</button>
         </div>
       </header>
 
