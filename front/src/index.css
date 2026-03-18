@@ -37,6 +37,9 @@
   /* Typography */
   --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
 
+  /* Shadows */
+  --shadow-sm: 0 1px 0 var(--color-border-light), 0 2px 8px rgba(30, 45, 69, 0.06);
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-med:  300ms ease;
@@ -51,7 +54,6 @@ html {
 body {
   font-family: var(--font-sans);
   min-height: 100dvh;
-  overflow: hidden;
 }
 
 #root {
