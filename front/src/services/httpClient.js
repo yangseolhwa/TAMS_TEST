@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { ENDPOINTS } from './endpoints'
 
 const api = axios.create({
   baseURL: '/api',
@@ -18,10 +19,10 @@ const processQueue = (error) => {
 
 // 인터셉터에서 refresh 시도를 건너뛸 URL 목록
 const SKIP_REFRESH_URLS = [
-  '/auth/refresh', // refresh 자체 실패는 무한루프 방지
-  '/auth/me',      // 초기 인증 확인용 → 401은 정상 응답, refresh 불필요
-  '/auth/login',
-  '/auth/register',
+  ENDPOINTS.AUTH.REFRESH,
+  ENDPOINTS.AUTH.ME,
+  ENDPOINTS.AUTH.LOGIN,
+  ENDPOINTS.AUTH.REGISTER,
 ]
 
 api.interceptors.response.use(
@@ -56,7 +57,7 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        await api.post('/auth/refresh')
+        await api.post(ENDPOINTS.AUTH.REFRESH)
         processQueue(null)
         return api(originalRequest)
       } catch (refreshError) {
