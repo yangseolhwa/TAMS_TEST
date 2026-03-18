@@ -3,13 +3,15 @@
  * 인증 관련 API 통신 담당
  */
 
+import { ENDPOINTS } from './endpoints'
+
 /**
  * @param {string} email
  * @returns {Promise<{ token: string }>}
  * @throws {Error} 로그인 실패 시
  */
 export const login = async (email) => {
-  const res = await fetch('/api/auth/login', {
+  const res = await fetch(ENDPOINTS.AUTH.LOGIN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
