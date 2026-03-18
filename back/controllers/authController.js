@@ -79,7 +79,7 @@ exports.login = asyncWrapper(async (req, res) => {
       maxAge: REFRESH_TOKEN_EXPIRATION_MS,
     })
     .status(200)
-    .json({ message: "로그인 성공", role: user.role });
+    .json({ email: user.email, role: user.role, message: "로그인 성공" });
 });
 
 exports.logout = asyncWrapper(async (req, res) => {
