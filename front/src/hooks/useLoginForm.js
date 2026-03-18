@@ -37,7 +37,12 @@ const useLoginForm = ({ onLoginSuccess }) => {
 
     try {
       const data = await login(email)
-      onLoginSuccess(data.role)  // role을 App으로 전달
+
+      if (data?.role) {
+        onLoginSuccess?.(data.role)
+      } else {
+        throw new Error('로그인 응답이 올바르지 않습니다.')
+      }
     } catch (err) {
       setError(err.message ?? '로그인에 실패했습니다. 다시 시도해주세요.')
     } finally {
