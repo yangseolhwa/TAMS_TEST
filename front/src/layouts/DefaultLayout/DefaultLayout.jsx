@@ -26,6 +26,11 @@ const DefaultLayout = ({ children }) => {
         {children}
       </main>
 
+      {/* Footer */}
+      <footer className={styles.footer}>
+        {/* 푸터 영역 */}
+      </footer>
+
     </div>
   )
 }
