@@ -9,7 +9,7 @@ const DefaultLayout = ({ children }) => {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
-          <img src={logoImg} alt="TAMS" className={styles.logoImg} />
+          <img src={logoImg} alt="TBOG" className={styles.logoImg} />
         </div>
         <div className={styles.headerRight}>
           <div className={styles.profile}>
@@ -23,7 +23,7 @@ const DefaultLayout = ({ children }) => {
       {/* Navigation Tab Bar */}
       <nav className={styles.nav}>
         <div className={styles.navTabs}>
-          {/* 탭 영역 */}
+          {/* 탭 추가 예정 */}
         </div>
       </nav>
 
