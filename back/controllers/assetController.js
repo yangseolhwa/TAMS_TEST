@@ -26,8 +26,11 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
   if (type && !validTypes.includes(type)) {
     return res.status(400).json({ message: '유효하지 않은 자산 유형입니다.' });
   }
-  if (state && type && !validStates[type].includes(state)) {
-    return res.status(400).json({ message: '유효하지 않은 상태값입니다.' });
+  if (state) {
+    const allowedStates = type ? validStates[type] : validStates.enterprise.concat(validStates.sw);
+    if (!allowedStates || !allowedStates.includes(state)) {
+      return res.status(400).json({ message: '유효하지 않은 상태값입니다.' });
+    }
   }
   if (category_id && isNaN(Number(category_id))) {
     return res.status(400).json({ message: '유효하지 않은 카테고리 ID입니다.' });
