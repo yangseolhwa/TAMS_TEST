@@ -119,13 +119,51 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
 
 // DF 자산 조회
 exports.getDfAssets = asyncWrapper(async (req, res) => {
+  const { project_id, item_type_id, manufacturer, state, keyword } = req.query;
+
+  // 필터 검증
+  const validStates = ['active', 'stored', 'rented'];
+  if (state && !validStates.includes(state)) {
+    return res.status(400).json({ message: '유효하지 않은 상태값입니다.' });
+  }
+  if (project_id && isNaN(Number(project_id))) {
+    return res.status(400).json({ message: '유효하지 않은 프로젝트 ID입니다.' });
+  }
+  if (item_type_id && isNaN(Number(item_type_id))) {
+    return res.status(400).json({ message: '유효하지 않은 자산 종류 ID입니다.' });
+  }
+
+  // 프로젝트 조건
+  const projectWhere = {};
+  if (project_id) {
+    projectWhere.id = Number(project_id);
+  }
+
+  // keyword 검색
+  const itemWhere = {};
+  if (state)        itemWhere.state        = state;
+  if (manufacturer) itemWhere.manufacturer = { [Op.like]: `%${manufacturer}%` };
+  if (item_type_id) itemWhere.asset_type_id = Number(item_type_id);
+  if (keyword) {
+    itemWhere[Op.or] = [
+      { model_name:         { [Op.like]: `%${keyword}%` } },
+      { serial_number:      { [Op.like]: `%${keyword}%` } },
+      { spec:               { [Op.like]: `%${keyword}%` } },
+      { location:           { [Op.like]: `%${keyword}%` } },
+      { doosan_item_number: { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+
   const projects = await AssetProject.findAll({
+    where: projectWhere,
     include: [
       { 
         model: AssetProjectItem,
         as: 'items',
+        where: Object.keys(itemWhere).length > 0 ? itemWhere : undefined,
+        required: Object.keys(itemWhere).length > 0 ? true : false, // 필터 있을 때만 
         include: [
-          { model: AssetProjectItemType, as: 'itemType', attributes: ['id', 'name', 'is_cable']},
+          { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'is_cable']},
           { model: User, as: 'manager', attributes: ['id', 'email']},
         ],
       },
