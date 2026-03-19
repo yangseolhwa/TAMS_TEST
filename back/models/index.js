@@ -26,8 +26,8 @@ User.hasMany(AssetProjectItem, { foreignKey: 'user_id', as: 'projectItems' });
 AssetProjectItem.belongsTo(User, { foreignKey: 'user_id', as: 'manager' });
 
 // ── AssetEnterprise 관계 ──
-AssetEnterprise.belongsTo(AssetEnterpriseCategory, { foreignKey: 'category_id',  as: 'category' });
-AssetEnterprise.belongsTo(AssetEnterpriseItemType, { foreignKey: 'item_type_id', as: 'itemType' });
+AssetEnterprise.belongsTo(AssetEnterpriseCategory, { foreignKey: 'category_id',  as: 'item_category' });
+AssetEnterprise.belongsTo(AssetEnterpriseItemType, { foreignKey: 'item_type_id', as: 'item_type' });
 
 AssetEnterpriseCategory.hasMany(AssetEnterpriseItemType, { foreignKey: 'category_id', as: 'itemTypes' });
 AssetEnterpriseItemType.belongsTo(AssetEnterpriseCategory, { foreignKey: 'category_id', as: 'category' });
@@ -38,7 +38,7 @@ AssetEnterpriseRequest.belongsTo(User, { foreignKey: 'requester_id',  as: 'reque
 
 // ── AssetSw 관계 ──
 AssetSw.hasMany(AssetSwLicense, { foreignKey: 'asset_sw_id', as: 'licenses' });
-AssetSwLicense.belongsTo(AssetSw, { foreignKey: 'asset_sw_id', as: 'sw' });
+AssetSwLicense.belongsTo(AssetSw, { foreignKey: 'asset_sw_id', as: 'asset_sw' });
 
 AssetSw.hasMany(AssetSwRequest, { foreignKey: 'asset_sw_id', as: 'requests' });
 AssetSwRequest.belongsTo(AssetSw, { foreignKey: 'asset_sw_id', as: 'sw' });
