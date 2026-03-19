@@ -15,9 +15,9 @@ const AssetEnterprise = sequelize.define('AssetEnterprise', {
   return_date: {type: DataTypes.DATEONLY},
   manufacturer: {type: DataTypes.STRING(100)},
   spec: {type: DataTypes.STRING(100)},
-  serial_mumber: {type: DataTypes.STRING(50)},
+  serial_number: {type: DataTypes.STRING(50)},
   location: {type: DataTypes.STRING(100)},
-  remakrs: {type: DataTypes.TEXT},
+  remarks: {type: DataTypes.TEXT},
 }, {
   tableName: 'asset_enterprise',
   timestamps: true,
