@@ -48,7 +48,7 @@ AssetSwRequest.belongsTo(User, { foreignKey: 'requester_id', as: 'requester' });
 AssetProject.hasMany(AssetProjectItem, { foreignKey: 'project_id', as: 'items' });
 AssetProjectItem.belongsTo(AssetProject, { foreignKey: 'project_id', as: 'project' });
 
-AssetProjectItem.belongsTo(AssetProjectItemType, { foreignKey: 'asset_type_id', as: 'itemType' });
+AssetProjectItem.belongsTo(AssetProjectItemType, { foreignKey: 'asset_type_id', as: 'item_type' });
 AssetProjectItemType.hasMany(AssetProjectItem, { foreignKey: 'asset_type_id', as: 'items'});
 
 AssetProjectItem.hasMany(AssetProjectHistory, { foreignKey: 'asset_project_item_id', as: 'histories' });
