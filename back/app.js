@@ -5,6 +5,7 @@ const sequelize = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/authRoutes");
 const assetRoutes = require('./routes/assetRoutes');
+const runSeed = require('./seeders/seed');
 
 const app = express();
 
@@ -17,18 +18,17 @@ app.use("/api/assets", assetRoutes);
 app.use(errorHandler);
 
 // DB 연결
-sequelize
-  .authenticate()
+sequelize.authenticate()
   .then(() => {
-    console.log("MariaDB 연결 성공");
-    return sequelize.sync({ alter: false });
+    console.log('✅ MariaDB 연결 성공');
+    return sequelize.sync({ force: false });
   })
-  .then(() => {
+  .then(async () => {
+    await runSeed(); // ← 시드 실행
     app.listen(process.env.PORT, () => {
-      console.log(`서버 실행 중: http://localhost:${process.env.PORT}`);
+      console.log(`🚀 서버 실행 중: http://localhost:${process.env.PORT}`);
     });
   })
   .catch((err) => {
-    console.error("DB 연결 실패:", err);
-    process.exit(1);
+    console.error('❌ DB 연결 실패:', err);
   });
