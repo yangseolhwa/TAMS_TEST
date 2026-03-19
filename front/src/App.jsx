@@ -7,12 +7,12 @@ function App() {
   const [role, setRole] =  useState(sessionStorage.getItem('role'))
 
   const handleLoginSuccess = (role) => {
-    sessionStorage.setItem('role', role)  // ← 추가
+    sessionStorage.setItem('role', role)
     setRole(role)
   }
 
   const handleLogout = () => {
-    sessionStorage.removeItem('role')  // ← 추가
+    sessionStorage.removeItem('role')
     setRole(null)
   }
   
