@@ -4,6 +4,9 @@ const {
   AssetEnterprise,
   AssetSw,
   AssetSwLicense,
+  AssetProject,
+  AssetProjectItem,
+  AssetProjectItemType,
   User,
 } = require('../models');
 
@@ -189,6 +192,209 @@ const runSeed = async () => {
     ]);
     console.log('✅ AssetSwLicense 시드 완료');
   }
+
+  //── 6. AssetProjectItemType 시드 (DF 자산 종류) ──
+  const projectItemTypeCount = await AssetProjectItemType.count();
+if (projectItemTypeCount === 0) {
+  await AssetProjectItemType.bulkCreate([
+    { id: 1, name: '노트북',     is_cable: false },
+    { id: 2, name: '모니터',     is_cable: false },
+    { id: 3, name: '데스크탑',   is_cable: false },
+    { id: 4, name: '공유기',     is_cable: false },
+    { id: 5, name: '태블릿',     is_cable: false },
+    { id: 6, name: 'HDMI 케이블', is_cable: true  },
+    { id: 7, name: 'LAN 케이블',  is_cable: true  },
+    { id: 8, name: '전원 케이블', is_cable: true  },
+  ]);
+  console.log('✅ AssetProjectItemType 시드 완료');
+}
+
+// ── 7. AssetProject 시드 ──
+const projectCount = await AssetProject.count();
+if (projectCount === 0) {
+  await AssetProject.bulkCreate([
+    {
+      id:          1,
+      name:        'A 프로젝트',
+      description: '2024년 상반기 A사 SI 프로젝트',
+      start_date:  '2024-01-01',
+      end_date:    '2024-06-30',
+      created_at:  new Date(),
+      updated_at:  new Date(),
+    },
+    {
+      id:          2,
+      name:        'B 프로젝트',
+      description: '2024년 하반기 B사 유지보수 프로젝트',
+      start_date:  '2024-07-01',
+      end_date:    '2024-12-31',
+      created_at:  new Date(),
+      updated_at:  new Date(),
+    },
+        {
+      id:          3,
+      name:        'C 프로젝트',
+      description: '2026년 상반기 C사 보안 프로젝트',
+      start_date:  '2024-07-01',
+      end_date:    '2024-12-31',
+      created_at:  new Date(),
+      updated_at:  new Date(),
+    },
+        {
+      id:          4,
+      name:        'D 프로젝트',
+      description: '2025년 하반기 D사 유지보수 프로젝트',
+      start_date:  '2024-07-01',
+      end_date:    '2024-12-31',
+      created_at:  new Date(),
+      updated_at:  new Date(),
+    },
+        {
+      id:          5,
+      name:        'E-XXX PC 프로젝트',
+      description: '2025년 상반기 E사 XXX PC 유지보수 프로젝트',
+      start_date:  '2024-07-01',
+      end_date:    '2024-12-31',
+      created_at:  new Date(),
+      updated_at:  new Date(),
+    },
+  ]);
+  console.log('✅ AssetProject 시드 완료');
+}
+
+// ── 8. AssetProjectItem 시드 ──
+const projectItemCount = await AssetProjectItem.count();
+if (projectItemCount === 0) {
+  await AssetProjectItem.bulkCreate([
+    // A 프로젝트 자산
+    {
+      user_id:            1,
+      project_id:         1,
+      item_number:        1,
+      asset_type_id:      1,             // 노트북
+      doosan_item_number: 'DI-2024-001',
+      manufacturer:       'Samsung',
+      model_name:         'Galaxy Book4 Pro',
+      serial_number:      'SN-GB4-001',
+      spec:               null,
+      quantity:           3,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-01-01',
+      rental_end_date:    '2024-06-30',
+      state:              'active',
+      location:           'A사 현장 2층',
+      remarks:            'A 프로젝트 개발팀 지급',
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+    {
+      user_id:            10,
+      project_id:         1,
+      item_number:        2,
+      asset_type_id:      2,             // 모니터
+      doosan_item_number: 'DI-2024-002',
+      manufacturer:       'LG',
+      model_name:         '27UL500',
+      serial_number:      'SN-LG-002',
+      spec:               null,
+      quantity:           3,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-01-01',
+      rental_end_date:    '2024-06-30',
+      state:              'active',
+      location:           'A사 현장 2층',
+      remarks:            null,
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+    {
+      user_id:            2,
+      project_id:         1,
+      item_number:        3,
+      asset_type_id:      6,             // HDMI 케이블
+      doosan_item_number: 'DI-2024-003',
+      manufacturer:       'Belkin',
+      model_name:         'HDMI 2.1',
+      serial_number:      'SN-LG-003',
+      spec:               '2m',
+      quantity:           5,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-01-01',
+      rental_end_date:    '2024-06-30',
+      state:              'active',
+      location:           'A사 현장 2층',
+      remarks:            null,
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+    // B 프로젝트 자산
+    {
+      user_id:            2,
+      project_id:         2,
+      item_number:        1,
+      asset_type_id:      3,             // 데스크탑
+      doosan_item_number: 'DI-2024-101',
+      manufacturer:       'Dell',
+      model_name:         'OptiPlex 7090',
+      serial_number:      'SN-DELL-101',
+      spec:               null,
+      quantity:           2,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-07-01',
+      rental_end_date:    '2024-12-31',
+      state:              'active',
+      location:           'B사 현장 3층',
+      remarks:            '서버 운영용',
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+    {
+      user_id:            2,
+      project_id:         2,
+      item_number:        2,
+      asset_type_id:      4,             // 공유기
+      doosan_item_number: 'DI-2024-102',
+      manufacturer:       'ipTIME',
+      model_name:         'AX8004BCM',
+      serial_number:      'SN-IPT-102',
+      spec:               null,
+      quantity:           1,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-07-01',
+      rental_end_date:    '2024-12-31',
+      state:              'active',
+      location:           'B사 현장 3층',
+      remarks:            null,
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+    {
+      user_id:            2,
+      project_id:         2,
+      item_number:        3,
+      asset_type_id:      7,             // LAN 케이블
+      doosan_item_number: 'DI-2024-103',
+      manufacturer:       'UTP',
+      model_name:         'CAT.6',
+      serial_number:      'SN-LG-005',
+      spec:               '10m',
+      quantity:           10,
+      quantity_unit:      'ea',
+      rental_start_date:  '2024-07-01',
+      rental_end_date:    '2024-12-31',
+      state:              'stored',
+      location:           'B사 현장 창고',
+      remarks:            '예비 케이블',
+      created_at:         new Date(),
+      updated_at:         new Date(),
+    },
+  ]);
+  console.log('✅ AssetProjectItem 시드 완료');
+}
+
+
+
+
 };
 
 module.exports = runSeed;
