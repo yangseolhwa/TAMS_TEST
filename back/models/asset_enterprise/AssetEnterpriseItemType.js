@@ -7,7 +7,7 @@ const AssetEnterpriseItemType = sequelize.define('AssetEnterpriseItemType', {
   name: {type: DataTypes.STRING(50)},
 }, {
   tableName: 'asset_enterprise_item_type',
-  timestamps: false,
+  timestamps: true,
   createdAt: 'created_at', 
   updatedAt: 'updated_at',
 });
