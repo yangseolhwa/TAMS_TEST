@@ -1,4 +1,15 @@
-# Logs
+# 의존성
+node_modules/
+
+# 빌드 결과물
+dist/
+dist-ssr/
+
+# 환경 변수
+.env
+*.local
+
+# 로그 및 디버그 파일
 logs
 *.log
 npm-debug.log*
@@ -7,26 +18,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-/dist
-/node_modules
-
-# Editor directories and files
+# 에디터 설정
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# 환경 변수
-.env
+# OS 파일
+.DS_Store
 
+# 패키지 매니저 파일
 package-lock.json
 package.json
