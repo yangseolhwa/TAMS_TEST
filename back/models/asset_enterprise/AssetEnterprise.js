@@ -9,7 +9,7 @@ const AssetEnterprise = sequelize.define('AssetEnterprise', {
   department_id: {type: DataTypes.INTEGER},
   responsible_type: {type: DataTypes.ENUM('personal', 'room', 'vacant', 'place', 'other')},
   user_id: {type: DataTypes.INTEGER},
-  responsible_value: {type: DataTypes.DATEONLY},
+  responsible_value: {type: DataTypes.STRING(100)},
   state: {type: DataTypes.ENUM('active', 'inactive', 'stored')},
   acquisition_date: {type: DataTypes.DATEONLY},
   return_date: {type: DataTypes.DATEONLY},
