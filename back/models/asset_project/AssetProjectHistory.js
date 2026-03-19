@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 
-const AssetProjectHistory = sequelize.define('AssetProjectHistroy', {
+const AssetProjectHistory = sequelize.define('AssetProjectHistory', {
   id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
   asset_project_item_id: {type: DataTypes.INTEGER},
   project_id: {type: DataTypes.INTEGER},

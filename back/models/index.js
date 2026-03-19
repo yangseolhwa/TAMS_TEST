@@ -49,7 +49,7 @@ AssetProject.hasMany(AssetProjectItem, { foreignKey: 'project_id', as: 'items' }
 AssetProjectItem.belongsTo(AssetProject, { foreignKey: 'project_id', as: 'project' });
 
 AssetProjectItem.belongsTo(AssetProjectItemType, { foreignKey: 'asset_type_id', as: 'itemType' });
-AssetProjectItemType.hasMany(AssetProjectItem, { foreignKey: 'asset_type_id' });
+AssetProjectItemType.hasMany(AssetProjectItem, { foreignKey: 'asset_type_id', as: 'items'});
 
 AssetProjectItem.hasMany(AssetProjectHistory, { foreignKey: 'asset_project_item_id', as: 'histories' });
 AssetProjectHistory.belongsTo(AssetProjectItem, { foreignKey: 'asset_project_item_id', as: 'item' });

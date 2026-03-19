@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 
-const AssetprojectItemType = sequelize.define('AssetProjectItemType', {
+const AssetProjectItemType = sequelize.define('AssetProjectItemType', {
   id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
   name: {type: DataTypes.STRING(100)},
   is_cable: {type: DataTypes.BOOLEAN}
@@ -10,4 +10,4 @@ const AssetprojectItemType = sequelize.define('AssetProjectItemType', {
   timestamps: false
 });
 
-module.exports = AssetprojectItemType;
+module.exports = AssetProjectItemType;

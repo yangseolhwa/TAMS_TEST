@@ -20,7 +20,7 @@ const AssetSwLicense = sequelize.define('AssetSwLicense', {
   },
 }, {
   tableName: 'asset_sw_license',
-  timestamp: true,
+  timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
