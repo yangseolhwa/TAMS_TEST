@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InfoCircleFill } from 'react-bootstrap-icons'
 import styles from './UserMyAssetsPage.module.css'
 
 const INNER_TABS = [
@@ -39,7 +40,18 @@ const UserMyAssetsPage = () => {
         </div>
 
         <div className={styles.content}>
-          {activeTab === INNER_TABS[0].id && <p>자산 등록 요청 영역</p>}
+          {activeTab === INNER_TABS[0].id && (
+            <>
+              {/* 안내 배너 */}
+              <div className={styles.banner}>
+                <InfoCircleFill className={styles.bannerIcon} />
+                <p className={styles.bannerText}>
+                  소프트웨어 및 PC 장비를 최대 <strong>5개</strong>까지 동시에 요청할 수 있습니다.
+                  처리 상태는 <strong>자산 요청 현황</strong>에서 확인하세요.
+                </p>
+              </div>
+            </>
+          )}
           {activeTab === INNER_TABS[1].id && <p>자산 요청 현황 영역</p>}
         </div>
       </div>
