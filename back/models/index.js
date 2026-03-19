@@ -22,8 +22,8 @@ AssetEnterprise.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(AssetSwLicense, { foreignKey: 'user_id' });
 AssetSwLicense.belongsTo(User, { foreignKey: 'user_id' });
 
-User.hasMany(AssetProject, { foreignKey: 'user_id' });
-AssetProject.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(AssetProjectItem, { foreignKey: 'user_id', as: 'projectItems' });
+AssetProjectItem.belongsTo(User, { foreignKey: 'user_id', as: 'manager' });
 
 // ── AssetEnterprise 관계 ──
 AssetEnterprise.belongsTo(AssetEnterpriseCategory, { foreignKey: 'category_id',  as: 'category' });
