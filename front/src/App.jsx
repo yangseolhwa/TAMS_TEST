@@ -2,9 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import LoginPage from './components/Login/LoginPage'
 import DefaultLayout from './layouts/DefaultLayout/DefaultLayout'
+import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
+import AdminDfAssetsPage from './pages/admin/DfAssets/AdminDfAssetsPage'
+import UserMyAssetsPage from './pages/user/MyAssets/UserMyAssetsPage'
+import UserDfAssetsPage from './pages/user/DfAssets/UserDfAssetsPage'
 
 function App() {
-  const [role, setRole] =  useState(sessionStorage.getItem('role'))
+  const [role, setRole] = useState(sessionStorage.getItem('role'))
 
   const handleLoginSuccess = (role) => {
     sessionStorage.setItem('role', role)
@@ -15,11 +19,10 @@ function App() {
     sessionStorage.removeItem('role')
     setRole(null)
   }
-  
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* 로그인 */}
         <Route
           path="/login"
           element={
@@ -29,19 +32,18 @@ function App() {
           }
         />
 
-        {/* 메인 */}
-        <Route
-          path="/:role/*"
-          element={
-            role
-              ? <DefaultLayout role={role} onLogout={handleLogout}>
-                  <p>레이아웃 확인용</p>
-                </DefaultLayout>
-              : <Navigate to="/login" replace />
-          }
-        />
+        {/* Admin */}
+        <Route element={<DefaultLayout role={role} onLogout={handleLogout} />}>
+          <Route path="/admin/my-assets" element={role === 'admin' ? <AdminMyAssetsPage /> : <Navigate to="/login" replace />} />
+          <Route path="/admin/df-assets" element={role === 'admin' ? <AdminDfAssetsPage /> : <Navigate to="/login" replace />} />
+        </Route>
 
-        {/* 기본 리다이렉트 */}
+        {/* User */}
+        <Route element={<DefaultLayout role={role} onLogout={handleLogout} />}>
+          <Route path="/user/my-assets" element={role === 'user' ? <UserMyAssetsPage /> : <Navigate to="/login" replace />} />
+          <Route path="/user/df-assets" element={role === 'user' ? <UserDfAssetsPage /> : <Navigate to="/login" replace />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

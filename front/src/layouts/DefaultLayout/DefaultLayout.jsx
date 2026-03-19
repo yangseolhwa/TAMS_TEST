@@ -4,14 +4,19 @@ import { PersonCircle } from 'react-bootstrap-icons'
 import { logout } from '../../services/authService'
 import styles from './DefaultLayout.module.css'
 import toast from 'react-hot-toast'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 const TABS = [
   { id: 'my-assets', label: '내 자산 관리' },
   { id: 'df-assets', label: 'DF 자산 관리' },
 ]
 
-const DefaultLayout = ({ children, role, onLogout }) => {
-  const [activeTab, setActiveTab] = useState(TABS[0].id)
+const DefaultLayout = ({ role, onLogout }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // 현재 URL 기준으로 activeTab 결정
+  const activeTab = TABS.find((tab) => location.pathname.includes(tab.id))?.id ?? TABS[0].id
 
   const handleLogout = async () => {
     try {
@@ -21,11 +26,11 @@ const DefaultLayout = ({ children, role, onLogout }) => {
       console.error(err.message)
       toast.dismiss('logout-error')
       setTimeout(() => {
-      toast.error('로그아웃 중 오류가 발생했습니다. 다시 시도해 주세요.', {
-        id: 'logout-error',
-        duration: 3000,
-      })
-    }, 100)
+        toast.error('로그아웃 중 오류가 발생했습니다. 다시 시도해 주세요.', {
+          id: 'logout-error',
+          duration: 3000,
+        })
+      }, 100)
     }
   }
 
@@ -53,7 +58,7 @@ const DefaultLayout = ({ children, role, onLogout }) => {
             <button
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigate(`/${role}/${tab.id}`)}
             >
               {tab.label}
             </button>
@@ -63,7 +68,7 @@ const DefaultLayout = ({ children, role, onLogout }) => {
 
       {/* Main Content */}
       <main className={styles.main}>
-        {children}
+        <Outlet />
       </main>
 
       {/* Footer */}
