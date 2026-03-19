@@ -3,6 +3,7 @@ const sequelize = require('../../config/db');
 
 const AssetProjectItem = sequelize.define('AssetProjectItem', {
   id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+  user_id: {type: DataTypes.INTEGER},
   project_id: {type: DataTypes.INTEGER},
   item_number: {type: DataTypes.INTEGER},
   asset_type_id: {type: DataTypes.INTEGER},
