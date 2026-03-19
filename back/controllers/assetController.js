@@ -41,21 +41,16 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
 
 // DF 자산 조회
 exports.getDfAssets = asyncWrapper(async (req, res) => {
-  const { userId, role } = req.user;
-
-  const projectWhere = role === 'admin' ? {} : { user_id: userId };
-
   const projects = await AssetProject.findAll({
-    where: projectWhere,
     include: [
       { 
         model: AssetProjectItem,
         as: 'items',
         include: [
           { model: AssetProjectItemType, as: 'itemType', attributes: ['id', 'name', 'is_cable']},
+          { model: User, as: 'manager', attributes: ['id', 'email']},
         ],
       },
-      { model: User, attributes: ['id', 'email']},
     ],
     order: [['created_at', 'DESC']],
   });
