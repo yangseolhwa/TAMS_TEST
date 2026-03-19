@@ -10,7 +10,7 @@ function App() {
   }
 
   return (
-    <DefaultLayout role={role}>
+    <DefaultLayout role={role} onLogout={() => setRole(null)}>
       <p>레이아웃 확인용</p>
     </DefaultLayout>
   )
