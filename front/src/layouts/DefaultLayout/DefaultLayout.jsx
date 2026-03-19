@@ -3,6 +3,7 @@ import logoImg from '../../assets/logo.png'
 import { PersonCircle } from 'react-bootstrap-icons'
 import { logout } from '../../services/authService'
 import styles from './DefaultLayout.module.css'
+import toast from 'react-hot-toast'
 
 const TABS = [
   { id: 'my-assets', label: '내 자산 관리' },
@@ -18,6 +19,13 @@ const DefaultLayout = ({ children, role, onLogout }) => {
       onLogout?.()
     } catch (err) {
       console.error(err.message)
+      toast.dismiss('logout-error')
+      setTimeout(() => {
+      toast.error('로그아웃 중 오류가 발생했습니다. 다시 시도해 주세요.', {
+        id: 'logout-error',
+        duration: 3000,
+      })
+    }, 100)
     }
   }
 
