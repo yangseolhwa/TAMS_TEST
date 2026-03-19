@@ -20,3 +20,15 @@ export const login = async (email) => {
     throw new Error(message)
   }
 }
+
+/**
+ * @throws {Error} 로그아웃 실패 시
+ */
+export const logout = async () => {
+  try {
+    await api.post(ENDPOINTS.AUTH.LOGOUT)
+  } catch (error) {
+    const message = error.response?.data?.message ?? '로그아웃에 실패했습니다.'
+    throw new Error(message)
+  }
+}
