@@ -4,7 +4,7 @@ import { PersonCircle, ChevronLeft, ChevronRight } from 'react-bootstrap-icons'
 import { logout } from '../../services/authService'
 import styles from './DefaultLayout.module.css'
 import toast from 'react-hot-toast'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 
 const TABS = [
   {
@@ -99,13 +99,14 @@ const DefaultLayout = ({ role, onLogout }) => {
                 </div>
                 <ul className={styles.sidebarMenu}>
                   {activeTab.menus.map((menu) => (
-                    <li
-                      key={menu.id}
-                      className={`${styles.sidebarMenuItem} ${location.pathname.includes(menu.path) ? styles.sidebarMenuItemActive : ''}`}
-                      onClick={() => navigate(`/${role}/${activeTab.id}/${menu.path}`)}
-                    >
-                      <span className={styles.sidebarMenuDot} />
-                      <span className={styles.sidebarMenuLabel}>{menu.label}</span>
+                    <li key={menu.id}>
+                      <Link
+                        to={`/${role}/${activeTab.id}/${menu.path}`}
+                        className={`${styles.sidebarMenuItem} ${location.pathname.includes(menu.path) ? styles.sidebarMenuItemActive : ''}`}
+                      >
+                        <span className={styles.sidebarMenuDot} />
+                        <span className={styles.sidebarMenuLabel}>{menu.label}</span>
+                      </Link>
                     </li>
                   ))}
                 </ul>
