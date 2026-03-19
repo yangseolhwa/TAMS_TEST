@@ -122,6 +122,148 @@
 }
 
 /* =====================
+   Body (Sidebar + Content)
+   ===================== */
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* =====================
+   Sidebar
+   ===================== */
+.sidebar {
+  flex-shrink: 0;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border-light);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.sidebarOpen {
+  width: 220px;
+}
+
+.sidebarClosed {
+  width: 0;
+}
+
+.sidebarInner {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 12px 12px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.sidebarTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sidebarToggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarToggle:hover {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+}
+
+.sidebarMenu {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.sidebarMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarMenuItem:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.sidebarMenuDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast);
+}
+
+.sidebarMenuLabel {
+  white-space: nowrap;
+}
+
+.sidebarMenuItemActive {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebarMenuItemActive .sidebarMenuDot {
+  background-color: var(--color-primary);
+}
+
+/* 닫혔을 때 토글 버튼 */
+.sidebarOpenBtn {
+  width: 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 12px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarOpenBtn:hover {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+}
+
+/* =====================
    Main Content
    ===================== */
 .main {
