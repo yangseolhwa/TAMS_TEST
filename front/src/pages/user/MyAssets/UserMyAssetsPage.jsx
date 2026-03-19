@@ -39,8 +39,8 @@ const UserMyAssetsPage = () => {
         </div>
 
         <div className={styles.content}>
-          {activeTab === 'request' && <p>자산 등록 요청 영역</p>}
-          {activeTab === 'status' && <p>자산 요청 현황 영역</p>}
+          {activeTab === INNER_TABS[0].id && <p>자산 등록 요청 영역</p>}
+          {activeTab === INNER_TABS[1].id && <p>자산 요청 현황 영역</p>}
         </div>
       </div>
 
