@@ -21,6 +21,10 @@
   --color-border:       #A0AEC0;
   --color-border-light: #E2E8F0;
 
+  /* Text Colors */                        /* ← 추가 */
+  --color-text:            #1E2D45;        /* ← 추가 */
+  --color-text-secondary:  #718096;
+
   /* Spacing */
   --space-xs:  0.5rem;
   --space-sm:  0.75rem;
