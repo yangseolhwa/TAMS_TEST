@@ -20,9 +20,7 @@ const processQueue = (error) => {
 // 인터셉터에서 refresh 시도를 건너뛸 URL 목록
 const SKIP_REFRESH_URLS = [
   ENDPOINTS.AUTH.REFRESH,
-  ENDPOINTS.AUTH.ME,
   ENDPOINTS.AUTH.LOGIN,
-  ENDPOINTS.AUTH.REGISTER,
 ]
 
 api.interceptors.response.use(
@@ -33,6 +31,7 @@ api.interceptors.response.use(
     // 403은 refresh 시도 없이 바로 로그인
     if (error.response?.status === 403) {
       if (window.location.pathname !== '/login') {
+        sessionStorage.removeItem('role')
         window.location.href = '/login'
       }
       return Promise.reject(error)
@@ -63,6 +62,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError)
         if (window.location.pathname !== '/login') {
+          sessionStorage.removeItem('role')
           window.location.href = '/login'
         }
         return Promise.reject(refreshError)
