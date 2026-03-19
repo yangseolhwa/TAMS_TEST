@@ -17,8 +17,8 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
   const enterpriseAsset = await AssetEnterprise.findAll({
     where: enterpriseWhere,
     include: [
-      { model: AssetEnterpriseCategory, as: 'category', attributes: ['id', 'name']},
-      { model: AssetEnterpriseItemType, as: 'itemType', attributes: ['id', 'name']},
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name']},
+      { model: AssetEnterpriseItemType, as: 'item_type', attributes: ['id', 'name']},
       { model: User, attributes: ['id', 'email']},
     ],
     order: [['created_at', 'DESC']],
@@ -27,7 +27,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
   const swLicense = await AssetSwLicense.findAll({
     where: swLicenseWhere,
     include: [
-      { model: AssetSw, as: 'sw', attributes: ['id', 'name', 'software_type', 'manufacturer', 'is_subscription', 'state']},
+      { model: AssetSw, as: 'asset_sw', attributes: ['id', 'name', 'software_type', 'manufacturer', 'is_subscription', 'state']},
       { model: User, attributes: ['id', 'email']},
     ],
     order: [['created_at', 'DESC']]
@@ -35,7 +35,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
 
   res.status(200).json({
     enterprise: enterpriseAsset,
-    sw: swLicense,
+    swLicense: swLicense,
   });
 });
 
