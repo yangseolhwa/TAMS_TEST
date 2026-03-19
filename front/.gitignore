@@ -30,7 +30,3 @@ lerna-debug.log*
 
 # OS 파일
 .DS_Store
-
-# 패키지 매니저 파일
-package-lock.json
-package.json
