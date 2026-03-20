@@ -1,0 +1,30 @@
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: var(--color-accent-bg);
+  border: 1px solid var(--color-accent-border);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.bannerIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.bannerText {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.bannerText strong {
+  font-weight: 700;
+  color: var(--color-accent);
+}

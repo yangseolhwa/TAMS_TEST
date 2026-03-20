@@ -1,45 +1,24 @@
-/* ===== CSS RESET ===== */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-/* ===== GLOBAL VARIABLES ===== */
 :root {
-  /* Colors — 실제 사용되는 것만 */
-  --color-accent:       #3b82f6;
-  --color-accent-hover: rgba(59, 130, 246, 0.6);
-  --color-accent-bg:     rgba(59, 130, 246, 0.06);
-  --color-accent-border: rgba(59, 130, 246, 0.2);
-  --color-error:        #ef4444;
-  --color-error-hover:  #dc2626;
-  --color-error-ring:   rgba(239, 68, 68, 0.08);
-  --color-focus-ring:   rgba(59, 130, 246, 0.1);
+  /* Colors */
+  --color-accent:          #3b82f6;
+  --color-accent-hover:    rgba(59, 130, 246, 0.6);
+  --color-accent-bg:       rgba(59, 130, 246, 0.06);
+  --color-accent-border:   rgba(59, 130, 246, 0.2);
+  --color-error:           #ef4444;
+  --color-error-hover:     #dc2626;
+  --color-error-ring:      rgba(239, 68, 68, 0.08);
+  --color-focus-ring:      rgba(59, 130, 246, 0.1);
 
   /* Layout Colors */
-  --color-bg:           #F0F2F5;
-  --color-surface:      #ffffff;
-  --color-primary:      #1E2D45;
-  --color-border:       #A0AEC0;
-  --color-border-light: #E2E8F0;
+  --color-bg:              #F0F2F5;
+  --color-surface:         #ffffff;
+  --color-primary:         #1E2D45;
+  --color-border:          #A0AEC0;
+  --color-border-light:    #E2E8F0;
 
-  /* Text Colors */                        /* ← 추가 */
-  --color-text:            #1E2D45;        /* ← 추가 */
+  /* Text Colors */
+  --color-text:            #1E2D45;
   --color-text-secondary:  #718096;
-
-  /* Spacing */
-  --space-xs:  0.5rem;
-  --space-sm:  0.75rem;
-  --space-md:  1rem;
-  --space-lg:  1.5rem;
-  --space-xl:  2rem;
-  --space-2xl: 3rem;
-
-  /* Radius */
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
 
   /* Typography */
   --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
@@ -50,36 +29,9 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-med:  300ms ease;
-}
 
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  font-family: var(--font-sans);
-  min-height: 100dvh;
-}
-
-#root {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-input,
-button {
-  font-family: inherit;
-}
-
-button {
-  cursor: pointer;
-  border: none;
-  outline: none;
-}
-
-input:focus {
-  outline: none;
+  /* Border Radius */
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 }
