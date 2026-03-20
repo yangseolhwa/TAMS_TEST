@@ -12,6 +12,7 @@ export const ASSET_CATEGORIES = {
 };
 
 export const createInitialItem = () => ({
+  id: crypto.randomUUID(),
   requestType: "existing",
   assetType: "",
   assetCategory: "",
@@ -39,7 +40,7 @@ const RequestFormFields = ({
   return (
     <>
       {items.map((item, index) => (
-        <div key={index} className={styles.requestCard}>
+        <div key={item.id} className={styles.requestCard}>
           <div className={styles.requestCardHeader}>
             <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
             <div className={styles.radioGroup}>
