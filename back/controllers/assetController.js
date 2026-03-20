@@ -560,11 +560,11 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   const { requestId } = req.params;
   const { reject_reason } = req.body || {};
-
+ 
   if (role !== 'admin') {
     return res.status(403).json({ message: '관리자만 처리할 수 있습니다.' });
   }
-
+ 
   const request = await AssetEnterpriseRequest.findByPk(requestId);
   if (!request) {
     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
@@ -572,12 +572,12 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
   if (request.status !== 'pending') {
     return res.status(400).json({ message: '이미 처리된 요청입니다.' });
   }
-
-  request.status       = 'rejected';
-  request.reject_reason = reject_reason ?? null;
-  request.processed_at = new Date();
+ 
+  request.status        = 'rejected';
+  request.request_reason = reject_reason ?? null;
+  request.processed_at  = new Date();
   await request.save();
-
+ 
   res.status(200).json({ message: '자산 등록 요청이 거절되었습니다.', request });
 });
 
@@ -589,11 +589,11 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   const { requestId } = req.params;
   const { reject_reason } = req.body || {};
-
+ 
   if (role !== 'admin') {
     return res.status(403).json({ message: '관리자만 처리할 수 있습니다.' });
   }
-
+ 
   const request = await AssetSwRequest.findByPk(requestId);
   if (!request) {
     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
@@ -601,12 +601,12 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
   if (request.status !== 'pending') {
     return res.status(400).json({ message: '이미 처리된 요청입니다.' });
   }
-
-  request.status        = 'rejected';
-  request.reject_reason = reject_reason ?? null;
-  request.processed_at  = new Date();
+ 
+  request.status         = 'rejected';
+  request.request_reason = reject_reason ?? null;
+  request.processed_at   = new Date();
   await request.save();
-
+ 
   res.status(200).json({ message: 'SW 등록 요청이 거절되었습니다.', request });
 });
 
