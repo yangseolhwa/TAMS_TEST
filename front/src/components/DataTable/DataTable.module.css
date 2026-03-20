@@ -9,7 +9,6 @@
   overflow-x: auto;
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .table {
