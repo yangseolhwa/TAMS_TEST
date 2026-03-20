@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import PropTypes from "prop-types";
 import styles from "./DataTable.module.css";
 
@@ -9,8 +10,10 @@ const DataTable = ({
   onSelectionChange,
   totalCount,
 }) => {
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
   const allChecked =
-    rows.length > 0 && rows.every((row) => selectedIds.includes(row.id));
+    rows.length > 0 && rows.every((row) => selectedIdSet.has(row.id));
 
   const handleAllChange = () => {
     if (allChecked) {
@@ -21,11 +24,13 @@ const DataTable = ({
   };
 
   const handleRowChange = (id) => {
-    if (selectedIds.includes(id)) {
-      onSelectionChange(selectedIds.filter((v) => v !== id));
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
     } else {
-      onSelectionChange([...selectedIds, id]);
+      next.add(id);
     }
+    onSelectionChange(Array.from(next));
   };
 
   const renderCell = (col, row) => {
@@ -94,13 +99,13 @@ const DataTable = ({
                 <tr
                   key={row.id}
                   className={`${styles.tr} ${
-                    selectedIds.includes(row.id) ? styles.selected : ""
+                    selectedIdSet.has(row.id) ? styles.selected : ""
                   }`}
                 >
                   <td className={styles.checkboxCell}>
                     <input
                       type="checkbox"
-                      checked={selectedIds.includes(row.id)}
+                      checked={selectedIdSet.has(row.id)}
                       onChange={() => handleRowChange(row.id)}
                       className={styles.checkbox}
                     />
