@@ -58,4 +58,18 @@ html, body {
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
+
+  /* Badge - Asset Type */
+  --color-badge-pc-bg:       rgba(59, 130, 246, 0.12);
+  --color-badge-pc-text:     #2563eb;
+  --color-badge-sw-bg:       rgba(16, 185, 129, 0.12);
+  --color-badge-sw-text:     #059669;
+
+  /* Badge - Status */
+  --color-badge-yellow-bg:   rgba(245, 158, 11, 0.12);
+  --color-badge-yellow:      #d97706;
+  --color-badge-green-bg:    rgba(16, 185, 129, 0.12);
+  --color-badge-green:       #059669;
+  --color-badge-red-bg:      rgba(192, 57, 43, 0.1);
+  --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
 }

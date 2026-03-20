@@ -1,0 +1,145 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+/* Header */
+.table thead tr {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.th,
+.thCheckboxCell {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  background-color: var(--color-primary-tint);
+}
+
+.thCheckboxCell {
+  width: 40px;
+  text-align: center;
+}
+
+/* Body */
+.tr {
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color var(--transition-fast);
+}
+
+.tr:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.tr.selected {
+  background-color: var(--color-accent-bg);
+}
+
+.td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Checkbox */
+.checkboxCell {
+  padding: 10px 14px;
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* Empty */
+.emptyCell {
+  padding: 40px 14px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* Dash */
+.dash {
+  color: var(--color-text-secondary);
+}
+
+/* Badge base */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* assetType badges */
+.assetType_PC {
+  background-color: var(--color-badge-pc-bg);
+  color: var(--color-badge-pc-text);
+}
+
+.assetType_SW {
+  background-color: var(--color-badge-sw-bg);
+  color: var(--color-badge-sw-text);
+}
+
+/* status color variants */
+.status_yellow {
+  background-color: var(--color-badge-yellow-bg);
+  color: var(--color-badge-yellow);
+}
+
+.status_green {
+  background-color: var(--color-badge-green-bg);
+  color: var(--color-badge-green);
+}
+
+.status_red {
+  background-color: var(--color-badge-red-bg);
+  color: var(--color-error);
+}
+
+.status_blue {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.status_gray {
+  background-color: var(--color-badge-gray-bg);
+  color: var(--color-text-secondary);
+}
+
+/* Total count */
+.totalCount {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 600;
+  margin: 0;
+  padding-top: 10px;
+}
