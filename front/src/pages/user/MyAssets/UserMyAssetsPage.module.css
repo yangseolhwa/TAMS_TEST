@@ -83,7 +83,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  transition: opacity var(--transition-fast);
+  transition: background-color var(--transition-fast);
   white-space: nowrap;
 }
 
