@@ -8,6 +8,7 @@ const AssetSwRequest = sequelize.define('AssetSwRequest', {
   required_quantity: {type: DataTypes.INTEGER},
   request_date: {type: DataTypes.DATEONLY},
   request_reason: {type: DataTypes.STRING(255)},
+  new_asset_data: { type: DataTypes.TEXT },
   request_type: {type: DataTypes.ENUM('register', 'return')},
   status: {type: DataTypes.ENUM('pending', 'approved', 'rejected')},
   processed_at: {type: DataTypes.DATE},
