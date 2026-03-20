@@ -6,6 +6,25 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import styles from "./UserMyAssetsPage.module.css";
+import DataTable from "../../../components/DataTable/DataTable";
+
+const columns = [
+  { key: "no",          label: "No" },
+  { key: "assetType",   label: "자산 유형",  type: "assetType" },
+  { key: "assetName",   label: "자산명" },
+  { key: "spec",        label: "규격",        type: "dash" },
+  { key: "requestType", label: "요청 구분" },
+  { key: "requestedAt", label: "요청일" },
+  { key: "processedAt", label: "처리일",      type: "dash" },
+  { key: "status",      label: "상태",        type: "status" },
+  { key: "reason",      label: "사유",        type: "dash" },
+];
+
+const statusMap = {
+  PENDING:  { label: "대기", color: "yellow" },
+  APPROVED: { label: "승인", color: "green"  },
+  REJECTED: { label: "반려", color: "red"    },
+};
 
 const MAX_ITEMS = 5;
 
@@ -15,6 +34,8 @@ const INNER_TABS = [
 ];
 
 const UserMyAssetsPage = () => {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [rows, setRows] = useState([]); // API 연동 전 빈 배열  
   const [activeTab, setActiveTab] = useState(INNER_TABS[0].id);
   const [items, setItems] = useState([createInitialItem()]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -145,7 +166,27 @@ const UserMyAssetsPage = () => {
             </div>
           </>
         )}
-        {activeTab === INNER_TABS[1].id && <p>자산 요청 현황 영역</p>}
+        {activeTab === INNER_TABS[1].id && (
+          <>
+            <Banner 
+              text={
+                <>
+                  승인 / 반려 항목은 처리 후 <strong>24시간</strong>이 경과하면 목록에서 자동 삭제됩니다. 
+                </>
+              }
+            />
+                  
+            <DataTable
+              columns={columns}
+              rows={rows}
+              statusMap={statusMap}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              totalCount={rows.length}
+            />
+          </>
+        )}
+
       </TabCard>
 
       <ConfirmModal
@@ -157,6 +198,7 @@ const UserMyAssetsPage = () => {
         onConfirm={handleReset}
         onCancel={() => setShowResetConfirm(false)}
       />
+
     </div>
   );
 };
