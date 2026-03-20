@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+
 const asyncWrapper = require('../middleware/asyncWrapper');
 const {
   AssetEnterprise, AssetEnterpriseCategory, AssetEnterpriseItemType, AssetEnterpriseRequest,
@@ -187,12 +188,15 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         return res.status(404).json({ message: `ID ${asset.asset_id}에 해당하는 자산이 없습니다.` });
       }
     } else {
-      if (!asset.asset_number || !asset.category_id || !asset.item_type_id || !asset.manufacturer) {
-        return res.status(400).json({ message: '자산번호, 카테고리, 자산 종류, 제조사는 필수 입력 항목입니다.' });
+      if (!asset.asset_number || !asset.category_id || !asset.item_type_id || !asset.manufacturer || !asset.model_name) {
+        return res.status(400).json({ message: '자산번호, 카테고리, 자산 종류, 제조사, 모델명은 필수 입력 항목입니다.' });
       }
     }
     if (!asset.acquisition_date) {
       return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
+    }
+    if (asset.required_quantity !== undefined && (isNaN(Number(asset.required_quantity)) || Number(asset.required_quantity) < 1)) {
+      return res.status(400).json({ message: '수량은 1 이상이어야 합니다.' });
     }
   }
 
@@ -203,10 +207,12 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
       const original = await AssetEnterprise.findByPk(assets[0].asset_id);
       assetData = {
         asset_number:      original.asset_number,
+        model_name:        original.model_name,
         category_id:       original.category_id,
         item_type_id:      original.item_type_id,
         manufacturer:      original.manufacturer,
         spec:              original.spec,
+        serial_number:     original.serial_number,
         responsible_value: assets[0].responsible_value ?? original.responsible_value,
         location:          assets[0].location          ?? original.location,
         remarks:           assets[0].remarks           ?? original.remarks,
@@ -229,26 +235,25 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
   // 일반 회원 → pending 요청 생성
   const requests = await AssetEnterpriseRequest.bulkCreate(
     assets.map((asset) => ({
-      asset_id:         is_existing ? asset.asset_id : null,
-      requester_id:     userId,
-      status:           'pending',
-      request_type:     'register',
-      request_date:     new Date(),
-      required_quantity: 1,
-      request_reason:   is_existing
-        ? (asset.remarks ?? null)
-        : JSON.stringify({
-            asset_number:      asset.asset_number,
-            category_id:       asset.category_id,
-            item_type_id:      asset.item_type_id,
-            manufacturer:      asset.manufacturer,
-            spec:              asset.spec ?? null,
-            serial_number:     asset.serial_number ?? null,
-            responsible_value: asset.responsible_value ?? null,
-            acquisition_date:  asset.acquisition_date,
-            location:          asset.location ?? null,
-            remarks:           asset.remarks ?? null,
-          }),
+      asset_id:          is_existing ? asset.asset_id : null,
+      requester_id:      userId,
+      status:            'pending',
+      request_type:      'register',
+      request_date:      new Date(),
+      required_quantity: asset.required_quantity ? Number(asset.required_quantity) : 1,
+      request_reason:    asset.request_reason ?? null,           // user 메모
+      new_asset_data:    is_existing ? null : JSON.stringify({   // 신규 자산 데이터만 별도 저장
+        asset_number:      asset.asset_number,
+        model_name:        asset.model_name,
+        category_id:       asset.category_id,
+        item_type_id:      asset.item_type_id,
+        manufacturer:      asset.manufacturer,
+        spec:              asset.spec              ?? null,
+        serial_number:     asset.serial_number     ?? null,
+        responsible_value: asset.responsible_value ?? null,
+        acquisition_date:  asset.acquisition_date,
+        location:          asset.location          ?? null,
+      }),
     }))
   );
 
@@ -327,7 +332,6 @@ exports.registerSw = asyncWrapper(async (req, res) => {
   }
 
   // 일반 회원 → pending 요청 생성
-  // (SW 마스터 데이터는 아직 생성하지 않고, 모든 정보를 request_reason JSON에 보관)
   const createdRequests = await AssetSwRequest.bulkCreate(
     licenses.map((lic) => ({
       asset_sw_id:       is_existing ? lic.asset_sw_id : null,
@@ -336,19 +340,18 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       request_type:      'register',
       request_date:      new Date(),
       required_quantity: 1,
-      request_reason:    is_existing
-        ? (lic.request_reason ?? null)
-        : JSON.stringify({
-            name:             lic.name,
-            software_type:    lic.software_type,
-            manufacturer:     lic.manufacturer,
-            is_subscription:  lic.is_subscription ?? false,
-            license_key:      lic.license_key,
-            license_password: lic.license_password ?? null,
-            key_type:         lic.key_type,
-            subscription_date: lic.subscription_date ?? null,
-            related_link:     lic.related_link ?? null,
-          }),
+      request_reason:    lic.request_reason ?? null,           // user 메모
+      new_asset_data:    is_existing ? null : JSON.stringify({ // 신규 SW 데이터만 별도 저장
+        name:              lic.name,
+        software_type:     lic.software_type,
+        manufacturer:      lic.manufacturer,
+        is_subscription:   lic.is_subscription   ?? false,
+        license_key:       lic.license_key,
+        license_password:  lic.license_password  ?? null,
+        key_type:          lic.key_type,
+        subscription_date: lic.subscription_date ?? null,
+        related_link:      lic.related_link       ?? null,
+      }),
     }))
   );
 
@@ -462,7 +465,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '이미 처리된 요청입니다.' });
   }
 
-  // 자산 정보 구성: 기존 자산 기반이면 원본 참조, 신규면 request_reason JSON 파싱
+  // 자산 정보 구성: 기존 자산 기반이면 원본 참조, 신규면 new_asset_data JSON 파싱
   let assetData = {};
   if (request.asset_id) {
     const original = await AssetEnterprise.findByPk(request.asset_id);
@@ -470,15 +473,20 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       return res.status(404).json({ message: '원본 자산을 찾을 수 없습니다.' });
     }
     assetData = {
-      asset_number:     original.asset_number,
-      category_id:      original.category_id,
-      item_type_id:     original.item_type_id,
-      manufacturer:     original.manufacturer,
-      spec:             original.spec,
+      asset_number:      original.asset_number,
+      model_name:        original.model_name,
+      category_id:       original.category_id,
+      item_type_id:      original.item_type_id,
+      manufacturer:      original.manufacturer,
+      spec:              original.spec,
+      serial_number:     original.serial_number,
     };
   } else {
+    if (!request.new_asset_data) {
+      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    }
     try {
-      assetData = JSON.parse(request.request_reason);
+      assetData = JSON.parse(request.new_asset_data);
     } catch {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
@@ -565,7 +573,7 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '이미 처리된 요청입니다.' });
   }
 
-  request.status = 'rejected';
+  request.status       = 'rejected';
   request.reject_reason = reject_reason ?? null;
   request.processed_at = new Date();
   await request.save();
@@ -594,7 +602,7 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '이미 처리된 요청입니다.' });
   }
 
-  request.status = 'rejected';
+  request.status        = 'rejected';
   request.reject_reason = reject_reason ?? null;
   request.processed_at  = new Date();
   await request.save();
@@ -624,11 +632,14 @@ exports.approveSw = asyncWrapper(async (req, res) => {
 
   let swId = request.asset_sw_id;
 
-  // 신규 SW 요청인 경우 → SW 마스터 데이터 생성
+  // 신규 SW 요청인 경우 → new_asset_data에서 SW 마스터 데이터 생성
   if (!swId) {
+    if (!request.new_asset_data) {
+      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    }
     let swData;
     try {
-      swData = JSON.parse(request.request_reason);
+      swData = JSON.parse(request.new_asset_data);
     } catch {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
@@ -643,9 +654,9 @@ exports.approveSw = asyncWrapper(async (req, res) => {
     swId = newSw.id;
   }
 
-  // request_reason에서 라이선스 정보 파싱 (기존 SW 요청이면 null일 수 있음)
+  // new_asset_data에서 라이선스 정보 파싱 (기존 SW 요청이면 null)
   let licData = {};
-  try { licData = JSON.parse(request.request_reason) ?? {}; } catch { /* 기존 SW 요청 */ }
+  try { licData = JSON.parse(request.new_asset_data) ?? {}; } catch { /* 기존 SW 요청 */ }
 
   // 라이선스 생성
   const license = await AssetSwLicense.create({
