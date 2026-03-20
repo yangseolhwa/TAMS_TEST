@@ -18,7 +18,7 @@ router.post('/enterprise', assetController.registerEnterprise);
 router.post('/sw', assetController.registerSw);
 router.post('/df', assetController.registerDf);
 
-// 관리자 승인 / 거절
+// 관리자 승인 / 반려
 router.patch('/enterprise/approve/:requestId', assetController.approveEnterprise);
 router.patch('/enterprise/reject/:requestId',  assetController.rejectEnterprise);
 router.patch('/sw/approve/:requestId', assetController.approveSw);
