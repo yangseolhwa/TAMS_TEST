@@ -73,11 +73,11 @@
 
 /* variant: primary */
 .primary {
-  background-color: #4A7FC1;
+  background-color: var(--color-submit);
 }
 
 .primary:hover {
-  background-color: #3D6FAD;
+  background-color: var(--color-submit-hover);
 }
 
 /* variant: danger */
