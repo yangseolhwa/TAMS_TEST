@@ -1,0 +1,41 @@
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.innerTabs {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-border-light);
+  background-color: var(--color-surface);
+}
+
+.innerTab {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-border);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.innerTab:hover {
+  color: var(--color-primary);
+}
+
+.innerTabActive {
+  color: var(--color-primary);
+  font-weight: 700;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.content {
+  padding: 24px;
+}
