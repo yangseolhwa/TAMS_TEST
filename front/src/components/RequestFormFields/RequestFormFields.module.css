@@ -154,14 +154,6 @@
   gap: 12px;
 }
 
-/* =====================
-   항목 간 구분선
-   ===================== */
-.itemDivider {
-  border: none;
-  border-top: 1px dashed var(--color-border-light);
-  margin: 4px 0;
-}
 
 /* =====================
    인풋 영역

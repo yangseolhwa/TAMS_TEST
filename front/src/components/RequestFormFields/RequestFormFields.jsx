@@ -42,9 +42,7 @@ const RequestFormFields = ({
   return (
     <>
       {items.map((item, index) => (
-        <div key={item.id}>
-          {index > 0 && <div className={styles.itemDivider} />}
-          <div className={styles.requestCard}>
+        <div key={item.id} className={styles.requestCard}>
           <div className={styles.requestCardHeader}>
             <div className={styles.requestCardHeaderLeft}>
               <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
@@ -280,7 +278,6 @@ const RequestFormFields = ({
             </div>
           )}
 
-          </div>
         </div>
       ))}
     </>
