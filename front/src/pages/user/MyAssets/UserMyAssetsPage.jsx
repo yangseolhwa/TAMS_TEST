@@ -17,26 +17,26 @@ const ASSET_CATEGORIES = {
   pc: [],  // API 연동 시 채울 예정
 }
 
+const createInitialItem = () => ({
+  assetType: '',
+  assetCategory: '',
+  // PC 필드
+  manufacturer: '',
+  modelName: '',
+  spec: '',
+  serial: '',
+  quantity: '',
+  // SW 필드
+  swManufacturer: '',
+  swName: '',
+  subscription: '',
+  requiredQuantity: '',
+  licenseKeys: [''],
+})
+
 const UserMyAssetsPage = () => {
   const [activeTab, setActiveTab] = useState(INNER_TABS[0].id)
-  const [items, setItems] = useState([
-    {
-      assetType: '',
-      assetCategory: '',
-      // PC 필드
-      manufacturer: '',
-      modelName: '',
-      spec: '',
-      serial: '',
-      quantity: '',
-      // SW 필드
-      swManufacturer: '',
-      swName: '',
-      subscription: '',
-      requiredQuantity: '',
-      licenseKeys: [''],
-    }
-  ])
+  const [items, setItems] = useState([createInitialItem()])
 
   const today = new Date()
   const formattedDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`
@@ -45,22 +45,7 @@ const UserMyAssetsPage = () => {
     setItems((prev) =>
       prev.map((item, i) =>
         i === index
-          ? {
-              ...item,
-              assetType: value,
-              assetCategory: '',
-              manufacturer: '',
-              modelName: '',
-              spec: '',
-              serial: '',
-              quantity: '',
-              swManufacturer: '',
-              swName: '',
-              subscription: '',
-              requiredQuantity: '',
-              licenseKeys: [''],
-            }
-          : item
+          ? { ...createInitialItem(), assetType: value } : item
       )
     )
   }
