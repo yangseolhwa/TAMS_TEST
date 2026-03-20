@@ -3,7 +3,7 @@ import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
-import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
+import RequestFormFields, { createInitialItem, ASSET_CATEGORIES } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
@@ -67,6 +67,12 @@ const STATE_OPTIONS = {
     { value: "expiring", label: "만료 예정" },
     { value: "stored",   label: "보관중" },
   ],
+};
+
+// 필터 자산 유형 값 → ASSET_CATEGORIES 키 매핑
+const FILTER_TYPE_TO_CATEGORY_KEY = {
+  enterprise: "pc",
+  sw:         "sw",
 };
 
 const UserMyAssetsPage = () => {
@@ -283,6 +289,9 @@ const UserMyAssetsPage = () => {
               onChange={(e) => setFilterCategory(e.target.value)}
             >
               <option value="">자산 종류 전체</option>
+              {(ASSET_CATEGORIES[FILTER_TYPE_TO_CATEGORY_KEY[filterType]] || []).map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
             </select>
 
             <select
