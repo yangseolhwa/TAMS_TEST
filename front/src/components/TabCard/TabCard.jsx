@@ -1,4 +1,5 @@
 import styles from "./TabCard.module.css";
+import PropTypes from 'prop-types';
 
 const TabCard = ({ tabs, activeTab, onTabChange, children }) => {
   return (
@@ -19,6 +20,16 @@ const TabCard = ({ tabs, activeTab, onTabChange, children }) => {
       </div>
     </div>
   );
+};
+
+TabCard.propTypes = {
+  tabs: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+  })).isRequired,
+  activeTab: PropTypes.string.isRequired,
+  onTabChange: PropTypes.func.isRequired,
+  children: PropTypes.node,
 };
 
 export default TabCard;

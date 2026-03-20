@@ -1,4 +1,5 @@
 import styles from "./PageHeader.module.css";
+import PropTypes from 'prop-types';
 
 const PageHeader = ({ title, desc }) => {
   const today = new Date();
@@ -13,6 +14,11 @@ const PageHeader = ({ title, desc }) => {
       <span className={styles.pageDate}>{formattedDate} 기준</span>
     </div>
   );
+};
+
+PageHeader.propTypes = {
+  title: PropTypes.string.isRequired,
+  desc: PropTypes.string,
 };
 
 export default PageHeader;

@@ -1,5 +1,6 @@
 import { PlusCircleFill, DashCircleFill } from "react-bootstrap-icons";
 import styles from "./RequestFormFields.module.css";
+import PropTypes from 'prop-types';
 
 export const ASSET_TYPES = [
   { id: "sw", label: "SW" },
@@ -267,6 +268,16 @@ const RequestFormFields = ({
       ))}
     </>
   );
+};
+
+RequestFormFields.propTypes = {
+  items: PropTypes.array.isRequired,
+  onAssetTypeChange: PropTypes.func.isRequired,
+  onAssetCategoryChange: PropTypes.func.isRequired,
+  onItemChange: PropTypes.func.isRequired,
+  onAddLicenseKey: PropTypes.func.isRequired,
+  onRemoveLicenseKey: PropTypes.func.isRequired,
+  onLicenseKeyChange: PropTypes.func.isRequired,
 };
 
 export default RequestFormFields;
