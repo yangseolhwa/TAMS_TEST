@@ -56,7 +56,7 @@ const DataTable = ({
       );
     }
 
-    if (col.type === "dash" || value === null || value === undefined || value === "") {
+    if (col.type === "dash" || value == null || value === "") {
       return value ? value : <span className={styles.dash}>—</span>;
     }
 
