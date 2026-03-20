@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { PlusCircleFill } from "react-bootstrap-icons";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
+import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import styles from "./UserMyAssetsPage.module.css";
+
+const MAX_ITEMS = 5;
 
 const INNER_TABS = [
   { id: "request", label: "자산 등록 요청" },
@@ -13,11 +17,12 @@ const INNER_TABS = [
 const UserMyAssetsPage = () => {
   const [activeTab, setActiveTab] = useState(INNER_TABS[0].id);
   const [items, setItems] = useState([createInitialItem()]);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleAssetTypeChange = (index, value) => {
     setItems((prev) =>
       prev.map((item, i) =>
-        i === index ? { ...createInitialItem(), assetType: value } : item
+        i === index ? { ...createInitialItem(), id: item.id, assetType: value } : item
       )
     );
   };
@@ -36,6 +41,24 @@ const UserMyAssetsPage = () => {
         i === index ? { ...item, [field]: value } : item
       )
     );
+  };
+
+  const handleAddItem = () => {
+    if (items.length >= MAX_ITEMS) return;
+    setItems((prev) => [...prev, createInitialItem()]);
+  };
+
+  const handleRemoveItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleReset = () => {
+    setItems([createInitialItem()]);
+    setShowResetConfirm(false);
+  };
+
+  const handleSubmit = () => {
+    // API 연동 시 구현
   };
 
   const handleAddLicenseKey = (index) => {
@@ -95,14 +118,45 @@ const UserMyAssetsPage = () => {
               onAssetTypeChange={handleAssetTypeChange}
               onAssetCategoryChange={handleAssetCategoryChange}
               onItemChange={handleItemChange}
+              onRemoveItem={handleRemoveItem}
               onAddLicenseKey={handleAddLicenseKey}
               onRemoveLicenseKey={handleRemoveLicenseKey}
               onLicenseKeyChange={handleLicenseKeyChange}
             />
+
+            <div className={styles.formActions}>
+              {items.length < MAX_ITEMS && (
+                <button className={styles.addItemBtn} onClick={handleAddItem}>
+                  <PlusCircleFill size={15} />
+                  항목 추가 ({items.length} / {MAX_ITEMS})
+                </button>
+              )}
+              <div className={styles.actionBtns}>
+                <button
+                  className={styles.resetBtn}
+                  onClick={() => setShowResetConfirm(true)}
+                >
+                  초기화
+                </button>
+                <button className={styles.submitBtn} onClick={handleSubmit}>
+                  요청
+                </button>
+              </div>
+            </div>
           </>
         )}
         {activeTab === INNER_TABS[1].id && <p>자산 요청 현황 영역</p>}
       </TabCard>
+
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        title="입력 내용을 초기화할까요?"
+        desc="작성한 모든 항목이 삭제되고 초기 상태로 돌아갑니다."
+        confirmLabel="초기화"
+        confirmVariant="danger"
+        onConfirm={handleReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 };
