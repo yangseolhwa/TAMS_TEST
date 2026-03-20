@@ -57,7 +57,7 @@
 
 .removeItemBtn:hover {
   background-color: var(--color-error-ring);
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: var(--color-error-border);
 }
 
 /* =====================
