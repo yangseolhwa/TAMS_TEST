@@ -1,5 +1,32 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+}
+
+/* =====================
+   항목 추가 버튼
+   ===================== */
+.addItemBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary);
+  background-color: rgba(30, 45, 69, 0.05);
+  border: 1px dashed rgba(30, 45, 69, 0.25);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  justify-content: center;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  margin-top: 4px;
+}
+
+.addItemBtn:hover {
+  background-color: rgba(30, 45, 69, 0.09);
+  border-color: rgba(30, 45, 69, 0.45);
 }

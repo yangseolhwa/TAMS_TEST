@@ -1,6 +1,6 @@
-import { PlusCircleFill, DashCircleFill } from "react-bootstrap-icons";
+import PropTypes from "prop-types";
+import { PlusCircleFill, DashCircleFill, XCircleFill } from "react-bootstrap-icons";
 import styles from "./RequestFormFields.module.css";
-import PropTypes from 'prop-types';
 
 export const ASSET_TYPES = [
   { id: "sw", label: "SW" },
@@ -34,6 +34,7 @@ const RequestFormFields = ({
   onAssetTypeChange,
   onAssetCategoryChange,
   onItemChange,
+  onRemoveItem,
   onAddLicenseKey,
   onRemoveLicenseKey,
   onLicenseKeyChange,
@@ -41,31 +42,46 @@ const RequestFormFields = ({
   return (
     <>
       {items.map((item, index) => (
-        <div key={item.id} className={styles.requestCard}>
+        <div key={item.id}>
+          {index > 0 && <div className={styles.itemDivider} />}
+          <div className={styles.requestCard}>
           <div className={styles.requestCardHeader}>
-            <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
-            <div className={styles.radioGroup}>
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name={`requestType-${index}`}
-                  value="existing"
-                  checked={item.requestType === "existing"}
-                  onChange={(e) => onItemChange(index, "requestType", e.target.value)}
-                />
-                기존 자산
-              </label>
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name={`requestType-${index}`}
-                  value="new"
-                  checked={item.requestType === "new"}
-                  onChange={(e) => onItemChange(index, "requestType", e.target.value)}
-                />
-                신규 자산
-              </label>
+            <div className={styles.requestCardHeaderLeft}>
+              <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
+              <div className={styles.radioGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name={`requestType-${index}`}
+                    value="existing"
+                    checked={item.requestType === "existing"}
+                    onChange={(e) => onItemChange(index, "requestType", e.target.value)}
+                  />
+                  기존 자산
+                </label>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name={`requestType-${index}`}
+                    value="new"
+                    checked={item.requestType === "new"}
+                    onChange={(e) => onItemChange(index, "requestType", e.target.value)}
+                  />
+                  신규 자산
+                </label>
+              </div>
             </div>
+
+            {onRemoveItem && items.length > 1 && (
+              <button
+                className={styles.removeItemBtn}
+                onClick={() => onRemoveItem(index)}
+                title="항목 삭제"
+              >
+                <XCircleFill size={16} />
+                항목 삭제
+              </button>
+            )}
           </div>
 
           <div className={styles.selectRow}>
@@ -264,6 +280,7 @@ const RequestFormFields = ({
             </div>
           )}
 
+          </div>
         </div>
       ))}
     </>
@@ -275,6 +292,7 @@ RequestFormFields.propTypes = {
   onAssetTypeChange: PropTypes.func.isRequired,
   onAssetCategoryChange: PropTypes.func.isRequired,
   onItemChange: PropTypes.func.isRequired,
+  onRemoveItem: PropTypes.func,
   onAddLicenseKey: PropTypes.func.isRequired,
   onRemoveLicenseKey: PropTypes.func.isRequired,
   onLicenseKeyChange: PropTypes.func.isRequired,

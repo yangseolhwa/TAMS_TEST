@@ -1,26 +1,68 @@
 /* =====================
-   요청 항목 카드
+   카드
    ===================== */
 .requestCard {
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: 8px;
-  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
+/* =====================
+   카드 헤더
+   ===================== */
 .requestCardHeader {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.requestCardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .requestCardTitle {
   font-size: 13px;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--color-primary);
   white-space: nowrap;
 }
 
+/* =====================
+   항목 삭제 버튼
+   ===================== */
+.removeItemBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-error);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.removeItemBtn:hover {
+  background-color: var(--color-error-ring);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* =====================
+   라디오
+   ===================== */
 .radioGroup {
   display: flex;
   align-items: center;
@@ -32,24 +74,25 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 500;
   color: var(--color-text);
   cursor: pointer;
 }
 
 .radioLabel input[type="radio"] {
   accent-color: var(--color-accent);
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   cursor: pointer;
 }
 
 /* =====================
-   셀렉트
+   셀렉트 영역
    ===================== */
 .selectRow {
   display: flex;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .selectGroup {
@@ -57,59 +100,76 @@
   flex-direction: column;
   gap: 6px;
   flex: 1;
+  min-width: 160px;
 }
 
 .selectLabel {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-secondary);
 }
 
 .required {
   color: var(--color-error);
+  margin-left: 2px;
 }
 
 .select {
   height: 36px;
-  padding: 0 12px;
+  padding: 0 10px;
   font-size: 13px;
+  font-family: inherit;
   color: var(--color-text);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border-light);
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A0AEC0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
+  background-position: right 10px center;
+  padding-right: 28px;
 }
 
 .select:focus {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .select:disabled {
   background-color: var(--color-bg);
-  color: var(--color-border);
+  color: var(--color-text-secondary);
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 /* =====================
-   추가 필드
+   추가 필드 (PC / SW)
    ===================== */
 .extraFields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 8px;
+  gap: 12px;
 }
 
+/* =====================
+   항목 간 구분선
+   ===================== */
+.itemDivider {
+  border: none;
+  border-top: 1px dashed var(--color-border-light);
+  margin: 4px 0;
+}
+
+/* =====================
+   인풋 영역
+   ===================== */
 .inputRow {
   display: flex;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .inputGroup {
@@ -117,26 +177,35 @@
   flex-direction: column;
   gap: 6px;
   flex: 1;
+  min-width: 160px;
 }
 
 .input {
   height: 36px;
-  padding: 0 12px;
+  padding: 0 10px;
   font-size: 13px;
+  font-family: inherit;
   color: var(--color-text);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border-light);
-  border-radius: 6px;
-  transition: border-color var(--transition-fast);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .input::placeholder {
   color: var(--color-border);
+}
+
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* =====================
@@ -155,22 +224,18 @@
 }
 
 .addKeyBtn {
-  width: 20px;
-  height: 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
   background: none;
   border: none;
-  padding: 0;
-  color: var(--color-accent);
+  padding: 2px;
   cursor: pointer;
-  transition: color var(--transition-fast);
-  flex-shrink: 0;
+  color: var(--color-accent);
+  transition: color var(--transition-fast), opacity var(--transition-fast);
 }
 
 .addKeyBtn:hover {
-  color: var(--color-accent-hover);
+  opacity: 0.7;
 }
 
 .licenseKeyRow {
@@ -180,20 +245,17 @@
 }
 
 .removeKeyBtn {
-  width: 20px;
-  height: 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
   background: none;
   border: none;
-  padding: 0;
-  color: var(--color-error);
+  padding: 2px;
   cursor: pointer;
-  transition: color var(--transition-fast);
+  color: var(--color-error);
+  transition: opacity var(--transition-fast);
   flex-shrink: 0;
 }
 
 .removeKeyBtn:hover {
-  color: var(--color-error-hover);
+  opacity: 0.7;
 }

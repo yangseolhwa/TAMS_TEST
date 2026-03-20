@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { PlusCircleFill } from "react-bootstrap-icons";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
 import styles from "./UserMyAssetsPage.module.css";
+
+const MAX_ITEMS = 5;
 
 const INNER_TABS = [
   { id: "request", label: "자산 등록 요청" },
@@ -17,7 +20,7 @@ const UserMyAssetsPage = () => {
   const handleAssetTypeChange = (index, value) => {
     setItems((prev) =>
       prev.map((item, i) =>
-        i === index ? { ...createInitialItem(), assetType: value } : item
+        i === index ? { ...createInitialItem(), id: item.id, assetType: value } : item
       )
     );
   };
@@ -36,6 +39,15 @@ const UserMyAssetsPage = () => {
         i === index ? { ...item, [field]: value } : item
       )
     );
+  };
+
+  const handleAddItem = () => {
+    if (items.length >= MAX_ITEMS) return;
+    setItems((prev) => [...prev, createInitialItem()]);
+  };
+
+  const handleRemoveItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleAddLicenseKey = (index) => {
@@ -95,10 +107,18 @@ const UserMyAssetsPage = () => {
               onAssetTypeChange={handleAssetTypeChange}
               onAssetCategoryChange={handleAssetCategoryChange}
               onItemChange={handleItemChange}
+              onRemoveItem={handleRemoveItem}
               onAddLicenseKey={handleAddLicenseKey}
               onRemoveLicenseKey={handleRemoveLicenseKey}
               onLicenseKeyChange={handleLicenseKeyChange}
             />
+
+            {items.length < MAX_ITEMS && (
+              <button className={styles.addItemBtn} onClick={handleAddItem}>
+                <PlusCircleFill size={15} />
+                항목 추가 ({items.length} / {MAX_ITEMS})
+              </button>
+            )}
           </>
         )}
         {activeTab === INNER_TABS[1].id && <p>자산 요청 현황 영역</p>}
