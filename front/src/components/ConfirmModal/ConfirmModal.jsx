@@ -1,3 +1,4 @@
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import styles from "./ConfirmModal.module.css";
 
@@ -13,7 +14,7 @@ const ConfirmModal = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <div className={styles.overlay} onClick={onCancel}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <p className={styles.title}>{title}</p>
@@ -30,7 +31,8 @@ const ConfirmModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
