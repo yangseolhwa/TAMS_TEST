@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import styles from "./ConfirmModal.module.css";
@@ -12,6 +13,15 @@ const ConfirmModal = ({
   onConfirm,
   onCancel,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   return ReactDOM.createPortal(
