@@ -27,6 +27,6 @@ router.patch('/sw/reject/:requestId', assetController.rejectSw);
 // 반납
 router.patch('/enterprise/return', assetController.returnEnterprise);
 router.patch('/sw/return', assetController.returnSw);
-router.patch('/df/return', assetController.registerDf);
+router.patch('/df/return', assetController.returnDf);
 
 module.exports = router;
