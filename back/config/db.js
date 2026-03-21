@@ -8,8 +8,17 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'mysql',
-    logging: process.env.NODE_ENV === 'production' ? false : console.log, // 개발 중일 떄만 사용
-    timezone: '+09:00'
+    logging: process.env.NODE_ENV === 'production' ? false : console.log,
+    timezone: '+09:00',
+    dialectOptions: {
+      charset: 'utf8mb4',
+      dateStrings: true,
+      typeCast: true,
+    },
+    define: {
+      charset: 'utf8mb4',
+      collate: 'utf8mb4_unicode_ci',
+    },
   }
 );
 
