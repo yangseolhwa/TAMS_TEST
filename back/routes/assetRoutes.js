@@ -24,4 +24,9 @@ router.patch('/enterprise/reject/:requestId',  assetController.rejectEnterprise)
 router.patch('/sw/approve/:requestId', assetController.approveSw);
 router.patch('/sw/reject/:requestId', assetController.rejectSw);
 
+// 반납
+router.patch('/enterprise/return', assetController.returnEnterprise);
+router.patch('/sw/return', assetController.returnSw);
+router.patch('/df/return', assetController.registerDf);
+
 module.exports = router;

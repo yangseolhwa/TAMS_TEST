@@ -18,6 +18,7 @@ const AssetSwLicense = sequelize.define('AssetSwLicense', {
       }
     }
   },
+  state: {type: DataTypes.ENUM('active', 'returned')},
 }, {
   tableName: 'asset_sw_license',
   timestamps: true,
