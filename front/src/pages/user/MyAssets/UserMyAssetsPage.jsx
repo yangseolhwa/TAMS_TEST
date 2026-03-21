@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
@@ -8,6 +8,7 @@ import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
+import { fetchPersonalAssets } from "../../../services/assetService";
 
 const columns = [
   { key: "no",          label: "No" },
@@ -27,26 +28,28 @@ const statusMap = {
   REJECTED: { label: "반려", color: "red"    },
 };
 
+// 기존 listColumns 전체를 아래로 교체
 const listColumns = [
-  { key: "no",                 label: "No" },
-  { key: "assetType",          label: "자산 유형",   type: "assetType" },
-  { key: "assetCategory",      label: "자산 종류",   type: "dash" },
-  { key: "assetName",          label: "자산명",       type: "dash" },
-  { key: "spec",               label: "규격",         type: "dash" },
-  { key: "serialNumber",       label: "시리얼",       type: "dash" },
-  { key: "licenseKey",         label: "라이선스",     type: "dash" },
-  { key: "registeredAt",       label: "등록일",       type: "dash" },
-  { key: "returnDate",         label: "반납일",       type: "dash" },
-  { key: "subscriptionExpiry", label: "구독 만료일",  type: "dash" },
-  { key: "location",           label: "위치",         type: "dash" },
-  { key: "status",             label: "상태",         type: "status" },
+  { key: "no",           label: "No" },
+  { key: "_type",        label: "자산 유형",  type: "assetType" },
+  { key: "_category",    label: "자산 종류",  type: "dash" },
+  { key: "_assetName",   label: "자산명",     type: "dash" },
+  { key: "spec",         label: "규격",       type: "dash" },
+  { key: "serial_mumber",label: "시리얼",     type: "dash" },
+  { key: "license_key",  label: "라이선스",   type: "dash" },
+  { key: "acquisition_date",  label: "등록일",     type: "dash" },
+  { key: "return_date",       label: "반납일",     type: "dash" },
+  { key: "subscription_date", label: "구독 만료일", type: "dash" },
+  { key: "location",     label: "위치",       type: "dash" },
+  { key: "_status",      label: "상태",       type: "status" },
 ];
 
+// 기존 listStatusMap 전체를 아래로 교체 (API 응답 state 소문자 기준)
 const listStatusMap = {
-  ACTIVE:   { label: "사용중",    color: "green"  },
-  INACTIVE: { label: "미사용",    color: "gray"   },
-  STORED:   { label: "보관중",    color: "blue"   },
-  EXPIRING: { label: "만료 예정", color: "yellow" },
+  active:   { label: "사용중",    color: "green"  },
+  inactive: { label: "미사용",    color: "gray"   },
+  stored:   { label: "보관중",    color: "blue"   },
+  expiring: { label: "만료 예정", color: "yellow" },
 };
 
 const MAX_ITEMS = 5;
@@ -181,9 +184,34 @@ const UserMyAssetsPage = () => {
     setFilterKeyword("");
   };
 
-  const handleSearch = () => {
-    // API 연동 시 구현 예정
-  };
+  const fetchAssets = async (params) => {
+  try {
+    const rows = await fetchPersonalAssets(params)
+    setListRows(rows)
+    setListSelectedIds([])
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const handleSearch = () => {
+  const params = {}
+  if (filterType)     params.type    = filterType
+  if (filterState)    params.state   = filterState
+  if (filterKeyword)  params.keyword = filterKeyword
+
+  if (filterType === "enterprise" && filterCategory) {
+    params.category_id   = filterCategory
+  } else if (filterType === "sw" && filterCategory) {
+    params.software_type = filterCategory
+  }
+
+  fetchAssets(params)
+}
+
+useEffect(() => {
+  fetchAssets({})
+}, [])
 
   const handleKeywordKeyDown = (e) => {
     if (e.key === "Enter") handleSearch();
