@@ -24,7 +24,7 @@ sequelize.authenticate()
     return sequelize.sync({ force: false });
   })
   .then(async () => {
-    await runSeed(); // ← 시드 실행
+    // await runSeed(); // ← 시드 실행
     app.listen(process.env.PORT, () => {
       console.log(`🚀 서버 실행 중: http://localhost:${process.env.PORT}`);
     });

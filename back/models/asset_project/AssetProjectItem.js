@@ -16,7 +16,7 @@ const AssetProjectItem = sequelize.define('AssetProjectItem', {
   quantity_unit: {type: DataTypes.ENUM('ea', 'set', 'etc')},
   rental_start_date: {type: DataTypes.DATE},
   rental_end_date: {type: DataTypes.DATE},
-  state: {type: DataTypes.ENUM('active', 'stored', 'rented')},
+  state: {type: DataTypes.ENUM('active', 'stored', 'rented', 'returned')},
   location: {type: DataTypes.STRING(100)},
   remarks: {type: DataTypes.STRING(255)},
 }, {

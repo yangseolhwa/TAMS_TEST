@@ -11,7 +11,7 @@ const AssetEnterprise = sequelize.define('AssetEnterprise', {
   user_id: {type: DataTypes.INTEGER},
   responsible_value: {type: DataTypes.STRING(100)},
   model_name: {type: DataTypes.STRING(255)},
-  state: {type: DataTypes.ENUM('active', 'inactive', 'stored')},
+  state: {type: DataTypes.ENUM('active', 'inactive', 'stored', 'returned')},
   acquisition_date: {type: DataTypes.DATEONLY},
   return_date: {type: DataTypes.DATEONLY},
   manufacturer: {type: DataTypes.STRING(100)},
