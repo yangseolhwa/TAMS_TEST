@@ -89,6 +89,10 @@ const UserMyAssetsPage = () => {
   const [filterState,    setFilterState]    = useState("");
   const [filterKeyword,  setFilterKeyword]  = useState("");
 
+  const [showReturnConfirm,    setShowReturnConfirm]    = useState(false);
+  const [showMoveConfirm,      setShowMoveConfirm]      = useState(false);
+  const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
+
   const handleAssetTypeChange = (index, value) => {
     setItems((prev) =>
       prev.map((item, i) =>
@@ -184,6 +188,32 @@ const UserMyAssetsPage = () => {
   const handleKeywordKeyDown = (e) => {
     if (e.key === "Enter") handleSearch();
   };
+
+  const handleReturnClick = () => {
+  if (listSelectedIds.length === 0) {
+    setShowNoSelectionModal(true);
+    return;
+  }
+  setShowReturnConfirm(true);
+};
+
+const handleMoveClick = () => {
+  if (listSelectedIds.length === 0) {
+    setShowNoSelectionModal(true);
+    return;
+  }
+  setShowMoveConfirm(true);
+};
+
+const handleReturnConfirm = () => {
+  // API 연동 시 구현
+  setShowReturnConfirm(false);
+};
+
+const handleMoveConfirm = () => {
+  // API 연동 시 구현
+  setShowMoveConfirm(false);
+};
 
   return (
     <div className={styles.page}>
@@ -326,6 +356,15 @@ const UserMyAssetsPage = () => {
             </div>
           </div>
 
+          <div className={styles.listTableActions}>
+            <button className={styles.moveBtn} onClick={handleMoveClick}>
+              자산 이동
+            </button>
+            <button className={styles.returnBtn} onClick={handleReturnClick}>
+              반납 요청
+            </button>
+          </div>
+
           <DataTable
             columns={listColumns}
             rows={listRows}
@@ -345,6 +384,35 @@ const UserMyAssetsPage = () => {
         confirmVariant="danger"
         onConfirm={handleReset}
         onCancel={() => setShowResetConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showNoSelectionModal}
+        title="자산을 선택해주세요."
+        desc="반납 또는 이동할 자산을 먼저 선택해주세요."
+        confirmLabel="확인"
+        confirmVariant="primary"
+        onConfirm={() => setShowNoSelectionModal(false)}
+        onCancel={() => setShowNoSelectionModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showReturnConfirm}
+        title="선택한 자산을 반납 요청할까요?"
+        desc="반납 요청 후 관리자 승인이 필요합니다."
+        confirmLabel="반납 요청"
+        confirmVariant="danger"
+        onConfirm={handleReturnConfirm}
+        onCancel={() => setShowReturnConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showMoveConfirm}
+        title="선택한 자산을 이동할까요?"
+        confirmLabel="이동"
+        confirmVariant="primary"
+        onConfirm={handleMoveConfirm}
+        onCancel={() => setShowMoveConfirm(false)}
       />
     </div>
   );
