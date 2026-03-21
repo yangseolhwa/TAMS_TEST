@@ -221,7 +221,8 @@
   margin-bottom: 12px;
 }
 
-.returnBtn {
+.returnBtn,
+.moveBtn {
   height: 36px;
   padding: 0 16px;
   font-size: 13px;
@@ -241,18 +242,7 @@
 }
 
 .moveBtn {
-  height: 36px;
-  padding: 0 16px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  color: #fff;
   background-color: var(--color-submit);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-  white-space: nowrap;
 }
 
 .moveBtn:hover {
