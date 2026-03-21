@@ -5,7 +5,7 @@ const asyncWrapper = require('../middleware/asyncWrapper');
 const {
   AssetEnterprise, AssetEnterpriseCategory, AssetEnterpriseItemType, AssetEnterpriseRequest,
   AssetSw, AssetSwLicense, AssetSwRequest,
-  AssetProject, AssetProjectItem, AssetProjectItemType,
+  AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory,
   User,
 } = require('../models');
 
@@ -902,3 +902,131 @@ exports.returnDf = asyncWrapper(async (req, res) => {
 
   res.status(200).json({ message: `${items.length}개의 자산이 반납되었습니다.` });
 });
+
+// ─────────────────────────────────────────
+// Enterprise 자산 이동 (location 변경)
+// - user: 본인 자산만 / admin: 전체
+// - returned 자산 제외
+// ─────────────────────────────────────────
+exports.moveEnterprise = asyncWrapper(async (req, res) => {
+  const {userId, role} = req.user;
+  const {asset_ids, location} = req.body;
+
+  if (!asset_ids || !Array.isArray(asset_ids) || asset_ids.length === 0) {
+    return res.status(400).json({ message: '이동할 자산을 선택해주세요.' });
+  }
+  if (location === undefined || location === null) {
+    return res.status(400).json({ message: '이동할 위치를 입력해주세요.' });
+  }
+
+  const where = {
+    id: {[Op.in]: asset_ids},
+    state: {[Op.ne]: 'returned'}
+  };
+  if (role !== 'admin') where.user_id = userId;
+
+  const assets = await AssetEnterprise.findAll({where});
+  if (assets.length === 0) {
+    return res.status(404).json({ message: '이동할 수 있는 자산이 없습니다.' });
+  }
+  if (assets.length !== asset_ids.length) {
+    return res.status(400).json({ message: '이동할 수 없는 자산이 포함되어 있습니다. (권한 없음 또는 이미 반납됨)' });
+  }
+
+  for (const asset of assets) {
+    asset.location = location;
+    await asset.save();
+  }
+
+  res.status(200).json({ message: `${assets.length}개의 자산 위치가 변경되었습니다.`})
+});
+
+// ─────────────────────────────────────────
+// SW 자산 이동 (라이선스 단위, location 변경)
+// - user: 본인 라이선스만 / admin: 전체
+// - returned 라이선스 제외
+// ─────────────────────────────────────────
+exports.moveSw = asyncWrapper(async (req, res) => {
+  const {userId, role} = req.user;
+  const {license_ids, location} = req.body;
+
+  if (!license_ids || !Array.isArray(license_ids) || license_ids.length === 0) {
+    return res.status(400).json({message: '이동할 라이선스를 선택해주세요.'});
+  }
+  if (location === undefined || location === null) {
+    return res.status(400).json({message: '이동할 위치를 입력해주세요.'});
+  }
+
+  const where = {
+    id: {[Op.in]: license_ids},
+    state: {[Op.ne]: 'returned'}
+  };
+  if (role !== 'admin') where.user_id = userId;
+
+  const  licenses = await AssetSwLicense.findAll({where});
+  if (licenses.length === 0) {
+    return res.status(404).json({ message: '이동할 수 있는 라이선스가 없습니다.' });
+  }
+  if (licenses.length !== license_ids.length) {
+    return res.status(400).json({ message: '이동할 수 없는 라이선스가 포함되어 있습니다. (권한 없음 또는 이미 반납됨)' });
+  }
+
+  for (const license of licenses) {
+    license.location = location;
+    await license.save();
+  }
+
+  res.status(200).json({message: `${licenses.length}개의 라이선스 위치가 변경되었습니다.`})
+});
+
+// ─────────────────────────────────────────
+// DF 자산 이동 (item 단위, location 변경)
+// - user/admin 모두 전체 이동 가능
+// - returned 아이템 제외
+// - AssetProjectHistory에 change_type: 'move' 기록
+// ─────────────────────────────────────────
+exports.moveDf = asyncWrapper(async (req, res) => {
+  const { userId } = req.user;
+  const { item_ids, location } = req.body;
+
+  if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) {
+    return res.status(400).json({ message: '이동할 자산을 선택해주세요.' });
+  }
+  if (location === undefined || location === null) {
+    return res.status(400).json({ message: '이동할 위치를 입력해주세요.' });
+  }
+
+  const items = await AssetProjectItem.findAll({
+    where: {
+      id: {[Op.in]: item_ids},
+      state: {[Op.ne]: 'returned'},
+    }
+  });
+
+  if (items.length === 0) {
+    return res.status(404).json({ message: '이동할 수 있는 자산이 없습니다.' });
+  }
+  if (items.length !== item_ids.length) {
+    return res.status(400).json({ message: '이동할 수 없는 자산이 포함되어 있습니다. (이미 반납됨)' });
+  }
+
+  await sequelize.transaction(async (t) => {
+    for (const item of items) {
+      const locationBefore = item.location;
+      item.location = location;
+      await item.save({ transaction: t });
+
+      await AssetProjectHistory.create({
+        asset_project_item_id: item.id,
+        project_id:            item.project_id,
+        change_by:             userId,
+        change_type:           'move',
+        location_before:       locationBefore ?? null,
+        location_after:        location,
+        state:                 item.state,
+      }, { transaction: t });
+    }
+  });
+
+  res.status(200).json({ message: `${items.length}개의 자산 위치가 변경되었습니다.` });
+})

@@ -29,4 +29,9 @@ router.patch('/enterprise/return', assetController.returnEnterprise);
 router.patch('/sw/return', assetController.returnSw);
 router.patch('/df/return', assetController.returnDf);
 
+// 이동
+router.patch('/enterprise/move', assetController.moveEnterprise);
+router.patch('/sw/move', assetController.moveSw);
+router.patch('/df/move', assetController.moveDf);
+
 module.exports = router;

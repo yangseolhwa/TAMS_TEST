@@ -5,7 +5,6 @@ const sequelize = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/authRoutes");
 const assetRoutes = require('./routes/assetRoutes');
-const runSeed = require('./seeders/seed');
 
 const app = express();
 
@@ -24,7 +23,6 @@ sequelize.authenticate()
     return sequelize.sync({ force: false });
   })
   .then(async () => {
-    // await runSeed(); // ← 시드 실행
     app.listen(process.env.PORT, () => {
       console.log(`🚀 서버 실행 중: http://localhost:${process.env.PORT}`);
     });
