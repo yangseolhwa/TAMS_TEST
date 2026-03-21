@@ -35,7 +35,7 @@ const listColumns = [
   { key: "_category",    label: "자산 종류",  type: "dash" },
   { key: "_assetName",   label: "자산명",     type: "dash" },
   { key: "spec",         label: "규격",       type: "dash" },
-  { key: "serial_mumber",label: "시리얼",     type: "dash" },
+  { key: "serial_number",label: "시리얼",     type: "dash" },
   { key: "license_key",  label: "라이선스",   type: "dash" },
   { key: "acquisition_date",  label: "등록일",     type: "dash" },
   { key: "return_date",       label: "반납일",     type: "dash" },
