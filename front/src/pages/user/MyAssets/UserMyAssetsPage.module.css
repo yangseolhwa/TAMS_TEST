@@ -210,3 +210,41 @@
   background: var(--color-accent-bg);
   color: var(--color-accent);
 }
+
+/* =====================
+   자산 조회 버튼 영역
+   ===================== */
+.listTableActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.returnBtn,
+.moveBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background-color: var(--color-error);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnBtn:hover {
+  background-color: var(--color-error-hover);
+}
+
+.moveBtn {
+  background-color: var(--color-submit);
+}
+
+.moveBtn:hover {
+  background-color: var(--color-submit-hover);
+}
