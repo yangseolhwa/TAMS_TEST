@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
 import toast from "react-hot-toast";
@@ -372,7 +372,7 @@ const UserMyAssetsPage = () => {
   };
 
   // 이동 모드일 때 선택된 행의 location 컬럼을 인라인 input으로 교체
-  const assetListColumns = (() => {
+  const assetListColumns = useMemo(() => {
     const base =
       filterType === "enterprise" ? ASSET_LIST_COLUMNS_PC :
       filterType === "sw"         ? ASSET_LIST_COLUMNS_SW :
@@ -399,7 +399,7 @@ const UserMyAssetsPage = () => {
         },
       };
     });
-  })();
+  }, [filterType, isMoveMode, listSelectedIds, locationEdits]);
 
   return (
     <div className={styles.page}>
