@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { XCircleFill } from "react-bootstrap-icons";
 import styles from "./RequestFormFields.module.css";
@@ -71,38 +72,40 @@ const RequestFormFields = ({
   onItemChange,
   onRemoveItem,
 }) => {
+  // ── 루프 외부: enterpriseAssets / swAssets 가 바뀔 때만 재계산 ──────────────
+
+  // PC: 카테고리 목록 (item_category 중복 제거)
+  const pcCategories = useMemo(() => [
+    ...new Map(
+      (enterpriseAssets ?? [])
+        .filter((a) => a.item_category)
+        .map((a) => [a.item_category.id, a.item_category])
+    ).values(),
+  ], [enterpriseAssets]);
+
+  // PC: item_type 목록 (중복 제거)
+  const pcItemTypes = useMemo(() => [
+    ...new Map(
+      (enterpriseAssets ?? [])
+        .filter((a) => a.item_type)
+        .map((a) => [a.item_type.id, a.item_type])
+    ).values(),
+  ], [enterpriseAssets]);
+
+  // SW: 보유 유형 목록
+  const swTypesAvailable = useMemo(() => [
+    ...new Set((swAssets ?? []).map((s) => s.software_type).filter(Boolean)),
+  ], [swAssets]);
+
   return (
     <>
       {items.map((item, index) => {
-        // ── 카스케이딩 옵션 계산 ──────────────────────────────────────────────
-
-        // PC: 카테고리 목록 (item_category 중복 제거)
-        const pcCategories = [
-          ...new Map(
-            (enterpriseAssets ?? [])
-              .filter((a) => a.item_category)
-              .map((a) => [a.item_category.id, a.item_category])
-          ).values(),
-        ];
-
-        // PC: item_type 목록 (중복 제거)
-        const pcItemTypes = [
-          ...new Map(
-            (enterpriseAssets ?? [])
-              .filter((a) => a.item_type)
-              .map((a) => [a.item_type.id, a.item_type])
-          ).values(),
-        ];
+        // ── Cascading 옵션 계산 ──────────────────────────────────────────────
 
         // PC 기존: 카테고리로 필터링된 자산 목록
         const pcAssetsFiltered = (enterpriseAssets ?? []).filter(
           (a) => !item.selectedCategoryId || String(a.item_category?.id) === item.selectedCategoryId
         );
-
-        // SW: 보유 유형 목록
-        const swTypesAvailable = [
-          ...new Set((swAssets ?? []).map((s) => s.software_type).filter(Boolean)),
-        ];
 
         // SW 기존: 유형으로 필터링된 SW 목록
         const swAssetsFiltered = (swAssets ?? []).filter(
@@ -173,7 +176,7 @@ const RequestFormFields = ({
             {/* ── 기존 PC ── */}
             {item.assetType === "pc" && item.requestType === "existing" && (
               <div className={styles.extraFields}>
-                {/* 카스케이딩: 자산 종류 → 자산 */}
+                {/* Cascading: 자산 종류 → 자산 */}
                 <div className={styles.selectRow}>
                   <div className={styles.selectGroup}>
                     <label className={styles.selectLabel}>
@@ -277,7 +280,7 @@ const RequestFormFields = ({
             {/* ── 기존 SW ── */}
             {item.assetType === "sw" && item.requestType === "existing" && (
               <div className={styles.extraFields}>
-                {/* 카스케이딩: SW 유형 → 소프트웨어 */}
+                {/* Cascading: SW 유형 → 소프트웨어 */}
                 <div className={styles.selectRow}>
                   <div className={styles.selectGroup}>
                     <label className={styles.selectLabel}>
