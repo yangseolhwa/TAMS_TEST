@@ -19,9 +19,6 @@ export const fetchPersonalAssets = async (params = {}) => {
   try {
     const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params });
 
-    // 브라우저 콘솔(F12)에서 이 로그가 찍히는지, 데이터 구조가 어떤지 꼭 확인하세요.
-    console.log("검색 결과 원본 데이터:", data);
-
     const enterpriseRows = (data.enterprise ?? []).map((item) => ({
       id: `ent-${item.id}`,
       asset_type_label: "PC",
@@ -62,7 +59,6 @@ export const fetchPersonalAssets = async (params = {}) => {
     console.log("변환된 데이터 (Table용):", combined);
     return combined;
   } catch (error) {
-    console.error("자산 로드 중 오류 발생:", error);
     throw error;
   }
 };
