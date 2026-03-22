@@ -21,6 +21,7 @@ import {
   returnSwAssets,
   requestEnterpriseAsset,
   requestSwAsset,
+  fetchAssetRequests,
 } from "../../../services/assetService";
 
 /**
@@ -144,6 +145,12 @@ const UserMyAssetsPage = () => {
   const { data: listRows = [], isLoading } = useQuery({
     queryKey: ["personalAssets", queryParams],
     queryFn: () => fetchPersonalAssets(queryParams),
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: requestRows = [], isLoading: isRequestLoading } = useQuery({
+    queryKey: ["assetRequests"],
+    queryFn: fetchAssetRequests,
     refetchOnWindowFocus: false,
   });
 
@@ -353,6 +360,7 @@ const UserMyAssetsPage = () => {
       await Promise.all(calls);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assetRequests"] });
       toast.success("자산 등록 요청이 완료되었습니다.");
       setItems([createInitialItem()]);
       setShowSubmitConfirm(false);
@@ -620,11 +628,12 @@ const UserMyAssetsPage = () => {
               <Banner text={<>승인 / 반려 항목은 처리 후 <strong>24시간</strong>이 경과하면 목록에서 자동 삭제됩니다.</>} />
               <DataTable
                 columns={REQUEST_STATUS_COLUMNS}
-                rows={[]} // TODO: 요청 현황 API 연동 시 교체
+                rows={requestRows}
                 statusMap={REQUEST_STATUS_MAP}
                 selectedIds={requestSelectedIds}
                 onSelectionChange={setRequestSelectedIds}
-                totalCount={0}
+                totalCount={requestRows.length}
+                isLoading={isRequestLoading}
               />
             </>
           )}

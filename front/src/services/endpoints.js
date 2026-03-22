@@ -12,5 +12,6 @@ export const ENDPOINTS = {
     SW_RETURN:         "/assets/sw/return",
     ENTERPRISE_MOVE:   "/assets/enterprise/move",
     SW_MOVE:           "/assets/sw/move",
+    REQUESTS:          "/assets/requests",
   },
 }
