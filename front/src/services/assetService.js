@@ -82,6 +82,7 @@ export const fetchDfAssets = async (params = {}) => {
           projectId:       proj.id,
           project:         proj.name,
           doosanItemNumber: item.doosan_item_number ?? null,
+          itemTypeId:      item.item_type?.id   ?? null,
           itemType:        item.item_type?.name ?? null,
           modelName:       item.model_name ?? null,
           manufacturer:    item.manufacturer ?? null,

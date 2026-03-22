@@ -7,7 +7,7 @@ import DataTable from '../../../components/DataTable/DataTable'
 import { fetchDfAssets } from '../../../services/assetService'
 import styles from './UserDfAssetsPage.module.css'
 
-// ─── 테이블 컬럼 정의 ───────────────────────────────────────────────────────
+// ─── 테이블 컬럼 정의 ────────────────────────────────────────────────────────
 const DF_COLUMNS = [
   { key: 'no',               label: 'No'       },
   { key: 'project',          label: '프로젝트',  type: 'dash' },
@@ -24,42 +24,124 @@ const DF_COLUMNS = [
   { key: 'remarks',          label: '비고',      type: 'dash' },
 ]
 
-// ─── 상태 뱃지 매핑 (백엔드 ENUM 소문자 기준) ─────────────────────────────
 const DF_STATUS_MAP = {
   active: { label: '사용중',   color: 'green'  },
   stored: { label: '보관중',   color: 'blue'   },
   rented: { label: '외부대여', color: 'yellow' },
 }
 
+const STATE_OPTIONS = [
+  { value: 'active', label: '사용중'   },
+  { value: 'stored', label: '보관중'   },
+  { value: 'rented', label: '외부대여' },
+]
+
 const PAGE_SIZE = 10
 
-// ─── 컴포넌트 ─────────────────────────────────────────────────────────────
-const UserDfAssetsPage = () => {
-  const [selectedIds,  setSelectedIds]  = useState([])
-  const [currentPage,  setCurrentPage]  = useState(1)
+const EMPTY_FORM = {
+  projectId:    '',
+  itemTypeId:   '',
+  manufacturer: '',
+  state:        '',
+  keyword:      '',
+}
 
-  // ── React Query: DF 자산 조회 ──────────────────────────────────────────
+// ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
+const UserDfAssetsPage = () => {
+  const [selectedIds,    setSelectedIds]    = useState([])
+  const [currentPage,    setCurrentPage]    = useState(1)
+  const [filterForm,     setFilterForm]     = useState(EMPTY_FORM)   // 입력 중인 폼
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FORM)   // 실제 적용된 필터
+
+  // ── Base query: 드롭다운 옵션 구성용 (필터 없이 전체 조회, 캐시 유지) ──────
+  const { data: baseData } = useQuery({
+    queryKey: ['dfAssets', 'base'],
+    queryFn:  () => fetchDfAssets(),
+    staleTime: Infinity,
+  })
+
+  // ── Filtered query: 실제 테이블 데이터 ───────────────────────────────────
   const {
-    data,
+    data:      filteredData,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['dfAssets'],
-    queryFn:  () => fetchDfAssets(),
+    queryKey: ['dfAssets', 'filtered', appliedFilters],
+    queryFn:  () => {
+      // 빈 문자열 제거 후 snake_case로 변환해서 API에 전달
+      const params = {}
+      if (appliedFilters.projectId)    params.project_id    = appliedFilters.projectId
+      if (appliedFilters.itemTypeId)   params.item_type_id  = appliedFilters.itemTypeId
+      if (appliedFilters.manufacturer) params.manufacturer  = appliedFilters.manufacturer
+      if (appliedFilters.state)        params.state         = appliedFilters.state
+      if (appliedFilters.keyword)      params.keyword       = appliedFilters.keyword
+      return fetchDfAssets(params)
+    },
   })
 
-  // fetchDfAssets가 { rows, projectSummaries } 반환
-  const allRows          = data?.rows             ?? []
-  const projectSummaries = data?.projectSummaries ?? []
+  const allRows          = filteredData?.rows             ?? []
+  const projectSummaries = (baseData ?? filteredData)?.projectSummaries ?? []
 
-  // ── 전체 건수 ──
+  // ── 드롭다운 옵션: base data 기준으로 중복 제거 ─────────────────────────
+  const itemTypeOptions = useMemo(() => {
+    const seen = new Map()
+    ;(baseData?.rows ?? []).forEach((r) => {
+      if (r.itemTypeId && !seen.has(r.itemTypeId)) {
+        seen.set(r.itemTypeId, r.itemType)
+      }
+    })
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
+  }, [baseData])
+
+  const manufacturerOptions = useMemo(() => {
+    const set = new Set(
+      (baseData?.rows ?? []).map((r) => r.manufacturer).filter(Boolean)
+    )
+    return Array.from(set)
+  }, [baseData])
+
+  // ── 필터 핸들러 ──────────────────────────────────────────────────────────
+  const handleFormChange = (field, value) => {
+    setFilterForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSearch = () => {
+    setAppliedFilters({ ...filterForm })
+    setCurrentPage(1)
+    setSelectedIds([])
+  }
+
+  const handleReset = () => {
+    setFilterForm(EMPTY_FORM)
+    setAppliedFilters(EMPTY_FORM)
+    setCurrentPage(1)
+    setSelectedIds([])
+  }
+
+  // 프로젝트 카드 클릭 — projectId만 즉시 적용 (나머지 필터 초기화)
+  const handleCardClick = (projectId) => {
+    const next = { ...EMPTY_FORM, projectId: String(projectId) }
+    setFilterForm(next)
+    setAppliedFilters(next)
+    setCurrentPage(1)
+    setSelectedIds([])
+  }
+
+  const handleCardAllClick = () => {
+    setFilterForm(EMPTY_FORM)
+    setAppliedFilters(EMPTY_FORM)
+    setCurrentPage(1)
+    setSelectedIds([])
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch()
+  }
+
+  // ── 페이지네이션 ─────────────────────────────────────────────────────────
   const totalCount = allRows.length
-
-  // ── 페이지네이션 ──────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-
-  // totalPages 축소 시 현재 페이지 보정
-  const safePage = Math.min(currentPage, totalPages)
+  const safePage   = Math.min(currentPage, totalPages)
 
   const paginatedRows = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE
@@ -71,7 +153,6 @@ const UserDfAssetsPage = () => {
     setSelectedIds([])
   }
 
-  // ── 페이지 번호 배열 (최대 7개) ───────────────────────────────────────
   const pageNumbers = useMemo(() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
     const half  = 3
@@ -84,7 +165,7 @@ const UserDfAssetsPage = () => {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }, [safePage, totalPages])
 
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       <PageHeader
@@ -98,33 +179,119 @@ const UserDfAssetsPage = () => {
           <span>DF 자산 조회</span>
         </div>
 
-        {/* ── 프로젝트 요약 카드 ─────────────────────────────────────── */}
+        {/* ── 프로젝트 요약 카드 ──────────────────────────────────────────── */}
         <div className={styles.projCards}>
           {/* 전체 카드 */}
-          <div className={`${styles.projCard} ${styles.projCardTotal}`}>
+          <div
+            className={`${styles.projCard} ${styles.projCardTotal} ${
+              appliedFilters.projectId === '' ? styles.projCardActive : ''
+            }`}
+            onClick={handleCardAllClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && handleCardAllClick()}
+          >
             <div className={styles.projCardTitle}>전체 프로젝트</div>
             <div className={styles.projCardCount}>
-              {isLoading ? '—' : totalCount}
+              {isLoading ? '—' : (baseData ?? filteredData)?.rows?.length ?? 0}
               <span className={styles.projCardUnit}> 건</span>
             </div>
           </div>
 
-          {/* 프로젝트별 카드 */}
-          {!isLoading &&
-            projectSummaries.map((proj) => (
-              <div key={proj.id} className={styles.projCard}>
-                <div className={styles.projCardTitle}>{proj.name}</div>
-                <div className={styles.projCardCount}>
-                  {proj.count}
-                  <span className={styles.projCardUnit}> 건</span>
-                </div>
+          {projectSummaries.map((proj) => (
+            <div
+              key={proj.id}
+              className={`${styles.projCard} ${
+                appliedFilters.projectId === String(proj.id) ? styles.projCardActive : ''
+              }`}
+              onClick={() => handleCardClick(proj.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleCardClick(proj.id)}
+            >
+              <div className={styles.projCardTitle}>{proj.name}</div>
+              <div className={styles.projCardCount}>
+                {proj.count}
+                <span className={styles.projCardUnit}> 건</span>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
 
-        {/* ── 자산 테이블 카드 ────────────────────────────────────────── */}
+        {/* ── 자산 테이블 카드 ─────────────────────────────────────────────── */}
         <Card>
-          {/* 액션 버튼 — MAIN03·MAIN04 단계에서 기능 구현 예정 */}
+          {/* ── 필터 영역 ── */}
+          <div className={styles.filterArea}>
+            {/* 프로젝트 */}
+            <select
+              className={styles.filterSelect}
+              value={filterForm.projectId}
+              onChange={(e) => handleFormChange('projectId', e.target.value)}
+            >
+              <option value="">전체 프로젝트</option>
+              {projectSummaries.map((proj) => (
+                <option key={proj.id} value={proj.id}>{proj.name}</option>
+              ))}
+            </select>
+
+            {/* 자산 종류 */}
+            <select
+              className={styles.filterSelect}
+              value={filterForm.itemTypeId}
+              onChange={(e) => handleFormChange('itemTypeId', e.target.value)}
+            >
+              <option value="">자산 종류 전체</option>
+              {itemTypeOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+
+            {/* 제조사 */}
+            <select
+              className={styles.filterSelect}
+              value={filterForm.manufacturer}
+              onChange={(e) => handleFormChange('manufacturer', e.target.value)}
+            >
+              <option value="">제조사 전체</option>
+              {manufacturerOptions.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+
+            {/* 상태 */}
+            <select
+              className={styles.filterSelect}
+              value={filterForm.state}
+              onChange={(e) => handleFormChange('state', e.target.value)}
+            >
+              <option value="">자산 상태 전체</option>
+              {STATE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            {/* 초기화 */}
+            <button className={styles.filterResetBtn} onClick={handleReset}>
+              초기화
+            </button>
+
+            {/* 검색어 */}
+            <div className={styles.filterSearchWrap}>
+              <input
+                type="text"
+                className={styles.filterInput}
+                placeholder="검색어를 입력하세요"
+                value={filterForm.keyword}
+                onChange={(e) => handleFormChange('keyword', e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <button className={styles.filterSearchBtn} onClick={handleSearch}>
+                <Search size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* ── 액션 버튼 — MAIN03·MAIN04에서 구현 예정 ── */}
           <div className={styles.tableActions}>
             <button className={styles.moveBtn}   disabled>자산 이동</button>
             <button className={styles.returnBtn} disabled>반납</button>
@@ -149,9 +316,9 @@ const UserDfAssetsPage = () => {
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}
                 totalCount={totalCount}
+                highlight={appliedFilters.keyword}
               />
 
-              {/* ── 페이지네이션 ────────────────────────────────────── */}
               {totalPages > 1 && (
                 <div className={styles.pagination}>
                   <button
@@ -205,7 +372,7 @@ const UserDfAssetsPage = () => {
           )}
         </Card>
       </section>
-    </div>
+    </div>  
   )
 }
 

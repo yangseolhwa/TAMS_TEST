@@ -148,3 +148,11 @@
   margin: 0;
   padding-top: 10px;
 }
+
+/* Keyword highlight */
+.highlight {
+  background-color: #facc15;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
