@@ -182,15 +182,19 @@ const UserMyAssetsPage = () => {
   };
 
   const handleSubmit = () => {
-    console.log("요청 데이터:", items);
     // TODO: API 연동
   };
 
   // --- [Handlers: 조회 필터] ---
   const handleFilterTypeChange = (e) => {
-    setFilterType(e.target.value);
+  const value = e.target.value;
+    setFilterType(value);
     setFilterCategory("");
     setFilterState("");
+    // 자산 유형 변경 시 즉시 필터 적용
+    const params = {};
+    if (value) params.type = value;
+    setQueryParams(params);
   };
 
   const handleSearch = () => {
@@ -256,7 +260,7 @@ const UserMyAssetsPage = () => {
         </div>
 
         <TabCard tabs={INNER_TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-          {activeTab === "request" ? (
+          {activeTab === INNER_TABS[0].id ? (
             <>
               <Banner
                 text={
