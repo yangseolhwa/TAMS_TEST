@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import ReactDOM from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, ClipboardPlus } from "react-bootstrap-icons";
 import toast from "react-hot-toast";
@@ -8,6 +7,7 @@ import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
+import RejectReasonModal from "../../../components/RejectReasonModal/RejectReasonModal";
 import Card from "../../../components/Card/Card";
 import DataTable from "../../../components/DataTable/DataTable";
 import styles from "./AdminMyAssetsPage.module.css";
@@ -33,8 +33,8 @@ import {
  * [공통 설정]
  */
 const INNER_TABS = [
-  { id: "request",  label: "등록 요청" },
-  { id: "register", label: "자산 등록" },
+  { id: "request",  label: "자산 등록 요청" },
+  { id: "register", label: "셀프 등록" },
 ];
 
 // 자산 등록 요청 탭용 컬럼 (admin: 요청자 포함, admin은 pending만 조회)
@@ -633,8 +633,8 @@ const AdminMyAssetsPage = () => {
               />
             </>
           ) : (
-            <> 
-              <Banner text={<>Excel Import 시 테이블 양식에 맞는 엑셀 파일을 업로드하면 자동으로 자산이 등록됩니다.</>} />
+            <>
+              <Banner text={<>자산 <strong>1개</strong>를 직접 등록합니다. 관리자 승인 없이 즉시 활성화됩니다.</>} />
               <RequestFormFields
                 items={items}
                 enterpriseAssets={enterpriseAssetsForForm}
@@ -790,37 +790,14 @@ const AdminMyAssetsPage = () => {
         onCancel={() => setShowMoveConfirm(false)}
       />
 
-      {/* 반려 사유 입력 모달 */}
-      {showRejectModal && ReactDOM.createPortal(
-        <div className={styles.rejectOverlay} onClick={() => setShowRejectModal(false)}>
-          <div className={styles.rejectModal} onClick={(e) => e.stopPropagation()}>
-            <p className={styles.rejectTitle}>반려 사유를 입력해주세요.</p>
-            <p className={styles.rejectDesc}>사유는 선택 항목입니다. 입력하지 않아도 반려 처리됩니다.</p>
-            <textarea
-              className={styles.rejectTextarea}
-              placeholder="반려 사유 입력 (선택)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <div className={styles.rejectActions}>
-              <button
-                className={styles.rejectCancelBtn}
-                onClick={() => setShowRejectModal(false)}
-              >
-                취소
-              </button>
-              <button
-                className={styles.rejectConfirmBtn}
-                onClick={() => rejectMutation.mutate()}
-                disabled={rejectMutation.isPending}
-              >
-                {rejectMutation.isPending ? "처리 중..." : "반려"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <RejectReasonModal
+        isOpen={showRejectModal}
+        rejectReason={rejectReason}
+        onReasonChange={setRejectReason}
+        onConfirm={() => rejectMutation.mutate()}
+        onCancel={() => setShowRejectModal(false)}
+        isPending={rejectMutation.isPending}
+      />
     </div>
   );
 };
