@@ -4,12 +4,12 @@ import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
-import RequestFormFields, { createInitialItem, ASSET_CATEGORIES } from "../../../components/RequestFormFields/RequestFormFields";
+import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
-import { fetchPersonalAssets } from "../../../services/assetService";
+import { fetchPersonalAssets, fetchEnterpriseCategories } from "../../../services/assetService";
 
 /**
  * [공통 설정]
@@ -71,6 +71,12 @@ const ASSET_LIST_STATUS_MAP = {
 };
 
 const STATE_OPTIONS = {
+  "": [
+    { value: "active",   label: "사용중" },
+    { value: "inactive", label: "미사용" },
+    { value: "stored",   label: "보관중" },
+    { value: "expiring", label: "만료 예정" },
+  ],
   enterprise: [
     { value: "active",   label: "사용중" },
     { value: "inactive", label: "미사용" },
@@ -83,10 +89,7 @@ const STATE_OPTIONS = {
   ],
 };
 
-const FILTER_TYPE_TO_CATEGORY_KEY = {
-  enterprise: "pc",
-  sw:         "sw",
-};
+const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
 const UserMyAssetsPage = () => {
   // --- [State] ---
@@ -114,6 +117,22 @@ const UserMyAssetsPage = () => {
     queryFn: () => fetchPersonalAssets(queryParams),
     refetchOnWindowFocus: false,
   });
+
+  // PC 카테고리 목록
+  const { data: enterpriseCategories = [] } = useQuery({
+    queryKey: ["enterpriseCategories"],
+    queryFn: fetchEnterpriseCategories,
+    refetchOnWindowFocus: false,
+  });
+
+  // 자산 유형에 따라 카테고리 옵션 결정
+  const categoryOptions =
+    filterType === "enterprise" ? enterpriseCategories.map((c) => ({ value: c.id,   label: c.name })) :
+    filterType === "sw"         ? SW_FILTER_CATEGORIES.map((v) => ({ value: v,       label: v      })) :
+    [
+      ...enterpriseCategories.map((c) => ({ value: `pc_${c.id}`, label: c.name })),
+      ...SW_FILTER_CATEGORIES.map((v)  => ({ value: `sw_${v}`,   label: v      })),
+    ];
 
   // --- [Handlers: 등록 요청 폼] ---
   const handleAssetTypeChange = (index, value) => {
@@ -186,27 +205,61 @@ const UserMyAssetsPage = () => {
   };
 
   // --- [Handlers: 조회 필터] ---
+
+  // 필터 값들로 API 파라미터 객체 생성
+  const buildParams = ({ type, category, state, keyword } = {}) => {
+    const params = {};
+    if (state)   params.state = state;
+    if (keyword) params.keyword = keyword;
+
+    // 자산 종류 prefix로 타입 자동 판별 (전체일 때)
+    if (category) {
+      if (type === "enterprise") {
+        params.type = type;
+        params.category_id = category;
+      } else if (type === "sw") {
+        params.type = type;
+        params.software_type = category;
+      } else if (category.startsWith("pc_")) {
+        params.type = "enterprise";
+        params.category_id = category.replace("pc_", "");
+      } else if (category.startsWith("sw_")) {
+        params.type = "sw";
+        params.software_type = category.replace("sw_", "");
+      }
+    } else if (type) {
+      params.type = type;
+    }
+
+    return params;
+  };
+
+  // 자산 유형 변경 시 즉시 적용 (카테고리/상태 초기화)
   const handleFilterTypeChange = (e) => {
-  const value = e.target.value;
+    const value = e.target.value;
     setFilterType(value);
     setFilterCategory("");
     setFilterState("");
-    // 자산 유형 변경 시 즉시 필터 적용
-    const params = {};
-    if (value) params.type = value;
-    setQueryParams(params);
+    setQueryParams(buildParams({ type: value }));
   };
 
+  // 자산 종류 변경 시 즉시 적용
+  const handleFilterCategoryChange = (e) => {
+    const value = e.target.value;
+    setFilterCategory(value);
+    setQueryParams(buildParams({ type: filterType, category: value, state: filterState }));
+  };
+
+  // 상태 변경 시 즉시 적용
+  const handleFilterStateChange = (e) => {
+    const value = e.target.value;
+    setFilterState(value);
+    setQueryParams(buildParams({ type: filterType, category: filterCategory, state: value }));
+  };
+
+  // 검색 버튼: 키워드 전용 (현재 드롭다운 필터 유지)
   const handleSearch = () => {
-    const params = {};
-    if (filterType)    params.type = filterType;
-    if (filterState)   params.state = filterState;
-    if (filterKeyword) params.keyword = filterKeyword;
-    if (filterCategory) {
-      if (filterType === "enterprise") params.category_id = filterCategory;
-      if (filterType === "sw")         params.software_type = filterCategory;
-    }
-    setQueryParams(params);
+    setQueryParams(buildParams({ type: filterType, category: filterCategory, state: filterState, keyword: filterKeyword }));
   };
 
   const handleFilterReset = () => {
@@ -322,14 +375,14 @@ const UserMyAssetsPage = () => {
               <option value="sw">SW</option>
             </select>
 
-            <select className={styles.filterSelect} value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            <select className={styles.filterSelect} value={filterCategory} onChange={handleFilterCategoryChange}>
               <option value="">자산 종류 전체</option>
-              {(ASSET_CATEGORIES[FILTER_TYPE_TO_CATEGORY_KEY[filterType]] || []).map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              {categoryOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
 
-            <select className={styles.filterSelect} value={filterState} onChange={(e) => setFilterState(e.target.value)}>
+            <select className={styles.filterSelect} value={filterState} onChange={handleFilterStateChange}>
               <option value="">상태 전체</option>
               {(STATE_OPTIONS[filterType] || []).map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>

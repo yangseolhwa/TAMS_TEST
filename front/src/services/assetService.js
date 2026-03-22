@@ -6,14 +6,20 @@
 import api from './httpClient'
 import { ENDPOINTS } from './endpoints'
 
-/**
- * 개인 자산 조회 (enterprise + sw 통합)
- * @param {object} params - 쿼리 파라미터
- * @returns {Promise<object[]>} DataTable row 배열
- * @throws {Error} 조회 실패 시
- */
-import api from './httpClient'
-import { ENDPOINTS } from './endpoints'
+export const fetchEnterpriseCategories = async () => {
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
+
+  // item_category 중복 제거 후 { id, name } 목록 반환
+  const seen = new Set();
+  return (data.enterprise ?? []).reduce((acc, item) => {
+    const cat = item.item_category;
+    if (cat && !seen.has(cat.id)) {
+      seen.add(cat.id);
+      acc.push({ id: cat.id, name: cat.name });
+    }
+    return acc;
+  }, []);
+};
 
 export const fetchPersonalAssets = async (params = {}) => {
   try {
