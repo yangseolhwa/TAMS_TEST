@@ -22,77 +22,65 @@ export const fetchEnterpriseCategories = async () => {
 };
 
 export const fetchPersonalAssets = async (params = {}) => {
-  try {
-    const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params });
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params });
 
-    const enterpriseRows = (data.enterprise ?? []).map((item) => ({
-      id: `ent-${item.id}`,
-      asset_type_label: "PC",
-      item_category_name: item.item_category?.name,
-      asset_name: item.model_name,
-      manufacturer: item.manufacturer,
-      spec: item.spec,
-      serial_number: item.serial_number,
-      license_key: "-",
-      acquisition_date: item.acquisition_date,
-      return_date: item.return_date,
-      subscription_date: "-",
-      location: item.location,
-      state: item.state,
-    }));
+  const enterpriseRows = (data.enterprise ?? []).map((item) => ({
+    id: `ent-${item.id}`,
+    asset_type_label: "PC",
+    item_category_name: item.item_category?.name,
+    asset_name: item.model_name,
+    manufacturer: item.manufacturer,
+    spec: item.spec,
+    serial_number: item.serial_number,
+    license_key: "-",
+    acquisition_date: item.acquisition_date,
+    return_date: item.return_date,
+    subscription_date: "-",
+    location: item.location,
+    state: item.state,
+  }));
 
-    const swRows = (data.sw ?? []).flatMap((sw) =>
-      (sw.licenses ?? []).map((license) => ({
-        id: `sw-${sw.id}-${license.id}`,
-        asset_type_label: "SW",
-        item_category_name: sw.software_type,
-        asset_name: sw.name,
-        manufacturer: sw.manufacturer,
-        spec: "-",
-        serial_number: "-",
-        license_key: license.license_key,
-        acquisition_date: "-",
-        return_date: "-",
-        subscription_date: license.subscription_date,
-        location: license.location,
-        state: license.state,
-      }))
-    );
+  const swRows = (data.sw ?? []).flatMap((sw) =>
+    (sw.licenses ?? []).map((license) => ({
+      id: `sw-${sw.id}-${license.id}`,
+      asset_type_label: "SW",
+      item_category_name: sw.software_type,
+      asset_name: sw.name,
+      manufacturer: sw.manufacturer,
+      spec: "-",
+      serial_number: "-",
+      license_key: license.license_key,
+      acquisition_date: "-",
+      return_date: "-",
+      subscription_date: license.subscription_date,
+      location: license.location,
+      state: license.state,
+    }))
+  );
 
-    const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
-      ...row,
-      no: index + 1,
-    }));
+  const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
+    ...row,
+    no: index + 1,
+  }));
 
-    console.log("변환된 데이터 (Table용):", combined);
-    return combined;
-  } catch (error) {
-    throw error;
-  }
+  console.log("변환된 데이터 (Table용):", combined);
+  return combined;
 };
 
 /**
  * 자산 등록 요청 폼용 Enterprise 자산 목록 (원본 데이터)
  */
 export const fetchEnterpriseAssetsForForm = async () => {
-  try {
-    const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
-    return data.enterprise ?? [];
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
+  return data.enterprise ?? [];
 };
 
 /**
  * 자산 등록 요청 폼용 SW 자산 목록 (원본 데이터)
  */
 export const fetchSwAssetsForForm = async () => {
-  try {
-    const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "sw" } });
-    return data.sw ?? [];
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "sw" } });
+  return data.sw ?? [];
 };
 
 /**
@@ -190,51 +178,47 @@ const REQUEST_TYPE_LABEL = {
  * enterprise / sw 배열을 하나의 행 배열로 합쳐서 반환
  */
 export const fetchAssetRequests = async () => {
-  try {
-    const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS);
+  const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS);
 
-    const enterpriseRows = (data.enterprise ?? []).map((item) => {
-      // new_asset_data가 JSON 문자열이므로 파싱하여 자산명/규격 추출
-      let parsed = {};
-      try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+  const enterpriseRows = (data.enterprise ?? []).map((item) => {
+    // new_asset_data가 JSON 문자열이므로 파싱하여 자산명/규격 추출
+    let parsed = {};
+    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
 
-      return {
-        id:          `req-ent-${item.id}`,
-        assetType:   "PC",
-        assetName:   parsed.model_name ?? null,
-        spec:        parsed.spec       ?? null,
-        requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-        requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
-        processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
-        status:      item.status?.toUpperCase(),
-        reason:      item.admin_reason  ?? null,
-      };
-    });
+    return {
+      id:          `req-ent-${item.id}`,
+      assetType:   "PC",
+      assetName:   parsed.model_name ?? null,
+      spec:        parsed.spec       ?? null,
+      requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
+      processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+      status:      item.status?.toUpperCase(),
+      reason:      item.admin_reason  ?? null,
+    };
+  });
 
-    const swRows = (data.sw ?? []).map((item) => {
-      let parsed = {};
-      try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+  const swRows = (data.sw ?? []).map((item) => {
+    let parsed = {};
+    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
 
-      return {
-        id:          `req-sw-${item.id}`,
-        assetType:   "SW",
-        assetName:   parsed.name ?? item.sw?.name ?? null,
-        spec:        null,
-        requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-        requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
-        processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
-        status:      item.status?.toUpperCase(),
-        reason:      item.admin_reason  ?? null,
-      };
-    });
+    return {
+      id:          `req-sw-${item.id}`,
+      assetType:   "SW",
+      assetName:   parsed.name ?? item.sw?.name ?? null,
+      spec:        null,
+      requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
+      processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+      status:      item.status?.toUpperCase(),
+      reason:      item.admin_reason  ?? null,
+    };
+  });
 
-    const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
-      ...row,
-      no: index + 1,
-    }));
+  const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
+    ...row,
+    no: index + 1,
+  }));
 
-    return combined;
-  } catch (error) {
-    throw error;
-  }
+  return combined;
 };
