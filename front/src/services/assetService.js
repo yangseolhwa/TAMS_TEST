@@ -167,6 +167,66 @@ export const requestSwAsset = async (body) => {
   }
 };
 
+/**
+ * Enterprise(PC) 등록 요청 승인
+ * @param {number} requestId
+ */
+export const approveEnterpriseRequest = async (requestId) => {
+  try {
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_APPROVE}/${requestId}`);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'PC 요청 승인에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * Enterprise(PC) 등록 요청 반려
+ * @param {number} requestId
+ * @param {string} rejectReason
+ */
+export const rejectEnterpriseRequest = async (requestId, rejectReason) => {
+  try {
+    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {};
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_REJECT}/${requestId}`, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'PC 요청 반려에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * SW 등록 요청 승인
+ * @param {number} requestId
+ */
+export const approveSwRequest = async (requestId) => {
+  try {
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_APPROVE}/${requestId}`);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'SW 요청 승인에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * SW 등록 요청 반려
+ * @param {number} requestId
+ * @param {string} rejectReason
+ */
+export const rejectSwRequest = async (requestId, rejectReason) => {
+  try {
+    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {};
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_REJECT}/${requestId}`, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'SW 요청 반려에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
 // request_type 한글 레이블
 const REQUEST_TYPE_LABEL = {
   register: "등록 요청",
@@ -191,6 +251,7 @@ export const fetchAssetRequests = async () => {
       assetName:   parsed.model_name ?? null,
       spec:        parsed.spec       ?? null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requester:   item.requester?.email ?? null,   // ← 추가
       requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
       processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
       status:      item.status?.toUpperCase(),
@@ -208,6 +269,7 @@ export const fetchAssetRequests = async () => {
       assetName:   parsed.name ?? item.sw?.name ?? null,
       spec:        null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requester:   item.requester?.email ?? null,   // ← 추가
       requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
       processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
       status:      item.status?.toUpperCase(),
