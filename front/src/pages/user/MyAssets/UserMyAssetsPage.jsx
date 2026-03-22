@@ -124,9 +124,7 @@ const UserMyAssetsPage = () => {
   const [isMoveMode,    setIsMoveMode]    = useState(false);
   const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
 
-  // 반납 모드 상태
-  const [isReturnMode,  setIsReturnMode]  = useState(false);
-  const [returnRemarks, setReturnRemarks] = useState("");
+
 
   const queryClient = useQueryClient();
 
@@ -365,7 +363,8 @@ const UserMyAssetsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personalAssets"] });
       toast.success("반납이 완료되었습니다.");
-      cancelReturnMode();
+      setListSelectedIds([]);
+      setShowReturnConfirm(false);
     },
     onError: (err) => {
       toast.error(err.message);
@@ -373,30 +372,15 @@ const UserMyAssetsPage = () => {
     },
   });
 
-  // 반납 1단계: 버튼 클릭 → 반납 모드 진입 (비고란 활성화)
+  // 반납: 버튼 클릭 → 바로 확인 모달 오픈
   const handleReturnClick = () => {
     if (listSelectedIds.length === 0) return setShowNoSelectionModal(true);
-    setReturnRemarks("");
-    setIsReturnMode(true);
-  };
-
-  // 반납 2단계: 반납 확인 버튼 클릭 → 확인 모달 오픈
-  const handleReturnConfirmClick = () => {
     setShowReturnConfirm(true);
   };
 
-  // 반납 3단계: 모달 확인 → API 호출
+  // 반납: 모달 확인 → API 호출
   const handleReturnConfirm = () => {
     returnMutation.mutate();
-    setShowReturnConfirm(false);
-  };
-
-  // 반납 모드 취소
-  const cancelReturnMode = () => {
-    setIsReturnMode(false);
-    setReturnRemarks("");
-    setListSelectedIds([]);
-    setShowReturnConfirm(false);
   };
 
   // 이동 1단계: 버튼 클릭 → 이동 모드 진입 (선택 행의 location 셀이 input으로 전환)
@@ -560,9 +544,7 @@ const UserMyAssetsPage = () => {
           <div className={styles.listTableActions}>
             {isMoveMode ? (
               <>
-                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>
-                  취소
-                </button>
+                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>취소</button>
                 <button
                   className={styles.moveSaveBtn}
                   onClick={handleMoveSaveClick}
@@ -573,38 +555,11 @@ const UserMyAssetsPage = () => {
               </>
             ) : (
               <>
-                <button className={styles.moveBtn} onClick={handleMoveClick} disabled={isReturnMode}>자산 이동</button>
-                {isReturnMode ? (
-                  <>
-                    <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>취소</button>
-                    <button
-                      className={styles.returnConfirmBtn}
-                      onClick={handleReturnConfirmClick}
-                      disabled={returnMutation.isPending}
-                    >
-                      반납 확인
-                    </button>
-                  </>
-                ) : (
-                  <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
-                )}
+                <button className={styles.moveBtn} onClick={handleMoveClick}>자산 이동</button>
+                <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
               </>
             )}
           </div>
-
-          {/* 비고란 — 반납 모드에서만 표시 */}
-          {isReturnMode && (
-            <div className={styles.modeArea}>
-              <label className={styles.modeAreaLabel}>비고</label>
-              <input
-                className={styles.modeAreaInput}
-                type="text"
-                placeholder="반납 사유 또는 메모를 입력하세요 (선택)"
-                value={returnRemarks}
-                onChange={(e) => setReturnRemarks(e.target.value)}
-              />
-            </div>
-          )}
 
           <DataTable
             columns={assetListColumns}
