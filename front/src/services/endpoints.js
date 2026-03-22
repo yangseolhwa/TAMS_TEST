@@ -6,6 +6,8 @@ export const ENDPOINTS = {
   },
   ASSETS: {
     PERSONAL:          "/assets/personal",
+    ENTERPRISE:        "/assets/enterprise",
+    SW:                "/assets/sw",
     ENTERPRISE_RETURN: "/assets/enterprise/return",
     SW_RETURN:         "/assets/sw/return",
     ENTERPRISE_MOVE:   "/assets/enterprise/move",

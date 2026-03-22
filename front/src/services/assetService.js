@@ -72,6 +72,30 @@ export const fetchPersonalAssets = async (params = {}) => {
 };
 
 /**
+ * 자산 등록 요청 폼용 Enterprise 자산 목록 (원본 데이터)
+ */
+export const fetchEnterpriseAssetsForForm = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
+    return data.enterprise ?? [];
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * 자산 등록 요청 폼용 SW 자산 목록 (원본 데이터)
+ */
+export const fetchSwAssetsForForm = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "sw" } });
+    return data.sw ?? [];
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
  * Enterprise(PC) 자산 반납
  * @param {{ asset_ids: number[] }} body
  */
@@ -123,6 +147,34 @@ export const moveSwAssets = async (body) => {
     return data;
   } catch (error) {
     const message = error.response?.data?.message ?? 'SW 자산 이동에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * Enterprise(PC) 자산 등록 요청
+ * @param {{ is_existing: boolean, assets: object[] }} body
+ */
+export const requestEnterpriseAsset = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.ENTERPRISE, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'PC 자산 등록 요청에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * SW 자산 등록 요청
+ * @param {{ is_existing: boolean, licenses: object[] }} body
+ */
+export const requestSwAsset = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.SW, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'SW 자산 등록 요청에 실패했습니다.';
     throw new Error(message);
   }
 };

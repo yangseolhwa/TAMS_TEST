@@ -10,7 +10,18 @@ import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
-import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets, returnEnterpriseAssets, returnSwAssets } from "../../../services/assetService";
+import {
+  fetchPersonalAssets,
+  fetchEnterpriseCategories,
+  fetchEnterpriseAssetsForForm,
+  fetchSwAssetsForForm,
+  moveEnterpriseAssets,
+  moveSwAssets,
+  returnEnterpriseAssets,
+  returnSwAssets,
+  requestEnterpriseAsset,
+  requestSwAsset,
+} from "../../../services/assetService";
 
 /**
  * [공통 설정]
@@ -116,6 +127,7 @@ const UserMyAssetsPage = () => {
 
   // 모달 상태
   const [showResetConfirm,     setShowResetConfirm]     = useState(false);
+  const [showSubmitConfirm,    setShowSubmitConfirm]    = useState(false);
   const [showReturnConfirm,    setShowReturnConfirm]    = useState(false);
   const [showMoveConfirm,      setShowMoveConfirm]      = useState(false);
   const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
@@ -189,6 +201,20 @@ const UserMyAssetsPage = () => {
     refetchOnWindowFocus: false,
   });
 
+  // 등록 요청 폼용 Enterprise 자산 목록 (원본)
+  const { data: enterpriseAssetsForForm = [] } = useQuery({
+    queryKey: ["enterpriseAssetsForForm"],
+    queryFn: fetchEnterpriseAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
+
+  // 등록 요청 폼용 SW 자산 목록 (원본)
+  const { data: swAssetsForForm = [] } = useQuery({
+    queryKey: ["swAssetsForForm"],
+    queryFn: fetchSwAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
+
   // 자산 유형에 따라 카테고리 옵션 결정
   const categoryOptions =
     filterType === "enterprise" ? enterpriseCategories.map((c) => ({ value: c.id,   label: c.name })) :
@@ -207,15 +233,14 @@ const UserMyAssetsPage = () => {
     );
   };
 
-  const handleAssetCategoryChange = (index, value) => {
+  // fieldOrObject: 단일 필드명(string) 또는 { field: value, ... } 객체 (카스케이딩 초기화 등에 활용)
+  const handleItemChange = (index, fieldOrObject, value) => {
     setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, assetCategory: value } : item))
-    );
-  };
-
-  const handleItemChange = (index, field, value) => {
-    setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        if (typeof fieldOrObject === "object") return { ...item, ...fieldOrObject };
+        return { ...item, [fieldOrObject]: value };
+      })
     );
   };
 
@@ -264,8 +289,113 @@ const UserMyAssetsPage = () => {
     setShowResetConfirm(false);
   };
 
+  // 등록 요청 Mutation — PC/SW, 기존/신규 분리 후 Promise.all로 동시 호출
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      const pcNew      = items.filter((i) => i.assetType === "pc" && i.requestType === "new");
+      const pcExisting = items.filter((i) => i.assetType === "pc" && i.requestType === "existing");
+      const swNew      = items.filter((i) => i.assetType === "sw" && i.requestType === "new");
+      const swExisting = items.filter((i) => i.assetType === "sw" && i.requestType === "existing");
+
+      const calls = [
+        ...(pcNew.length > 0 ? [requestEnterpriseAsset({
+          is_existing: false,
+          assets: pcNew.map((i) => ({
+            asset_number:     i.assetNumber.trim(),
+            model_name:       i.modelName.trim(),
+            category_id:      Number(i.categoryId),
+            item_type_id:     Number(i.itemTypeId),
+            manufacturer:     i.manufacturer.trim(),
+            acquisition_date: i.acquisitionDate,
+            ...(i.spec.trim()          && { spec:              i.spec.trim() }),
+            ...(i.serialNumber.trim()  && { serial_number:     i.serialNumber.trim() }),
+            ...(i.requiredQuantity     && { required_quantity: Number(i.requiredQuantity) }),
+            ...(i.requestReason.trim() && { request_reason:    i.requestReason.trim() }),
+          })),
+        })] : []),
+
+        ...(pcExisting.length > 0 ? [requestEnterpriseAsset({
+          is_existing: true,
+          assets: pcExisting.map((i) => ({
+            asset_id:         Number(i.selectedAssetId),
+            acquisition_date: i.acquisitionDate,
+            ...(i.spec.trim()          && { spec:              i.spec.trim() }),
+            ...(i.serialNumber.trim()  && { serial_number:     i.serialNumber.trim() }),
+            ...(i.requiredQuantity     && { required_quantity: Number(i.requiredQuantity) }),
+            ...(i.requestReason.trim() && { request_reason:    i.requestReason.trim() }),
+          })),
+        })] : []),
+
+        ...(swNew.length > 0 ? [requestSwAsset({
+          is_existing: false,
+          licenses: swNew.map((i) => ({
+            name:          i.swName.trim(),
+            software_type: i.softwareType,
+            manufacturer:  i.swManufacturer.trim(),
+            license_key:   i.licenseKey.trim(),
+            key_type:      i.keyType,
+            ...(i.isSubscription !== ""  && { is_subscription: i.isSubscription === "true" }),
+            ...(i.requestReason.trim()   && { request_reason:  i.requestReason.trim() }),
+          })),
+        })] : []),
+
+        ...(swExisting.length > 0 ? [requestSwAsset({
+          is_existing: true,
+          licenses: swExisting.map((i) => ({
+            asset_sw_id:  Number(i.selectedSwId),
+            license_key:  i.licenseKey.trim(),
+            key_type:     i.keyType,
+            ...(i.requestReason.trim() && { request_reason: i.requestReason.trim() }),
+          })),
+        })] : []),
+      ];
+
+      await Promise.all(calls);
+    },
+    onSuccess: () => {
+      toast.success("자산 등록 요청이 완료되었습니다.");
+      setItems([createInitialItem()]);
+      setShowSubmitConfirm(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setShowSubmitConfirm(false);
+    },
+  });
+
   const handleSubmit = () => {
-    // TODO: API 연동
+    // 각 항목 유효성 검사
+    for (const item of items) {
+      if (!item.assetType) {
+        toast.error("자산 유형을 선택해주세요.");
+        return;
+      }
+      if (item.assetType === "pc" && item.requestType === "existing") {
+        if (!item.selectedAssetId || !item.acquisitionDate) {
+          toast.error("PC 기존 자산: 자산 선택과 취득일은 필수 항목입니다.");
+          return;
+        }
+      }
+      if (item.assetType === "pc" && item.requestType === "new") {
+        if (!item.assetNumber || !item.categoryId || !item.itemTypeId || !item.manufacturer || !item.modelName || !item.acquisitionDate) {
+          toast.error("PC 신규 자산: 필수 항목을 모두 입력해주세요.");
+          return;
+        }
+      }
+      if (item.assetType === "sw" && item.requestType === "existing") {
+        if (!item.selectedSwId || !item.licenseKey || !item.keyType) {
+          toast.error("SW 기존 자산: 소프트웨어 선택, 라이선스키, 키 유형은 필수 항목입니다.");
+          return;
+        }
+      }
+      if (item.assetType === "sw" && item.requestType === "new") {
+        if (!item.swName || !item.softwareType || !item.swManufacturer || !item.licenseKey || !item.keyType) {
+          toast.error("SW 신규 자산: 필수 항목을 모두 입력해주세요.");
+          return;
+        }
+      }
+    }
+    setShowSubmitConfirm(true);
   };
 
   // --- [Handlers: 조회 필터] ---
@@ -461,13 +591,11 @@ const UserMyAssetsPage = () => {
               />
               <RequestFormFields
                 items={items}
+                enterpriseAssets={enterpriseAssetsForForm}
+                swAssets={swAssetsForForm}
                 onAssetTypeChange={handleAssetTypeChange}
-                onAssetCategoryChange={handleAssetCategoryChange}
                 onItemChange={handleItemChange}
                 onRemoveItem={handleRemoveItem}
-                onAddLicenseKey={handleAddLicenseKey}
-                onRemoveLicenseKey={handleRemoveLicenseKey}
-                onLicenseKeyChange={handleLicenseKeyChange}
               />
               <div className={styles.formActions}>
                 {items.length < MAX_ITEMS && (
@@ -477,7 +605,13 @@ const UserMyAssetsPage = () => {
                 )}
                 <div className={styles.actionBtns}>
                   <button className={styles.resetBtn} onClick={() => setShowResetConfirm(true)}>초기화</button>
-                  <button className={styles.submitBtn} onClick={handleSubmit}>요청</button>
+                  <button
+                    className={styles.submitBtn}
+                    onClick={handleSubmit}
+                    disabled={submitMutation.isPending}
+                  >
+                    {submitMutation.isPending ? "요청 중..." : "요청"}
+                  </button>
                 </div>
               </div>
             </>
@@ -582,6 +716,15 @@ const UserMyAssetsPage = () => {
         confirmVariant="danger"
         onConfirm={handleReset}
         onCancel={() => setShowResetConfirm(false)}
+      />
+      <ConfirmModal
+        isOpen={showSubmitConfirm}
+        title={`자산 ${items.length}개를 등록 요청할까요?`}
+        desc="관리자 승인 후 자산이 등록됩니다."
+        confirmLabel="요청"
+        confirmVariant="primary"
+        onConfirm={() => submitMutation.mutate()}
+        onCancel={() => setShowSubmitConfirm(false)}
       />
       <ConfirmModal
         isOpen={showNoSelectionModal}
