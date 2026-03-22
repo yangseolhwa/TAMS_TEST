@@ -209,10 +209,6 @@ const UserMyAssetsPage = () => {
   // 필터 값들로 API 파라미터 객체 생성
   const buildParams = ({ type, category, state, keyword } = {}) => {
     const params = {};
-    if (state)   params.state = state;
-    if (keyword) params.keyword = keyword;
-
-    // 자산 종류 prefix로 타입 자동 판별 (전체일 때)
     if (category) {
       if (type === "enterprise") {
         params.type = type;
@@ -230,7 +226,10 @@ const UserMyAssetsPage = () => {
     } else if (type) {
       params.type = type;
     }
-
+ 
+    if (state)   params.state   = state;
+    if (keyword) params.keyword = keyword;
+ 
     return params;
   };
 
