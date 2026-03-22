@@ -10,7 +10,7 @@ import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
-import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets } from "../../../services/assetService";
+import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets, returnEnterpriseAssets, returnSwAssets } from "../../../services/assetService";
 
 /**
  * [공통 설정]
@@ -123,6 +123,10 @@ const UserMyAssetsPage = () => {
   // 이동 모드 상태
   const [isMoveMode,    setIsMoveMode]    = useState(false);
   const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
+
+  // 반납 모드 상태
+  const [isReturnMode,  setIsReturnMode]  = useState(false);
+  const [returnRemarks, setReturnRemarks] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -336,13 +340,62 @@ const UserMyAssetsPage = () => {
   };
 
   // --- [Handlers: 자산 액션] ---
+
+  // 반납 Mutation — PC/SW ID 분리 후 Promise.all로 동시 호출
+  const returnMutation = useMutation({
+    mutationFn: async () => {
+      const pcIds      = [];
+      const licenseIds = [];
+
+      listSelectedIds.forEach((rowId) => {
+        if (rowId.startsWith("ent-")) {
+          pcIds.push(parseInt(rowId.replace("ent-", ""), 10));
+        } else if (rowId.startsWith("sw-")) {
+          licenseIds.push(parseInt(rowId.split("-")[2], 10));
+        }
+      });
+
+      const calls = [
+        ...(pcIds.length      > 0 ? [returnEnterpriseAssets({ asset_ids: pcIds })]   : []),
+        ...(licenseIds.length > 0 ? [returnSwAssets({ license_ids: licenseIds })]     : []),
+      ];
+
+      await Promise.all(calls);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personalAssets"] });
+      toast.success("반납이 완료되었습니다.");
+      cancelReturnMode();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setShowReturnConfirm(false);
+    },
+  });
+
+  // 반납 1단계: 버튼 클릭 → 반납 모드 진입 (비고란 활성화)
   const handleReturnClick = () => {
     if (listSelectedIds.length === 0) return setShowNoSelectionModal(true);
+    setReturnRemarks("");
+    setIsReturnMode(true);
+  };
+
+  // 반납 2단계: 반납 확인 버튼 클릭 → 확인 모달 오픈
+  const handleReturnConfirmClick = () => {
     setShowReturnConfirm(true);
   };
 
+  // 반납 3단계: 모달 확인 → API 호출
   const handleReturnConfirm = () => {
-    console.log("반납 대상:", listSelectedIds);
+    returnMutation.mutate();
+    setShowReturnConfirm(false);
+  };
+
+  // 반납 모드 취소
+  const cancelReturnMode = () => {
+    setIsReturnMode(false);
+    setReturnRemarks("");
+    setListSelectedIds([]);
     setShowReturnConfirm(false);
   };
 
@@ -520,11 +573,38 @@ const UserMyAssetsPage = () => {
               </>
             ) : (
               <>
-                <button className={styles.moveBtn} onClick={handleMoveClick}>자산 이동</button>
-                <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
+                <button className={styles.moveBtn} onClick={handleMoveClick} disabled={isReturnMode}>자산 이동</button>
+                {isReturnMode ? (
+                  <>
+                    <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>취소</button>
+                    <button
+                      className={styles.returnConfirmBtn}
+                      onClick={handleReturnConfirmClick}
+                      disabled={returnMutation.isPending}
+                    >
+                      반납 확인
+                    </button>
+                  </>
+                ) : (
+                  <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
+                )}
               </>
             )}
           </div>
+
+          {/* 비고란 — 반납 모드에서만 표시 */}
+          {isReturnMode && (
+            <div className={styles.modeArea}>
+              <label className={styles.modeAreaLabel}>비고</label>
+              <input
+                className={styles.modeAreaInput}
+                type="text"
+                placeholder="반납 사유 또는 메모를 입력하세요 (선택)"
+                value={returnRemarks}
+                onChange={(e) => setReturnRemarks(e.target.value)}
+              />
+            </div>
+          )}
 
           <DataTable
             columns={assetListColumns}
@@ -559,9 +639,9 @@ const UserMyAssetsPage = () => {
       />
       <ConfirmModal
         isOpen={showReturnConfirm}
-        title="선택한 자산을 반납 요청할까요?"
-        desc="반납 요청 후 관리자 승인이 필요합니다."
-        confirmLabel="반납 요청"
+        title={`선택한 자산 ${listSelectedIds.length}개를 반납할까요?`}
+        desc="반납된 자산은 목록에서 제외됩니다."
+        confirmLabel="반납"
         confirmVariant="danger"
         onConfirm={handleReturnConfirm}
         onCancel={() => setShowReturnConfirm(false)}

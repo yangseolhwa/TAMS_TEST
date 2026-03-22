@@ -5,8 +5,10 @@ export const ENDPOINTS = {
     REFRESH:  '/auth/refresh',
   },
   ASSETS: {
-    PERSONAL:        "/assets/personal",
-    ENTERPRISE_MOVE: "/assets/enterprise/move",
-    SW_MOVE:         "/assets/sw/move",
+    PERSONAL:          "/assets/personal",
+    ENTERPRISE_RETURN: "/assets/enterprise/return",
+    SW_RETURN:         "/assets/sw/return",
+    ENTERPRISE_MOVE:   "/assets/enterprise/move",
+    SW_MOVE:           "/assets/sw/move",
   },
 }
