@@ -21,21 +21,27 @@ export const fetchPersonalAssets = async (params = {}) => {
     const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: cleanParams })
 
     const enterpriseRows = (data.enterprise ?? []).map((item) => ({
-      ...item,
+      ...item,                  
+      id: `ent-${item.id}`,     
+      original_id: item.id,      
       _type:      "PC",
       _category:  item.enterprise_category?.name ?? null,
       _assetName: item.model_name ?? null,
       _status:    item.state ?? null,
     }))
 
-    const swRows = (data.swLicense ?? []).map((item) => ({
-      ...item,
+    const swRows = (data.sw ?? []).map((item) => ({
+      ...item,                     
+      id: `sw-${item.id}`,         
+      original_id: item.id,
       _type:      "SW",
-      _category:  item.asset_sw?.software_type ?? null,
-      _assetName: item.asset_sw?.name ?? null,
-      _status:    item.asset_sw?.state ?? null,
+      _category:  item.software_type ?? null,
+      _assetName: item.name ?? null,
+      _status:    item.state ?? null,
     }))
 
+    
+    // 두 배열을 합친 후 전체 번호(no)를 1번부터 순차적으로 부여
     return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
   } catch (error) {
     const message = error.response?.data?.message ?? '자산 조회에 실패했습니다.'
