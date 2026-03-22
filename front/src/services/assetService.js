@@ -118,10 +118,20 @@ export const registerDfAsset = async (body) => {
 }
 
 /**
- * DF 자산 반납
- * @param {{ item_ids: number[] }} body
+ * DF 자산 이동
+ * @param {{ item_ids: number[], location: string }} body
  * @returns {Promise<object>}
  */
+export const moveDfAssets = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.DF_MOVE, body)
+    return data
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'DF 자산 이동에 실패했습니다.'
+    throw new Error(message)
+  }
+}
+
 export const returnDfAssets = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.DF_RETURN, body)

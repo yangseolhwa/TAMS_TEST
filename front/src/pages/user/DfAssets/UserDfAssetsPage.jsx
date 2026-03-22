@@ -6,7 +6,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
-import { fetchDfAssets, returnDfAssets } from '../../../services/assetService'
+import { fetchDfAssets, returnDfAssets, moveDfAssets } from '../../../services/assetService'
 import styles from './UserDfAssetsPage.module.css'
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -63,6 +63,11 @@ const UserDfAssetsPage = () => {
   const [returnRemarks,     setReturnRemarks]     = useState('')
   const [showReturnConfirm, setShowReturnConfirm] = useState(false)
   const [showNoSelectModal, setShowNoSelectModal] = useState(false)
+
+  // ── 이동 관련 상태 ────────────────────────────────────────────────────────
+  const [moveMode,        setMoveMode]        = useState(false)
+  const [moveLocation,    setMoveLocation]    = useState('')
+  const [showMoveConfirm, setShowMoveConfirm] = useState(false)
 
   // ── Base query ────────────────────────────────────────────────────────────
   const { data: baseData } = useQuery({
@@ -143,6 +148,49 @@ const UserDfAssetsPage = () => {
     setReturnRemarks('')
     setSelectedIds([])
     setShowReturnConfirm(false)
+  }
+
+  // ── 이동 Mutation ─────────────────────────────────────────────────────────
+  const moveMutation = useMutation({
+    mutationFn: moveDfAssets,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dfAssets'] })
+      toast.success('자산 위치가 변경되었습니다.')
+      cancelMoveMode()
+    },
+    onError: (err) => {
+      toast.error(err.message)
+      setShowMoveConfirm(false)
+    },
+  })
+
+  // ── 이동 핸들러 ───────────────────────────────────────────────────────────
+  const handleMoveClick = () => {
+    if (selectedIds.length === 0) {
+      setShowNoSelectModal(true)
+      return
+    }
+    setMoveMode(true)
+  }
+
+  const handleMoveSaveClick = () => {
+    if (!moveLocation.trim()) {
+      toast.error('이동할 위치를 입력해주세요.')
+      return
+    }
+    setShowMoveConfirm(true)
+  }
+
+  const handleMoveConfirm = () => {
+    moveMutation.mutate({ item_ids: selectedIds, location: moveLocation.trim() })
+    setShowMoveConfirm(false)
+  }
+
+  const cancelMoveMode = () => {
+    setMoveMode(false)
+    setMoveLocation('')
+    setSelectedIds([])
+    setShowMoveConfirm(false)
   }
 
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
@@ -326,10 +374,10 @@ const UserDfAssetsPage = () => {
 
           {/* 비고란 — 반납 모드에서만 표시 */}
           {returnMode && (
-            <div className={styles.returnRemarkArea}>
-              <label className={styles.returnRemarkLabel}>비고</label>
+            <div className={styles.modeArea}>
+              <label className={styles.modeAreaLabel}>비고</label>
               <input
-                className={styles.returnRemarkInput}
+                className={styles.modeAreaInput}
                 type="text"
                 placeholder="반납 사유 또는 메모를 입력하세요 (선택)"
                 value={returnRemarks}
@@ -338,17 +386,49 @@ const UserDfAssetsPage = () => {
             </div>
           )}
 
+          {/* 위치 입력란 — 이동 모드에서만 표시 */}
+          {moveMode && (
+            <div className={styles.modeArea}>
+              <label className={styles.modeAreaLabel}>이동 위치</label>
+              <input
+                className={styles.modeAreaInput}
+                type="text"
+                placeholder="이동할 위치를 입력하세요"
+                value={moveLocation}
+                onChange={(e) => setMoveLocation(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+
           {/* 액션 버튼 영역 */}
           <div className={styles.tableActions}>
-            {/* 자산 이동 — MAIN04에서 구현 예정 */}
-            <button className={styles.moveBtn} disabled>자산 이동</button>
+            {moveMode ? (
+              <>
+                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>
+                  취소
+                </button>
+                <button
+                  className={styles.moveSaveBtn}
+                  onClick={handleMoveSaveClick}
+                  disabled={moveMutation.isPending}
+                >
+                  저장
+                </button>
+              </>
+            ) : (
+              <button
+                className={styles.moveBtn}
+                onClick={handleMoveClick}
+                disabled={returnMode}
+              >
+                자산 이동
+              </button>
+            )}
 
             {returnMode ? (
               <>
-                <button
-                  className={styles.returnCancelBtn}
-                  onClick={cancelReturnMode}
-                >
+                <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>
                   취소
                 </button>
                 <button
@@ -360,7 +440,11 @@ const UserDfAssetsPage = () => {
                 </button>
               </>
             ) : (
-              <button className={styles.returnBtn} onClick={handleReturnClick}>
+              <button
+                className={styles.returnBtn}
+                onClick={handleReturnClick}
+                disabled={moveMode}
+              >
                 반납
               </button>
             )}
@@ -439,11 +523,21 @@ const UserDfAssetsPage = () => {
       <ConfirmModal
         isOpen={showNoSelectModal}
         title="자산을 선택해주세요."
-        desc="반납할 자산을 먼저 선택해주세요."
+        desc="반납 또는 이동할 자산을 먼저 선택해주세요."
         confirmLabel="확인"
         confirmVariant="primary"
         onConfirm={() => setShowNoSelectModal(false)}
         onCancel={() => setShowNoSelectModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showMoveConfirm}
+        title={`선택한 자산 ${selectedIds.length}개를 이동할까요?`}
+        desc={`이동 위치: ${moveLocation}`}
+        confirmLabel="이동"
+        confirmVariant="primary"
+        onConfirm={handleMoveConfirm}
+        onCancel={() => setShowMoveConfirm(false)}
       />
 
       <ConfirmModal
