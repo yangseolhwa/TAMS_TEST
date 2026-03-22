@@ -70,3 +70,31 @@ export const fetchPersonalAssets = async (params = {}) => {
     throw error;
   }
 };
+
+/**
+ * Enterprise(PC) 자산 위치 이동
+ * @param {{ asset_ids: number[], location: string }} body
+ */
+export const moveEnterpriseAssets = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_MOVE, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'PC 자산 이동에 실패했습니다.';
+    throw new Error(message);
+  }
+};
+
+/**
+ * SW 라이선스 위치 이동
+ * @param {{ license_ids: number[], location: string }} body
+ */
+export const moveSwAssets = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_MOVE, body);
+    return data;
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'SW 자산 이동에 실패했습니다.';
+    throw new Error(message);
+  }
+};

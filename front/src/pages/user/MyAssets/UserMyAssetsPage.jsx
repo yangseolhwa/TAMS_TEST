@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
+import toast from "react-hot-toast";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
@@ -9,7 +10,7 @@ import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
-import { fetchPersonalAssets, fetchEnterpriseCategories } from "../../../services/assetService";
+import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets } from "../../../services/assetService";
 
 /**
  * [공통 설정]
@@ -47,24 +48,27 @@ const ASSET_LIST_COMMON_COLUMNS = [
   { key: "item_category_name", label: "자산 종류",   type: "dash" },
   { key: "asset_name",         label: "자산명",       type: "dash" },
   { key: "manufacturer",       label: "제조사",       type: "dash" },
+  { key: "location",           label: "위치",         type: "dash" },
   { key: "state",              label: "상태",         type: "status" },
 ];
 
-const ASSET_LIST_STATE_COLUMN = { key: "state", label: "상태", type: "status" };
+const ASSET_LIST_STATE_COLUMN  = { key: "state",    label: "상태", type: "status" };
+const ASSET_LIST_LOCATION_COLUMN = { key: "location", label: "위치", type: "dash" };
 
 const ASSET_LIST_COLUMNS_PC = [
-  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "state"),
+  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "location" && col.key !== "state"),
   { key: "spec",             label: "규격",       type: "dash" },
   { key: "serial_number",    label: "시리얼",     type: "dash" },
-  { key: "location",         label: "위치",       type: "dash" },
   { key: "acquisition_date", label: "등록일",     type: "dash" },
+  ASSET_LIST_LOCATION_COLUMN,
   ASSET_LIST_STATE_COLUMN,
 ];
 
 const ASSET_LIST_COLUMNS_SW = [
-  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "state"),
+  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "location" && col.key !== "state"),
   { key: "license_key",       label: "라이선스",    type: "dash" },
   { key: "subscription_date", label: "구독 만료일", type: "dash" },
+  ASSET_LIST_LOCATION_COLUMN,
   ASSET_LIST_STATE_COLUMN,
 ];
 
@@ -116,11 +120,64 @@ const UserMyAssetsPage = () => {
   const [showMoveConfirm,      setShowMoveConfirm]      = useState(false);
   const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
 
+  // 이동 모드 상태
+  const [isMoveMode,    setIsMoveMode]    = useState(false);
+  const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
+
+  const queryClient = useQueryClient();
+
   // --- [React Query] ---
   const { data: listRows = [], isLoading } = useQuery({
     queryKey: ["personalAssets", queryParams],
     queryFn: () => fetchPersonalAssets(queryParams),
     refetchOnWindowFocus: false,
+  });
+
+  // 자산 이동 Mutation — 선택 행별로 입력된 location으로 PC/SW 분리 호출
+  const moveMutation = useMutation({
+    mutationFn: async () => {
+      const rowsById = listRows.reduce((acc, row) => {
+        acc[row.id] = row;
+        return acc;
+      }, {});
+
+      const getLocation = (rowId) => {
+        const row = rowsById[rowId];
+        return locationEdits[rowId] ?? row?.location ?? "";
+      };
+
+      const pcGroups = {};
+      const swGroups = {};
+
+      listSelectedIds.forEach((rowId) => {
+        const loc = getLocation(rowId);
+        if (rowId.startsWith("ent-")) {
+          const assetId = parseInt(rowId.replace("ent-", ""), 10);
+          if (!pcGroups[loc]) pcGroups[loc] = [];
+          pcGroups[loc].push(assetId);
+        } else if (rowId.startsWith("sw-")) {
+          const licenseId = parseInt(rowId.split("-")[2], 10);
+          if (!swGroups[loc]) swGroups[loc] = [];
+          swGroups[loc].push(licenseId);
+        }
+      });
+
+      const calls = [
+        ...Object.entries(pcGroups).map(([location, asset_ids])   => moveEnterpriseAssets({ asset_ids, location })),
+        ...Object.entries(swGroups).map(([location, license_ids]) => moveSwAssets({ license_ids, location })),
+      ];
+
+      await Promise.all(calls);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personalAssets"] });
+      toast.success("자산 위치가 변경되었습니다.");
+      cancelMoveMode();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setShowMoveConfirm(false);
+    },
   });
 
   // PC 카테고리 목록
@@ -284,26 +341,65 @@ const UserMyAssetsPage = () => {
     setShowReturnConfirm(true);
   };
 
-  const handleMoveClick = () => {
-    if (listSelectedIds.length === 0) return setShowNoSelectionModal(true);
-    setShowMoveConfirm(true);
-  };
-
   const handleReturnConfirm = () => {
     console.log("반납 대상:", listSelectedIds);
     setShowReturnConfirm(false);
   };
 
+  // 이동 1단계: 버튼 클릭 → 이동 모드 진입 (선택 행의 location 셀이 input으로 전환)
+  const handleMoveClick = () => {
+    if (listSelectedIds.length === 0) return setShowNoSelectionModal(true);
+    setLocationEdits({});
+    setIsMoveMode(true);
+  };
+
+  // 이동 2단계: 저장 클릭 → 확인 모달
+  const handleMoveSaveClick = () => {
+    setShowMoveConfirm(true);
+  };
+
+  // 이동 3단계: 모달 확인 → API 호출
   const handleMoveConfirm = () => {
-    console.log("이동 대상:", listSelectedIds);
+    moveMutation.mutate();
     setShowMoveConfirm(false);
   };
 
-  // DataTable 바로 위에 추가
-  const assetListColumns =
-    filterType === "enterprise" ? ASSET_LIST_COLUMNS_PC :
-    filterType === "sw"         ? ASSET_LIST_COLUMNS_SW :
-    ASSET_LIST_COMMON_COLUMNS;
+  const cancelMoveMode = () => {
+    setIsMoveMode(false);
+    setLocationEdits({});
+    setListSelectedIds([]);
+    setShowMoveConfirm(false);
+  };
+
+  // 이동 모드일 때 선택된 행의 location 컬럼을 인라인 input으로 교체
+  const assetListColumns = useMemo(() => {
+    const base =
+      filterType === "enterprise" ? ASSET_LIST_COLUMNS_PC :
+      filterType === "sw"         ? ASSET_LIST_COLUMNS_SW :
+      ASSET_LIST_COMMON_COLUMNS;
+
+    if (!isMoveMode) return base;
+
+    return base.map((col) => {
+      if (col.key !== "location") return col;
+      return {
+        ...col,
+        renderCell: (row) => {
+          if (!listSelectedIds.includes(row.id)) return row.location || "—";
+          return (
+            <input
+              className={styles.locationInput}
+              value={locationEdits[row.id] ?? row.location ?? ""}
+              onChange={(e) =>
+                setLocationEdits((prev) => ({ ...prev, [row.id]: e.target.value }))
+              }
+              placeholder="위치 입력"
+            />
+          );
+        },
+      };
+    });
+  }, [filterType, isMoveMode, listSelectedIds, locationEdits]);
 
   return (
     <div className={styles.page}>
@@ -409,8 +505,25 @@ const UserMyAssetsPage = () => {
           </div>
 
           <div className={styles.listTableActions}>
-            <button className={styles.moveBtn} onClick={handleMoveClick}>자산 이동</button>
-            <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
+            {isMoveMode ? (
+              <>
+                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>
+                  취소
+                </button>
+                <button
+                  className={styles.moveSaveBtn}
+                  onClick={handleMoveSaveClick}
+                  disabled={moveMutation.isPending}
+                >
+                  저장
+                </button>
+              </>
+            ) : (
+              <>
+                <button className={styles.moveBtn} onClick={handleMoveClick}>자산 이동</button>
+                <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
+              </>
+            )}
           </div>
 
           <DataTable
@@ -455,7 +568,8 @@ const UserMyAssetsPage = () => {
       />
       <ConfirmModal
         isOpen={showMoveConfirm}
-        title="선택한 자산을 이동할까요?"
+        title={`선택한 자산 ${listSelectedIds.length}개를 이동할까요?`}
+        desc="입력한 위치로 각 자산이 이동됩니다."
         confirmLabel="이동"
         confirmVariant="primary"
         onConfirm={handleMoveConfirm}
