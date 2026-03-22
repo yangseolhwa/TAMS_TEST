@@ -6,7 +6,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
-import { fetchDfAssets, registerDfAsset } from '../../../services/assetService'
+import { fetchDfAssets, registerDfAsset, returnDfAssets } from '../../../services/assetService'
 import styles from './AdminDfAssetsPage.module.css'
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -51,21 +51,23 @@ const EMPTY_FILTER = {
 }
 
 const EMPTY_REG_FORM = {
-  isExisting:         false,
-  projectId:          '',
-  assetTypeId:        '',        // '__custom__' 이면 직접 입력 모드
-  customItemTypeName: '',        // 직접 입력 시 사용
-  doosanItemNumber:   '',
-  modelName:          '',
-  manufacturer:       '',
-  serialNumber:       '',
-  spec:               '',
-  quantity:           '',
-  quantityUnit:       'ea',
-  rentalStartDate:    '',
-  rentalEndDate:      '',
-  location:           '',
-  remarks:            '',
+  isExisting:          false,
+  projectId:           '',
+  assetTypeId:         '',        // '__custom__' 이면 직접 입력 모드
+  customItemTypeName:  '',
+  doosanItemNumber:    '',
+  modelName:           '',        // '__custom__' 이면 직접 입력 모드 (기존 자산)
+  customModelName:     '',
+  manufacturer:        '',        // '__custom__' 이면 직접 입력 모드 (기존 자산)
+  customManufacturer:  '',
+  serialNumber:        '',
+  spec:                '',
+  quantity:            '',
+  quantityUnit:        'ea',
+  rentalStartDate:     '',
+  rentalEndDate:       '',
+  location:            '',
+  remarks:             '',
 }
 
 // ─── 컴포넌트 ──────────────────────────────────────────────────────────────────
@@ -82,6 +84,12 @@ const AdminDfAssetsPage = () => {
   const [currentPage,    setCurrentPage]    = useState(1)
   const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
+
+  // ── 반납 관련 상태 ────────────────────────────────────────────────────────
+  const [returnMode,        setReturnMode]        = useState(false)
+  const [returnRemarks,     setReturnRemarks]     = useState('')
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false)
+  const [showNoSelectModal, setShowNoSelectModal] = useState(false)
 
   // ── Base query: 드롭다운 옵션 + 프로젝트 카드용 ───────────────────────────
   const { data: baseData } = useQuery({
@@ -124,6 +132,13 @@ const AdminDfAssetsPage = () => {
     return Array.from(set)
   }, [baseData])
 
+  const modelNameOptions = useMemo(() => {
+    const set = new Set(
+      (baseData?.rows ?? []).map((r) => r.modelName).filter(Boolean)
+    )
+    return Array.from(set)
+  }, [baseData])
+
   // ── 등록 Mutation (단일) ──────────────────────────────────────────────────
   const registerMutation = useMutation({
     mutationFn: registerDfAsset,
@@ -139,16 +154,64 @@ const AdminDfAssetsPage = () => {
     },
   })
 
+  // ── 반납 Mutation ─────────────────────────────────────────────────────────
+  const returnMutation = useMutation({
+    mutationFn: returnDfAssets,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dfAssets'] })
+      toast.success('반납이 완료되었습니다.')
+      cancelReturnMode()
+    },
+    onError: (err) => {
+      toast.error(err.message)
+      setShowReturnConfirm(false)
+    },
+  })
+
+  // ── 반납 핸들러 ───────────────────────────────────────────────────────────
+  const handleReturnClick = () => {
+    if (selectedIds.length === 0) {
+      setShowNoSelectModal(true)
+      return
+    }
+    setReturnMode(true)
+  }
+
+  const handleReturnConfirmClick = () => setShowReturnConfirm(true)
+
+  const handleReturnConfirm = () => {
+    returnMutation.mutate({ item_ids: selectedIds })
+    setShowReturnConfirm(false)
+  }
+
+  const cancelReturnMode = () => {
+    setReturnMode(false)
+    setReturnRemarks('')
+    setSelectedIds([])
+    setShowReturnConfirm(false)
+  }
+
   // ── 등록 폼 핸들러 ────────────────────────────────────────────────────────
   const handleRegChange = (field, value) => {
     setRegForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const isRegFormValid = () => {
-    const { isExisting, projectId, assetTypeId, customItemTypeName, modelName, manufacturer, quantity, rentalStartDate } = regForm
+    const {
+      isExisting, projectId, assetTypeId, customItemTypeName,
+      modelName, customModelName, manufacturer, customManufacturer,
+      quantity, rentalStartDate,
+    } = regForm
     if (!projectId || !assetTypeId || !quantity || !rentalStartDate) return false
     if (assetTypeId === '__custom__' && !customItemTypeName.trim()) return false
-    if (!isExisting && (!modelName.trim() || !manufacturer.trim())) return false
+    if (!isExisting) {
+      // 신규: modelName/manufacturer 일반 텍스트 필수
+      if (!modelName.trim() || !manufacturer.trim()) return false
+    } else {
+      // 기존: 직접 입력 선택 시 커스텀 값 필수
+      if (modelName === '__custom__' && !customModelName.trim()) return false
+      if (manufacturer === '__custom__' && !customManufacturer.trim()) return false
+    }
     return true
   }
 
@@ -161,8 +224,16 @@ const AdminDfAssetsPage = () => {
   }
 
   const handleRegConfirm = () => {
-    // 직접 입력 모드면 asset_type_name으로 전송 → 백엔드 findOrCreate 처리
-    const isCustomType = regForm.assetTypeId === '__custom__'
+    const isCustomType         = regForm.assetTypeId    === '__custom__'
+    const isCustomModelName    = regForm.modelName      === '__custom__'
+    const isCustomManufacturer = regForm.manufacturer   === '__custom__'
+
+    const resolvedModelName    = isCustomModelName
+      ? regForm.customModelName.trim()
+      : regForm.modelName.trim() || undefined
+    const resolvedManufacturer = isCustomManufacturer
+      ? regForm.customManufacturer.trim()
+      : regForm.manufacturer.trim() || undefined
 
     const body = {
       project_id:  Number(regForm.projectId),
@@ -173,8 +244,8 @@ const AdminDfAssetsPage = () => {
           : { asset_type_id:   Number(regForm.assetTypeId) }
         ),
         doosan_item_number: regForm.doosanItemNumber.trim() || undefined,
-        model_name:         regForm.modelName.trim()        || undefined,
-        manufacturer:       regForm.manufacturer.trim()     || undefined,
+        model_name:         resolvedModelName,
+        manufacturer:       resolvedManufacturer,
         serial_number:      regForm.serialNumber.trim()     || undefined,
         spec:               regForm.spec.trim()             || undefined,
         quantity:           Number(regForm.quantity),
@@ -285,10 +356,14 @@ const AdminDfAssetsPage = () => {
                 checked={regForm.isExisting}
                 onChange={() => setRegForm((prev) => ({
                   ...prev,
-                  isExisting:         true,
+                  isExisting: true,
                   // 기존 자산으로 전환 시 직접 입력 상태 초기화
                   assetTypeId:        prev.assetTypeId === '__custom__' ? '' : prev.assetTypeId,
                   customItemTypeName: '',
+                  modelName:          prev.modelName === '__custom__' ? '' : prev.modelName,
+                  customModelName:    '',
+                  manufacturer:       prev.manufacturer === '__custom__' ? '' : prev.manufacturer,
+                  customManufacturer: '',
                 }))}
               />
               기존 자산
@@ -371,13 +446,45 @@ const AdminDfAssetsPage = () => {
               <label className={styles.label}>
                 자산명 {!regForm.isExisting && <span className={styles.required}>*</span>}
               </label>
-              <input
-                className={styles.input}
-                type="text"
-                placeholder="모델명 입력"
-                value={regForm.modelName}
-                onChange={(e) => handleRegChange('modelName', e.target.value)}
-              />
+              {regForm.isExisting ? (
+                regForm.modelName === '__custom__' ? (
+                  <div className={styles.customTypeWrap}>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      placeholder="자산명 직접 입력"
+                      value={regForm.customModelName}
+                      onChange={(e) => handleRegChange('customModelName', e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      className={styles.customTypeCancelBtn}
+                      onClick={() => handleRegChange('modelName', '')}
+                      title="선택으로 돌아가기"
+                    >✕</button>
+                  </div>
+                ) : (
+                  <select
+                    className={styles.select}
+                    value={regForm.modelName}
+                    onChange={(e) => handleRegChange('modelName', e.target.value)}
+                  >
+                    <option value="">선택</option>
+                    {modelNameOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                    <option value="__custom__">직접 입력</option>
+                  </select>
+                )
+              ) : (
+                <input
+                  className={styles.input}
+                  type="text"
+                  placeholder="모델명 입력"
+                  value={regForm.modelName}
+                  onChange={(e) => handleRegChange('modelName', e.target.value)}
+                />
+              )}
             </div>
 
             {/* 제조사 */}
@@ -385,13 +492,45 @@ const AdminDfAssetsPage = () => {
               <label className={styles.label}>
                 제조사 {!regForm.isExisting && <span className={styles.required}>*</span>}
               </label>
-              <input
-                className={styles.input}
-                type="text"
-                placeholder="제조사 입력"
-                value={regForm.manufacturer}
-                onChange={(e) => handleRegChange('manufacturer', e.target.value)}
-              />
+              {regForm.isExisting ? (
+                regForm.manufacturer === '__custom__' ? (
+                  <div className={styles.customTypeWrap}>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      placeholder="제조사 직접 입력"
+                      value={regForm.customManufacturer}
+                      onChange={(e) => handleRegChange('customManufacturer', e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      className={styles.customTypeCancelBtn}
+                      onClick={() => handleRegChange('manufacturer', '')}
+                      title="선택으로 돌아가기"
+                    >✕</button>
+                  </div>
+                ) : (
+                  <select
+                    className={styles.select}
+                    value={regForm.manufacturer}
+                    onChange={(e) => handleRegChange('manufacturer', e.target.value)}
+                  >
+                    <option value="">선택</option>
+                    {manufacturerOptions.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                    <option value="__custom__">직접 입력</option>
+                  </select>
+                )
+              ) : (
+                <input
+                  className={styles.input}
+                  type="text"
+                  placeholder="제조사 입력"
+                  value={regForm.manufacturer}
+                  onChange={(e) => handleRegChange('manufacturer', e.target.value)}
+                />
+              )}
             </div>
 
             {/* 시리얼 */}
@@ -626,10 +765,43 @@ const AdminDfAssetsPage = () => {
             </div>
           </div>
 
-          {/* 액션 버튼 — MAIN03·MAIN04에서 구현 예정 */}
+          {/* 비고란 — 반납 모드에서만 표시 */}
+          {returnMode && (
+            <div className={styles.returnRemarkArea}>
+              <label className={styles.returnRemarkLabel}>비고</label>
+              <input
+                className={styles.returnRemarkInput}
+                type="text"
+                placeholder="반납 사유 또는 메모를 입력하세요 (선택)"
+                value={returnRemarks}
+                onChange={(e) => setReturnRemarks(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* 액션 버튼 */}
           <div className={styles.tableActions}>
-            <button className={styles.moveBtn}   disabled>자산 이동</button>
-            <button className={styles.returnBtn} disabled>반납</button>
+            {/* 자산 이동 — MAIN04에서 구현 예정 */}
+            <button className={styles.moveBtn} disabled>자산 이동</button>
+
+            {returnMode ? (
+              <>
+                <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>
+                  취소
+                </button>
+                <button
+                  className={styles.returnConfirmBtn}
+                  onClick={handleReturnConfirmClick}
+                  disabled={returnMutation.isPending}
+                >
+                  반납 확인
+                </button>
+              </>
+            ) : (
+              <button className={styles.returnBtn} onClick={handleReturnClick}>
+                반납
+              </button>
+            )}
           </div>
 
           {isLoading && (
@@ -702,6 +874,26 @@ const AdminDfAssetsPage = () => {
       </section>
 
       {/* ── 모달 ── */}
+      <ConfirmModal
+        isOpen={showNoSelectModal}
+        title="자산을 선택해주세요."
+        desc="반납할 자산을 먼저 선택해주세요."
+        confirmLabel="확인"
+        confirmVariant="primary"
+        onConfirm={() => setShowNoSelectModal(false)}
+        onCancel={() => setShowNoSelectModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showReturnConfirm}
+        title={`선택한 자산 ${selectedIds.length}개를 반납할까요?`}
+        desc="반납된 자산은 목록에서 제외됩니다."
+        confirmLabel="반납"
+        confirmVariant="danger"
+        onConfirm={handleReturnConfirm}
+        onCancel={() => setShowReturnConfirm(false)}
+      />
+
       <ConfirmModal
         isOpen={showRegConfirm}
         title="DF 자산을 등록할까요?"

@@ -196,6 +196,50 @@
 }
 
 /* =====================
+   반납 비고란
+   ===================== */
+.returnRemarkArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background-color: var(--color-accent-bg);
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--radius-md);
+}
+
+.returnRemarkLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.returnRemarkInput {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.returnRemarkInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.returnRemarkInput::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* =====================
    테이블 액션 버튼
    ===================== */
 .tableActions {
@@ -241,6 +285,51 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* 반납 모드 버튼 */
+.returnConfirmBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background-color: var(--color-error);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnConfirmBtn:hover:not(:disabled) {
+  background-color: var(--color-error-hover);
+}
+
+.returnConfirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.returnCancelBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnCancelBtn:hover {
+  background-color: var(--color-bg);
+}
+
 
 /* =====================
    상태 메시지
