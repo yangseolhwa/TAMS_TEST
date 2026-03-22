@@ -183,7 +183,7 @@ export const fetchAssetRequests = async () => {
   const enterpriseRows = (data.enterprise ?? []).map((item) => {
     // new_asset_data가 JSON 문자열이므로 파싱하여 자산명/규격 추출
     let parsed = {};
-    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch (e) { console.warn("enterprise new_asset_data 파싱 실패:", e); }
 
     return {
       id:          `req-ent-${item.id}`,
@@ -200,7 +200,7 @@ export const fetchAssetRequests = async () => {
 
   const swRows = (data.sw ?? []).map((item) => {
     let parsed = {};
-    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch (e) { console.warn("sw new_asset_data 파싱 실패:", e); }
 
     return {
       id:          `req-sw-${item.id}`,
