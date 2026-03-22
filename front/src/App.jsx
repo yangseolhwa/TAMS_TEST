@@ -1,7 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-
 import LoginPage from './components/Login/LoginPage'
 import DefaultLayout from './layouts/DefaultLayout/DefaultLayout'
 import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
@@ -23,7 +21,6 @@ function App() {
   }
 
   return (
-    <>
       <BrowserRouter>
         <Routes>
           <Route
@@ -49,8 +46,6 @@ function App() {
         </Routes>
       </BrowserRouter>
       
-      <ReactQueryDevtools initialIsOpen={false} />
-      </>
   )
 }
 
