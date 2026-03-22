@@ -10,7 +10,7 @@ import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
 import DataTable from "../../../components/DataTable/DataTable";
-import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets } from "../../../services/assetService";
+import { fetchPersonalAssets, fetchEnterpriseCategories, moveEnterpriseAssets, moveSwAssets, returnEnterpriseAssets, returnSwAssets } from "../../../services/assetService";
 
 /**
  * [공통 설정]
@@ -123,6 +123,8 @@ const UserMyAssetsPage = () => {
   // 이동 모드 상태
   const [isMoveMode,    setIsMoveMode]    = useState(false);
   const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
+
+
 
   const queryClient = useQueryClient();
 
@@ -336,14 +338,49 @@ const UserMyAssetsPage = () => {
   };
 
   // --- [Handlers: 자산 액션] ---
+
+  // 반납 Mutation — PC/SW ID 분리 후 Promise.all로 동시 호출
+  const returnMutation = useMutation({
+    mutationFn: async () => {
+      const pcIds      = [];
+      const licenseIds = [];
+
+      listSelectedIds.forEach((rowId) => {
+        if (rowId.startsWith("ent-")) {
+          pcIds.push(parseInt(rowId.replace("ent-", ""), 10));
+        } else if (rowId.startsWith("sw-")) {
+          licenseIds.push(parseInt(rowId.split("-")[2], 10));
+        }
+      });
+
+      const calls = [
+        ...(pcIds.length      > 0 ? [returnEnterpriseAssets({ asset_ids: pcIds })]   : []),
+        ...(licenseIds.length > 0 ? [returnSwAssets({ license_ids: licenseIds })]     : []),
+      ];
+
+      await Promise.all(calls);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["personalAssets"] });
+      toast.success("반납이 완료되었습니다.");
+      setListSelectedIds([]);
+      setShowReturnConfirm(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setShowReturnConfirm(false);
+    },
+  });
+
+  // 반납: 버튼 클릭 → 바로 확인 모달 오픈
   const handleReturnClick = () => {
     if (listSelectedIds.length === 0) return setShowNoSelectionModal(true);
     setShowReturnConfirm(true);
   };
 
+  // 반납: 모달 확인 → API 호출
   const handleReturnConfirm = () => {
-    console.log("반납 대상:", listSelectedIds);
-    setShowReturnConfirm(false);
+    returnMutation.mutate();
   };
 
   // 이동 1단계: 버튼 클릭 → 이동 모드 진입 (선택 행의 location 셀이 input으로 전환)
@@ -507,9 +544,7 @@ const UserMyAssetsPage = () => {
           <div className={styles.listTableActions}>
             {isMoveMode ? (
               <>
-                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>
-                  취소
-                </button>
+                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>취소</button>
                 <button
                   className={styles.moveSaveBtn}
                   onClick={handleMoveSaveClick}
@@ -559,9 +594,9 @@ const UserMyAssetsPage = () => {
       />
       <ConfirmModal
         isOpen={showReturnConfirm}
-        title="선택한 자산을 반납 요청할까요?"
-        desc="반납 요청 후 관리자 승인이 필요합니다."
-        confirmLabel="반납 요청"
+        title={`선택한 자산 ${listSelectedIds.length}개를 반납할까요?`}
+        desc="반납된 자산은 목록에서 제외됩니다."
+        confirmLabel="반납"
         confirmVariant="danger"
         onConfirm={handleReturnConfirm}
         onCancel={() => setShowReturnConfirm(false)}
