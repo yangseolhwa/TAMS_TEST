@@ -46,21 +46,26 @@ const ASSET_LIST_COMMON_COLUMNS = [
   { key: "asset_type_label",   label: "자산 유형",   type: "assetType" },
   { key: "item_category_name", label: "자산 종류",   type: "dash" },
   { key: "asset_name",         label: "자산명",       type: "dash" },
+  { key: "manufacturer",       label: "제조사",       type: "dash" },
   { key: "state",              label: "상태",         type: "status" },
 ];
 
+const ASSET_LIST_STATE_COLUMN = { key: "state", label: "상태", type: "status" };
+
 const ASSET_LIST_COLUMNS_PC = [
-  ...ASSET_LIST_COMMON_COLUMNS,
+  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "state"),
   { key: "spec",             label: "규격",       type: "dash" },
   { key: "serial_number",    label: "시리얼",     type: "dash" },
+  { key: "location",         label: "위치",       type: "dash" },
   { key: "acquisition_date", label: "등록일",     type: "dash" },
-  { key: "return_date",      label: "반납일",     type: "dash" },
+  ASSET_LIST_STATE_COLUMN,
 ];
 
 const ASSET_LIST_COLUMNS_SW = [
-  ...ASSET_LIST_COMMON_COLUMNS,
+  ...ASSET_LIST_COMMON_COLUMNS.filter((col) => col.key !== "state"),
   { key: "license_key",       label: "라이선스",    type: "dash" },
   { key: "subscription_date", label: "구독 만료일", type: "dash" },
+  ASSET_LIST_STATE_COLUMN,
 ];
 
 const ASSET_LIST_STATUS_MAP = {
@@ -209,10 +214,6 @@ const UserMyAssetsPage = () => {
   // 필터 값들로 API 파라미터 객체 생성
   const buildParams = ({ type, category, state, keyword } = {}) => {
     const params = {};
-    if (state)   params.state = state;
-    if (keyword) params.keyword = keyword;
-
-    // 자산 종류 prefix로 타입 자동 판별 (전체일 때)
     if (category) {
       if (type === "enterprise") {
         params.type = type;
@@ -230,7 +231,10 @@ const UserMyAssetsPage = () => {
     } else if (type) {
       params.type = type;
     }
-
+ 
+    if (state)   params.state   = state;
+    if (keyword) params.keyword = keyword;
+ 
     return params;
   };
 
