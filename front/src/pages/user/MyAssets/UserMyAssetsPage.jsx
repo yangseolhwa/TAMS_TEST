@@ -136,35 +136,30 @@ const UserMyAssetsPage = () => {
   // 자산 이동 Mutation — 선택 행별로 입력된 location으로 PC/SW 분리 호출
   const moveMutation = useMutation({
     mutationFn: async () => {
-      const pcIds = listSelectedIds
-        .filter((id) => id.startsWith("ent-"))
-        .map((id) => parseInt(id.replace("ent-", ""), 10));
+      const rowsById = listRows.reduce((acc, row) => {
+        acc[row.id] = row;
+        return acc;
+      }, {});
 
-      const swIds = listSelectedIds
-        .filter((id) => id.startsWith("sw-"))
-        .map((id) => parseInt(id.split("-")[2], 10));
-
-      // 선택 행마다 입력된 location 사용 (미입력 시 기존 값 유지)
       const getLocation = (rowId) => {
-        const row = listRows.find((r) => r.id === rowId);
+        const row = rowsById[rowId];
         return locationEdits[rowId] ?? row?.location ?? "";
       };
 
-      // location별로 그루핑해서 API 호출
       const pcGroups = {};
-      listSelectedIds.filter((id) => id.startsWith("ent-")).forEach((rowId) => {
-        const loc = getLocation(rowId);
-        const assetId = parseInt(rowId.replace("ent-", ""), 10);
-        if (!pcGroups[loc]) pcGroups[loc] = [];
-        pcGroups[loc].push(assetId);
-      });
-
       const swGroups = {};
-      listSelectedIds.filter((id) => id.startsWith("sw-")).forEach((rowId) => {
+
+      listSelectedIds.forEach((rowId) => {
         const loc = getLocation(rowId);
-        const licenseId = parseInt(rowId.split("-")[2], 10);
-        if (!swGroups[loc]) swGroups[loc] = [];
-        swGroups[loc].push(licenseId);
+        if (rowId.startsWith("ent-")) {
+          const assetId = parseInt(rowId.replace("ent-", ""), 10);
+          if (!pcGroups[loc]) pcGroups[loc] = [];
+          pcGroups[loc].push(assetId);
+        } else if (rowId.startsWith("sw-")) {
+          const licenseId = parseInt(rowId.split("-")[2], 10);
+          if (!swGroups[loc]) swGroups[loc] = [];
+          swGroups[loc].push(licenseId);
+        }
       });
 
       const calls = [
