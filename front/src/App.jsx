@@ -3,7 +3,7 @@ import { useState } from 'react'
 import LoginPage from './components/Login/LoginPage'
 import DefaultLayout from './layouts/DefaultLayout/DefaultLayout'
 import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
-import AdminDfAssetsPage from './pages/admin/DfAssets/AdminDfAssetsPage'
+import AdminDfAssetsPage from './pages/user/DfAssets/UserDfAssetsPage'
 import UserMyAssetsPage from './pages/user/MyAssets/UserMyAssetsPage'
 import UserDfAssetsPage from './pages/user/DfAssets/UserDfAssetsPage'
 

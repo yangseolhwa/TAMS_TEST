@@ -6,5 +6,6 @@ export const ENDPOINTS = {
   },
    ASSETS: {
     PERSONAL: "/assets/personal",
+    DF: '/assets/df'
   },
 }
