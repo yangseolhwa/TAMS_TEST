@@ -7,7 +7,7 @@ import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import { fetchDfAssets, registerDfAsset } from '../../../services/assetService'
-import styles from './Admindfassetspage.module.css'
+import styles from './AdminDfAssetsPage.module.css'
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 const DF_COLUMNS = [
@@ -51,19 +51,21 @@ const EMPTY_FILTER = {
 }
 
 const EMPTY_REG_FORM = {
-  projectId:        '',
-  assetTypeId:      '',
-  doosanItemNumber: '',
-  modelName:        '',
-  manufacturer:     '',
-  serialNumber:     '',
-  spec:             '',
-  quantity:         '',
-  quantityUnit:     'ea',
-  rentalStartDate:  '',
-  rentalEndDate:    '',
-  location:         '',
-  remarks:          '',
+  isExisting:         false,
+  projectId:          '',
+  assetTypeId:        '',        // '__custom__' 이면 직접 입력 모드
+  customItemTypeName: '',        // 직접 입력 시 사용
+  doosanItemNumber:   '',
+  modelName:          '',
+  manufacturer:       '',
+  serialNumber:       '',
+  spec:               '',
+  quantity:           '',
+  quantityUnit:       'ea',
+  rentalStartDate:    '',
+  rentalEndDate:      '',
+  location:           '',
+  remarks:            '',
 }
 
 // ─── 컴포넌트 ──────────────────────────────────────────────────────────────────
@@ -143,9 +145,11 @@ const AdminDfAssetsPage = () => {
   }
 
   const isRegFormValid = () => {
-    const { projectId, assetTypeId, modelName, manufacturer, quantity, rentalStartDate } = regForm
-    return projectId && assetTypeId && modelName.trim() && manufacturer.trim()
-      && quantity && rentalStartDate
+    const { isExisting, projectId, assetTypeId, customItemTypeName, modelName, manufacturer, quantity, rentalStartDate } = regForm
+    if (!projectId || !assetTypeId || !quantity || !rentalStartDate) return false
+    if (assetTypeId === '__custom__' && !customItemTypeName.trim()) return false
+    if (!isExisting && (!modelName.trim() || !manufacturer.trim())) return false
+    return true
   }
 
   const handleRegSubmit = () => {
@@ -157,21 +161,28 @@ const AdminDfAssetsPage = () => {
   }
 
   const handleRegConfirm = () => {
+    // 직접 입력 모드면 asset_type_name으로 전송 → 백엔드 findOrCreate 처리
+    const isCustomType = regForm.assetTypeId === '__custom__'
+
     const body = {
-      project_id: Number(regForm.projectId),
+      project_id:  Number(regForm.projectId),
+      is_existing: regForm.isExisting,
       items: [{
-        asset_type_id:      Number(regForm.assetTypeId),
+        ...(isCustomType
+          ? { asset_type_name: regForm.customItemTypeName.trim() }
+          : { asset_type_id:   Number(regForm.assetTypeId) }
+        ),
         doosan_item_number: regForm.doosanItemNumber.trim() || undefined,
-        model_name:         regForm.modelName.trim(),
-        manufacturer:       regForm.manufacturer.trim(),
-        serial_number:      regForm.serialNumber.trim()    || undefined,
-        spec:               regForm.spec.trim()            || undefined,
+        model_name:         regForm.modelName.trim()        || undefined,
+        manufacturer:       regForm.manufacturer.trim()     || undefined,
+        serial_number:      regForm.serialNumber.trim()     || undefined,
+        spec:               regForm.spec.trim()             || undefined,
         quantity:           Number(regForm.quantity),
         quantity_unit:      regForm.quantityUnit,
         rental_start_date:  regForm.rentalStartDate,
-        rental_end_date:    regForm.rentalEndDate           || undefined,
-        location:           regForm.location.trim()        || undefined,
-        remarks:            regForm.remarks.trim()         || undefined,
+        rental_end_date:    regForm.rentalEndDate            || undefined,
+        location:           regForm.location.trim()         || undefined,
+        remarks:            regForm.remarks.trim()          || undefined,
       }],
     }
     registerMutation.mutate(body)
@@ -253,6 +264,37 @@ const AdminDfAssetsPage = () => {
         </div>
 
         <Card>
+          {/* ── 기존 / 신규 라디오 ── */}
+          <div className={styles.radioRow}>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="df-reg-type"
+                checked={!regForm.isExisting}
+                onChange={() => setRegForm((prev) => ({
+                  ...prev,
+                  isExisting: false,
+                }))}
+              />
+              신규 자산
+            </label>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="df-reg-type"
+                checked={regForm.isExisting}
+                onChange={() => setRegForm((prev) => ({
+                  ...prev,
+                  isExisting:         true,
+                  // 기존 자산으로 전환 시 직접 입력 상태 초기화
+                  assetTypeId:        prev.assetTypeId === '__custom__' ? '' : prev.assetTypeId,
+                  customItemTypeName: '',
+                }))}
+              />
+              기존 자산
+            </label>
+          </div>
+
           <div className={styles.formGrid}>
             {/* 프로젝트 */}
             <div className={styles.formGroup}>
@@ -276,16 +318,40 @@ const AdminDfAssetsPage = () => {
               <label className={styles.label}>
                 자산 종류 <span className={styles.required}>*</span>
               </label>
-              <select
-                className={styles.select}
-                value={regForm.assetTypeId}
-                onChange={(e) => handleRegChange('assetTypeId', e.target.value)}
-              >
-                <option value="">선택</option>
-                {itemTypeOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.name}</option>
-                ))}
-              </select>
+              {regForm.assetTypeId === '__custom__' ? (
+                <div className={styles.customTypeWrap}>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="새 자산 종류 이름 입력"
+                    value={regForm.customItemTypeName}
+                    onChange={(e) => handleRegChange('customItemTypeName', e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className={styles.customTypeCancelBtn}
+                    onClick={() => handleRegChange('assetTypeId', '')}
+                    title="선택으로 돌아가기"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <select
+                  className={styles.select}
+                  value={regForm.assetTypeId}
+                  onChange={(e) => handleRegChange('assetTypeId', e.target.value)}
+                >
+                  <option value="">선택</option>
+                  {itemTypeOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                  ))}
+                  {/* 신규 자산일 때만 직접 입력 옵션 노출 */}
+                  {!regForm.isExisting && (
+                    <option value="__custom__">직접 입력</option>
+                  )}
+                </select>
+              )}
             </div>
 
             {/* 두산 번호 */}
@@ -303,7 +369,7 @@ const AdminDfAssetsPage = () => {
             {/* 자산명 */}
             <div className={styles.formGroup}>
               <label className={styles.label}>
-                자산명 <span className={styles.required}>*</span>
+                자산명 {!regForm.isExisting && <span className={styles.required}>*</span>}
               </label>
               <input
                 className={styles.input}
@@ -317,7 +383,7 @@ const AdminDfAssetsPage = () => {
             {/* 제조사 */}
             <div className={styles.formGroup}>
               <label className={styles.label}>
-                제조사 <span className={styles.required}>*</span>
+                제조사 {!regForm.isExisting && <span className={styles.required}>*</span>}
               </label>
               <input
                 className={styles.input}
