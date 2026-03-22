@@ -178,3 +178,63 @@ export const requestSwAsset = async (body) => {
     throw new Error(message);
   }
 };
+
+// request_type 한글 레이블
+const REQUEST_TYPE_LABEL = {
+  register: "등록 요청",
+  return:   "반납 요청",
+};
+
+/**
+ * 자산 요청 현황 목록 조회 (DataTable용 변환 포함)
+ * enterprise / sw 배열을 하나의 행 배열로 합쳐서 반환
+ */
+export const fetchAssetRequests = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS);
+
+    const enterpriseRows = (data.enterprise ?? []).map((item) => {
+      // new_asset_data가 JSON 문자열이므로 파싱하여 자산명/규격 추출
+      let parsed = {};
+      try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+
+      return {
+        id:          `req-ent-${item.id}`,
+        assetType:   "PC",
+        assetName:   parsed.model_name ?? null,
+        spec:        parsed.spec       ?? null,
+        requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+        requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
+        processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+        status:      item.status?.toUpperCase(),
+        reason:      item.admin_reason  ?? null,
+      };
+    });
+
+    const swRows = (data.sw ?? []).map((item) => {
+      let parsed = {};
+      try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch { /* 파싱 실패 시 빈 객체 */ }
+
+      return {
+        id:          `req-sw-${item.id}`,
+        assetType:   "SW",
+        assetName:   parsed.name ?? item.sw?.name ?? null,
+        spec:        null,
+        requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+        requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
+        processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+        status:      item.status?.toUpperCase(),
+        reason:      item.admin_reason  ?? null,
+      };
+    });
+
+    const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
+      ...row,
+      no: index + 1,
+    }));
+
+    return combined;
+  } catch (error) {
+    throw error;
+  }
+};
