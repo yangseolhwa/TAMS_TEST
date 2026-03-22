@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
 import LoginPage from './components/Login/LoginPage'
 import DefaultLayout from './layouts/DefaultLayout/DefaultLayout'
 import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
@@ -21,30 +23,34 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            role
-              ? <Navigate to={`/${role}/my-assets`} replace />
-              : <LoginPage onLoginSuccess={handleLoginSuccess} />
-          }
-        />
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              role
+                ? <Navigate to={`/${role}/my-assets`} replace />
+                : <LoginPage onLoginSuccess={handleLoginSuccess} />
+            }
+          />
 
-        <Route element={<DefaultLayout role={role} onLogout={handleLogout} />}>
-          {/* Admin */}
-          <Route path="/admin/my-assets/*" element={role === 'admin' ? <AdminMyAssetsPage /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/*" element={role === 'admin' ? <AdminDfAssetsPage /> : <Navigate to="/login" replace />} />
+          <Route element={<DefaultLayout role={role} onLogout={handleLogout} />}>
+            {/* Admin */}
+            <Route path="/admin/my-assets/*" element={role === 'admin' ? <AdminMyAssetsPage /> : <Navigate to="/login" replace />} />
+            <Route path="/admin/df-assets/*" element={role === 'admin' ? <AdminDfAssetsPage /> : <Navigate to="/login" replace />} />
 
-          {/* User */}
-          <Route path="/user/my-assets/*" element={role === 'user' ? <UserMyAssetsPage /> : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/*" element={role === 'user' ? <UserDfAssetsPage /> : <Navigate to="/login" replace />} />
-        </Route>
+            {/* User */}
+            <Route path="/user/my-assets/*" element={role === 'user' ? <UserMyAssetsPage /> : <Navigate to="/login" replace />} />
+            <Route path="/user/df-assets/*" element={role === 'user' ? <UserDfAssetsPage /> : <Navigate to="/login" replace />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+      
+      <ReactQueryDevtools initialIsOpen={false} />
+      </>
   )
 }
 
