@@ -4,14 +4,36 @@ const { AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistor
 
 const VALID_STATES = ['active', 'stored', 'rented', 'returned'];
 
-// '-' 또는 빈 값 → null 처리
+// ── 컬럼 인덱스 상수 ─────────────────────────────────────────────
+const COL = {
+  NUMBER:             0,
+  DOOSAN_ITEM_NUMBER: 1,
+  ASSET_TYPE:         2,
+  MANUFACTURER:       3,
+  MODEL_NAME:         4,
+  SERIAL_NUMBER:      5,
+  SPEC:               6,
+  QUANTITY:           7,
+  RENTAL_DATE:        8,
+  RETURN_DATE:        9,
+  STATE:              10,
+  LOCATION:           11,
+  REMARKS:            12,
+};
+
+// carry-forward 적용 컬럼 (고유값 제외: NUMBER, DOOSAN_ITEM_NUMBER, SERIAL_NUMBER)
+const CARRY_INDEXES = [
+  COL.ASSET_TYPE, COL.MANUFACTURER, COL.MODEL_NAME, COL.SPEC,
+  COL.QUANTITY, COL.RENTAL_DATE, COL.RETURN_DATE, COL.STATE,
+  COL.LOCATION, COL.REMARKS,
+];
+
 function toVal(v) {
   if (v == null) return null;
   const s = String(v).trim();
   return s === '' || s === '-' ? null : s;
 }
 
-// 날짜 파싱 (Date 객체 or ISO 문자열 모두 처리)
 function parseDate(value) {
   if (!value) return null;
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
@@ -38,16 +60,11 @@ const importDf = async (req, res) => {
     return res.status(400).json({ message: 'TOTAL 시트 외 프로젝트 시트가 없습니다.' });
   }
 
-  // 시트명 정규화: 언더스코어 → 공백
   const sheetNameToDbName = {};
-  projectSheets.forEach((s) => {
-    sheetNameToDbName[s] = s.replace(/_/g, ' ');
-  });
+  projectSheets.forEach((s) => { sheetNameToDbName[s] = s.replace(/_/g, ' '); });
 
-  // 프로젝트 캐시
   const projectCache = {};
 
-  // asset_type 캐시
   const typeCache = {};
   const existingTypes = await AssetProjectItemType.findAll();
   existingTypes.forEach((t) => { typeCache[t.name] = t.id; });
@@ -69,18 +86,10 @@ const importDf = async (req, res) => {
     const { id: project_id, isNew: projectIsNew } = projectCache[dbName];
 
     const ws = wb.Sheets[sheetName];
-    // xlsx JS는 선행 빈 열(A열) 제거 후 배열 구성
-    // row[0]=헤더행, row[1]부터 실제 데이터
-    // 컬럼 매핑 (0-based, A열 없음):
-    //   [0]:number [1]:doosan_item_number [2]:asset_type [3]:manufacturer
-    //   [4]:model_name [5]:serial_number [6]:spec [7]:quantity
-    //   [8]:rental_date [9]:return_date [10]:state [11]:location [12]:remarks
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-    const dataRows = rows.slice(1); // row[0]=헤더 제외, row[1]부터 데이터
+    const dataRows = rows.slice(1); // row[0]=헤더 제외
 
     // carry-forward: 병합 셀 처리
-    // 고유값 컬럼(병합 불가) 제외: index 0(number), 1(doosan_item_number), 5(serial_number)
-    const CARRY_INDEXES = [2, 3, 4, 6, 7, 8, 9, 10, 11, 12];
     const lastVals = {};
     for (const row of dataRows) {
       for (const idx of CARRY_INDEXES) {
@@ -92,49 +101,47 @@ const importDf = async (req, res) => {
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
-      const rowNum = i + 2; // 엑셀 실제 행 번호 (헤더=1행, 데이터=2행~)
+      const rowNum = i + 2;
 
-      const assetTypeName      = toVal(row[2]);
-      const manufacturer       = toVal(row[3]);
-      const model_name         = toVal(row[4]);
-      const serial_number      = toVal(row[5]);
-      const spec               = toVal(row[6]);
-      const quantityRaw        = row[7];
-      const rentalDateRaw      = row[8];
-      const returnDateRaw      = row[9];
-      const stateRaw           = toVal(row[10]);
-      const location           = toVal(row[11]);
-      const remarks            = toVal(row[12]);
-      const doosan_item_number = toVal(row[1]);
+      const assetTypeName      = toVal(row[COL.ASSET_TYPE]);
+      const manufacturer       = toVal(row[COL.MANUFACTURER]);
+      const model_name         = toVal(row[COL.MODEL_NAME]);
+      const serial_number      = toVal(row[COL.SERIAL_NUMBER]);
+      const spec               = toVal(row[COL.SPEC]);
+      const quantityRaw        = row[COL.QUANTITY];
+      const rentalDateRaw      = row[COL.RENTAL_DATE];
+      const returnDateRaw      = row[COL.RETURN_DATE];
+      const stateRaw           = toVal(row[COL.STATE]);
+      const location           = toVal(row[COL.LOCATION]);
+      const remarks            = toVal(row[COL.REMARKS]);
+      const doosan_item_number = toVal(row[COL.DOOSAN_ITEM_NUMBER]);
 
       // 완전히 빈 행 건너뛰기
       if (!assetTypeName && !manufacturer && !model_name) continue;
 
-      // 필수 필드 검증
-      if (!assetTypeName) {
-        results.push({ project: sheetName, row: rowNum, status: 'failed', reason: 'asset_type이 없습니다.' });
-        failed++; continue;
-      }
-      if (!manufacturer) {
-        results.push({ project: sheetName, row: rowNum, status: 'failed', reason: '제조사(manufacturer)가 없습니다.' });
-        failed++; continue;
-      }
-      if (!model_name) {
-        results.push({ project: sheetName, row: rowNum, status: 'failed', reason: '모델명(model_name)이 없습니다.' });
-        failed++; continue;
-      }
-
+      // ── 유효성 검사 ──────────────────────────────────────────────
       const quantity = Number(quantityRaw);
-      if (quantityRaw == null || isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)) {
-        results.push({ project: sheetName, row: rowNum, status: 'failed', reason: '수량(quantity)은 1 이상의 정수여야 합니다.' });
-        failed++; continue;
-      }
-
       const rental_start_date = parseDate(rentalDateRaw);
-      if (!rental_start_date) {
-        results.push({ project: sheetName, row: rowNum, status: 'failed', reason: '대여일(rental_date) 형식이 올바르지 않습니다.' });
-        failed++; continue;
+
+      const validations = [
+        { check: assetTypeName,    message: 'asset_type이 없습니다.' },
+        { check: manufacturer,     message: '제조사(manufacturer)가 없습니다.' },
+        { check: model_name,       message: '모델명(model_name)이 없습니다.' },
+        { check: !(quantityRaw == null || isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)),
+                                   message: '수량(quantity)은 1 이상의 정수여야 합니다.' },
+        { check: rental_start_date, message: '대여일(rental_date) 형식이 올바르지 않습니다.' },
+      ];
+
+      let validationFailed = false;
+      for (const v of validations) {
+        if (!v.check) {
+          results.push({ project: sheetName, row: rowNum, status: 'failed', reason: v.message });
+          failed++;
+          validationFailed = true;
+          break;
+        }
       }
+      if (validationFailed) continue;
 
       // asset_type findOrCreate
       if (!typeCache[assetTypeName]) {
