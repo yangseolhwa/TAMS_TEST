@@ -382,9 +382,9 @@
 }
 
 /* =====================
-   반납 비고란
+   반납/이동 모드 공통 입력 영역
    ===================== */
-.returnRemarkArea {
+.modeArea {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -395,14 +395,14 @@
   border-radius: var(--radius-md);
 }
 
-.returnRemarkLabel {
+.modeAreaLabel {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
-.returnRemarkInput {
+.modeAreaInput {
   flex: 1;
   height: 34px;
   padding: 0 10px;
@@ -415,15 +415,51 @@
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.returnRemarkInput:focus {
+.modeAreaInput:focus {
   outline: none;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
-.returnRemarkInput::placeholder {
+.modeAreaInput::placeholder {
   color: var(--color-text-secondary);
 }
+
+/* 이동 모드 버튼 */
+.moveSaveBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background-color: var(--color-submit);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.moveSaveBtn:hover:not(:disabled) { background-color: var(--color-submit-hover); }
+.moveSaveBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.moveCancelBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.moveCancelBtn:hover { background-color: var(--color-bg); }
 
 /* 반납 모드 버튼 */
 .returnConfirmBtn {
