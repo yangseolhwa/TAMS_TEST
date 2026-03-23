@@ -58,6 +58,9 @@ const DataTable = ({
   };
 
   const renderCell = (col, row) => {
+    // 컬럼에 커스텀 렌더러가 있으면 우선 사용
+    if (col.renderCell) return col.renderCell(row);
+
     const value = row[col.key];
 
     // 뱃지 타입은 하이라이트 미적용
@@ -182,4 +185,4 @@ DataTable.propTypes = {
   highlight:         PropTypes.string,
 };
 
-export default DataTable;
+export default DataTable

@@ -72,4 +72,6 @@ html, body {
   --color-badge-green:       #059669;
   --color-badge-red-bg:      rgba(192, 57, 43, 0.1);
   --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
+  /* Table */
+  --color-table-header-bg: #f2f4f9;
 }

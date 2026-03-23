@@ -32,8 +32,7 @@
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
-  /* 반투명 tint 대신 불투명 고정 색상 사용 — sticky 시 하위 행이 비치지 않도록 */
-  background-color: #f2f4f9;
+  background-color: var(--color-table-header-bg);
   position: sticky;
   top: 0;
   z-index: 1;
