@@ -2,6 +2,29 @@ import { useMemo } from "react";
 import PropTypes from "prop-types";
 import styles from "./DataTable.module.css";
 
+// 키워드 일치 부분을 <mark>로 감싸는 헬퍼
+const applyHighlight = (text, keyword) => {
+  if (!keyword || text == null || text === "") return text;
+  const str = String(text);
+  const kw  = keyword.toLowerCase();
+  const parts = [];
+  let lastIdx = 0;
+  let idx = str.toLowerCase().indexOf(kw, lastIdx);
+
+  while (idx !== -1) {
+    if (idx > lastIdx) parts.push(str.slice(lastIdx, idx));
+    parts.push(
+      <mark key={idx} className={styles.highlight}>
+        {str.slice(idx, idx + keyword.length)}
+      </mark>
+    );
+    lastIdx = idx + keyword.length;
+    idx = str.toLowerCase().indexOf(kw, lastIdx);
+  }
+  if (lastIdx < str.length) parts.push(str.slice(lastIdx));
+  return parts.length > 1 ? <>{parts}</> : text;
+};
+
 const DataTable = ({
   columns,
   rows,
@@ -9,6 +32,7 @@ const DataTable = ({
   selectedIds,
   onSelectionChange,
   totalCount,
+  highlight,
 }) => {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -39,6 +63,7 @@ const DataTable = ({
 
     const value = row[col.key];
 
+    // 뱃지 타입은 하이라이트 미적용
     if (col.type === "assetType") {
       if (!value) return <span className={styles.dash}>—</span>;
       return (
@@ -59,11 +84,15 @@ const DataTable = ({
       );
     }
 
-    if (col.type === "dash" || value == null || value === "") {
-      return value ? value : <span className={styles.dash}>—</span>;
+    // 빈 값 처리
+    if (value == null || value === "") {
+      return <span className={styles.dash}>—</span>;
     }
 
-    return value;
+    // 일반 텍스트 — 하이라이트 적용
+    return highlight
+      ? applyHighlight(value, highlight)
+      : value;
   };
 
   return (
@@ -134,9 +163,9 @@ const DataTable = ({
 DataTable.propTypes = {
   columns: PropTypes.arrayOf(
     PropTypes.shape({
-      key: PropTypes.string.isRequired,
+      key:   PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
-      type: PropTypes.oneOf(["status", "assetType", "dash"]),
+      type:  PropTypes.oneOf(["status", "assetType", "dash"]),
     })
   ).isRequired,
   rows: PropTypes.arrayOf(
@@ -150,9 +179,10 @@ DataTable.propTypes = {
       color: PropTypes.string.isRequired,
     })
   ),
-  selectedIds: PropTypes.array.isRequired,
+  selectedIds:       PropTypes.array.isRequired,
   onSelectionChange: PropTypes.func.isRequired,
-  totalCount: PropTypes.number,
+  totalCount:        PropTypes.number,
+  highlight:         PropTypes.string,
 };
 
 export default DataTable

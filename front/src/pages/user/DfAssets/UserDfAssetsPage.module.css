@@ -1,0 +1,466 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =====================
+   섹션
+   ===================== */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* =====================
+   프로젝트 요약 카드
+   ===================== */
+.projCards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.projCard {
+  background-color: var(--color-surface);
+  border: 1.5px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 14px 22px;
+  min-width: 120px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.projCard:hover {
+  border-color: var(--color-primary-border);
+  background-color: var(--color-primary-tint);
+}
+
+.projCardTotal {
+  background-color: var(--color-primary-tint);
+  border-color: var(--color-primary-border);
+}
+
+.projCardActive {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(30, 45, 69, 0.2);
+}
+
+.projCardActive .projCardTitle,
+.projCardActive .projCardCount {
+  color: #fff !important;
+}
+
+.projCardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.projCardTotal .projCardTitle { color: var(--color-primary); }
+
+.projCardCount {
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+}
+
+.projCardTotal .projCardCount { color: var(--color-primary); }
+
+.projCardUnit {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* =====================
+   필터 영역
+   ===================== */
+.filterArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filterSelect {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+
+.filterSelect:hover { border-color: var(--color-border); }
+.filterSelect:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.filterResetBtn {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-tint);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.filterResetBtn:hover {
+  background: var(--color-primary-tint-hover);
+  border-color: var(--color-primary-border-hover);
+}
+
+.filterSearchWrap {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.filterSearchWrap:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.filterInput {
+  width: 220px;
+  height: 36px;
+  padding: 0 12px;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.filterInput::placeholder { color: var(--color-text-secondary); }
+
+.filterSearchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-left: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.filterSearchBtn:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+/* =====================
+   반납/이동 모드 공통 입력
+   ===================== */
+.modeArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background-color: var(--color-accent-bg);
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--radius-md);
+}
+
+.modeAreaLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.modeAreaInput {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.modeAreaInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.modeAreaInput::placeholder { color: var(--color-text-secondary); }
+
+/* =====================
+   테이블 액션 버튼 영역
+   ===================== */
+.tableActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Import/Export 버튼 묶음 (좌측) */
+.tableActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 이동/반납 버튼 묶음 (우측) */
+.tableActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Import 버튼 */
+.importBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.importBtn:hover:not(:disabled) {
+  background-color: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+}
+
+.importBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Export 버튼 */
+.exportBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.exportBtn:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
+}
+
+.exportBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 이동 모드 버튼 */
+.moveSaveBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background-color: var(--color-submit);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.moveSaveBtn:hover:not(:disabled) { background-color: var(--color-submit-hover); }
+.moveSaveBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.moveCancelBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.moveCancelBtn:hover { background-color: var(--color-bg); }
+
+/* 반납 모드 버튼 */
+.returnConfirmBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background-color: var(--color-error);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnConfirmBtn:hover:not(:disabled) { background-color: var(--color-error-hover); }
+.returnConfirmBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.returnCancelBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnCancelBtn:hover { background-color: var(--color-bg); }
+
+/* 자산 이동 / 반납 일반 버튼 */
+.returnBtn,
+.moveBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.returnBtn { background-color: var(--color-error); }
+.returnBtn:hover:not(:disabled) { background-color: var(--color-error-hover); }
+
+.moveBtn { background-color: var(--color-submit); }
+.moveBtn:hover:not(:disabled) { background-color: var(--color-submit-hover); }
+
+.returnBtn:disabled,
+.moveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* =====================
+   상태 메시지
+   ===================== */
+.stateMsg {
+  padding: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.errorMsg { color: var(--color-error); }
+
+/* =====================
+   페이지네이션
+   ===================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-top: 16px;
+}
+
+.pageBtn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  line-height: 1;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  border-color: var(--color-accent-border);
+}
+
+.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.pageBtnActive {
+  background-color: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  font-weight: 700;
+}
+
+.pageBtnActive:hover:not(:disabled) {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.pageDots {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: 0 4px;
+  user-select: none;
+}

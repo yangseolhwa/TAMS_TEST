@@ -17,5 +17,10 @@ export const ENDPOINTS = {
     ENTERPRISE_REJECT:  "/assets/enterprise/reject",
     SW_APPROVE:         "/assets/sw/approve",
     SW_REJECT:          "/assets/sw/reject",
+    DF:        '/assets/df',
+    DF_RETURN: '/assets/df/return',
+    DF_MOVE:   '/assets/df/move',
+    DF_IMPORT: '/assets/df/import',
+    DF_EXPORT: '/assets/df/export',
   },
 }
