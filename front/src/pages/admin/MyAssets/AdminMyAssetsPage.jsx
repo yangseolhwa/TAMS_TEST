@@ -33,8 +33,8 @@ import {
  * [공통 설정]
  */
 const INNER_TABS = [
-  { id: "request",  label: "자산 등록 요청" },
-  { id: "register", label: "셀프 등록" },
+  { id: "request",  label: "등록 요청" },
+  { id: "register", label: "자산 등록" },
 ];
 
 // 자산 등록 요청 탭용 컬럼 (admin: 요청자 포함, admin은 pending만 조회)
