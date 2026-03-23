@@ -175,64 +175,70 @@ function buildTotalSheet(wb, grouped) {
 
 // ── 메인 핸들러 ───────────────────────────────────────────────────
 const exportDf = async (req, res) => {
-  const { project_id, item_type_id, manufacturer, state, keyword } = req.query;
+  try {
+    const { project_id, item_type_id, manufacturer, state, keyword } = req.query;
 
-  const where = { state: { [Op.ne]: 'returned' } };
-  if (project_id)   where.project_id    = project_id;
-  if (item_type_id) where.asset_type_id = item_type_id;
-  if (manufacturer) where.manufacturer  = { [Op.like]: `%${manufacturer}%` };
-  if (state)        where.state         = state;
-  if (keyword) {
-    where[Op.or] = [
-      { model_name:    { [Op.like]: `%${keyword}%` } },
-      { serial_number: { [Op.like]: `%${keyword}%` } },
-      { location:      { [Op.like]: `%${keyword}%` } },
-      { remarks:       { [Op.like]: `%${keyword}%` } },
-    ];
-  }
+    const where = { state: { [Op.ne]: 'returned' } };
+    if (project_id)   where.project_id    = project_id;
+    if (item_type_id) where.asset_type_id = item_type_id;
+    if (manufacturer) where.manufacturer  = { [Op.like]: `%${manufacturer}%` };
+    if (state)        where.state         = state;
+    if (keyword) {
+      where[Op.or] = [
+        { model_name:    { [Op.like]: `%${keyword}%` } },
+        { serial_number: { [Op.like]: `%${keyword}%` } },
+        { location:      { [Op.like]: `%${keyword}%` } },
+        { remarks:       { [Op.like]: `%${keyword}%` } },
+      ];
+    }
 
-  const items = await AssetProjectItem.findAll({
-    where,
-    include: [
-      { model: AssetProject,         as: 'project',  attributes: ['id', 'name'] },
-      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
-    ],
-    order: [['project_id', 'ASC'], ['item_number', 'ASC']],
-  });
-
-  if (items.length === 0) {
-    return res.status(404).json({ message: '내보낼 데이터가 없습니다.' });
-  }
-
-  // 프로젝트별 그룹핑
-  const grouped = {};
-  items.forEach((item) => {
-    const name = item.project?.name || 'Unknown';
-    if (!grouped[name]) grouped[name] = [];
-    grouped[name].push(item);
-  });
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'TAMS';
-  wb.created = new Date();
-
-  // 1) TOTAL 시트
-  wb.addWorksheet('TOTAL');
-  buildTotalSheet(wb, grouped);
-
-  // 2) 프로젝트별 시트
-  Object.entries(grouped)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([projName, projItems]) => {
-      buildProjectSheet(wb, projName, projItems);
+    const items = await AssetProjectItem.findAll({
+      where,
+      include: [
+        { model: AssetProject,         as: 'project',  attributes: ['id', 'name'] },
+        { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+      ],
+      order: [['project_id', 'ASC'], ['item_number', 'ASC']],
     });
 
-  const fileName = `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    if (items.length === 0) {
+      return res.status(404).json({ message: '내보낼 데이터가 없습니다.' });
+    }
 
-  await wb.xlsx.write(res);
-  res.end();
+    // 프로젝트별 그룹핑
+    const grouped = {};
+    items.forEach((item) => {
+      const name = item.project?.name || 'Unknown';
+      if (!grouped[name]) grouped[name] = [];
+      grouped[name].push(item);
+    });
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'TAMS';
+    wb.created = new Date();
+
+    // 1) TOTAL 시트
+    buildTotalSheet(wb, grouped);
+
+    // 2) 프로젝트별 시트
+    Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([projName, projItems]) => {
+        buildProjectSheet(wb, projName, projItems);
+      });
+
+    const fileName = `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Excel export failed:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: '엑셀 파일 생성 중 오류가 발생했습니다.' });
+    }
+  }
 };
 
 module.exports = { exportDf };
