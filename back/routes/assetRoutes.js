@@ -37,11 +37,8 @@ router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/sw/move', assetController.moveSw);
 router.patch('/df/move', assetController.moveDf);
 
-// 엑셀 import
-// user/admin: DF 자산 업로드
+// 엑셀 import&export
 router.post('/df/import', upload.single('file'), importDf);
-
-// 엑셀 export
 router.get('/df/export', exportDf);
 
 module.exports = router;
