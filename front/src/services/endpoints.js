@@ -9,5 +9,7 @@ export const ENDPOINTS = {
     DF:        '/assets/df',
     DF_RETURN: '/assets/df/return',
     DF_MOVE:   '/assets/df/move',
+    DF_IMPORT: '/assets/df/import',
+    DF_EXPORT: '/assets/df/export',
   },
 }

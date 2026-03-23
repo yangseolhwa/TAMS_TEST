@@ -132,6 +132,11 @@ export const moveDfAssets = async (body) => {
   }
 }
 
+/**
+ * DF 자산 반납
+ * @param {{ item_ids: number[] }} body
+ * @returns {Promise<object>}
+ */
 export const returnDfAssets = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.DF_RETURN, body)
@@ -140,4 +145,55 @@ export const returnDfAssets = async (body) => {
     const message = error.response?.data?.message ?? 'DF 자산 반납에 실패했습니다.'
     throw new Error(message)
   }
+}
+
+/**
+ * DF 자산 엑셀 Import
+ * @param {File} file - .xlsx 파일
+ * @returns {Promise<{ message: string, imported: number, failed: number, results: object[] }>}
+ */
+export const importDfAssets = async (file) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post(ENDPOINTS.ASSETS.DF_IMPORT, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  } catch (error) {
+    const message = error.response?.data?.message ?? 'Import에 실패했습니다.'
+    throw new Error(message)
+  }
+}
+
+/**
+ * DF 자산 엑셀 Export (현재 필터 적용)
+ * @param {object} params - 쿼리 파라미터 (project_id, item_type_id, manufacturer, state, keyword)
+ * @returns {Promise<void>} - 브라우저 파일 다운로드 트리거
+ */
+export const exportDfAssets = async (params = {}) => {
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null)
+  )
+
+  const response = await api.get(ENDPOINTS.ASSETS.DF_EXPORT, {
+    params: cleanParams,
+    responseType: 'blob',
+  })
+
+  // Content-Disposition 헤더에서 파일명 추출 (없으면 기본값)
+  const disposition = response.headers['content-disposition'] ?? ''
+  const match       = disposition.match(/filename="(.+)"/)
+  const filename    = match
+    ? match[1]
+    : `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`
+
+  const url  = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href  = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }

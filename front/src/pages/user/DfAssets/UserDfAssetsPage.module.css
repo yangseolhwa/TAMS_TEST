@@ -39,8 +39,7 @@
   min-width: 120px;
   text-align: center;
   cursor: pointer;
-  transition: border-color var(--transition-fast), background-color var(--transition-fast),
-    box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .projCard:hover {
@@ -71,9 +70,7 @@
   white-space: nowrap;
 }
 
-.projCardTotal .projCardTitle {
-  color: var(--color-primary);
-}
+.projCardTotal .projCardTitle { color: var(--color-primary); }
 
 .projCardCount {
   font-size: 22px;
@@ -82,9 +79,7 @@
   color: var(--color-text-secondary);
 }
 
-.projCardTotal .projCardCount {
-  color: var(--color-primary);
-}
+.projCardTotal .projCardCount { color: var(--color-primary); }
 
 .projCardUnit {
   font-size: 13px;
@@ -116,10 +111,7 @@
   outline: none;
 }
 
-.filterSelect:hover {
-  border-color: var(--color-border);
-}
-
+.filterSelect:hover { border-color: var(--color-border); }
 .filterSelect:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-focus-ring);
@@ -171,9 +163,7 @@
   outline: none;
 }
 
-.filterInput::placeholder {
-  color: var(--color-text-secondary);
-}
+.filterInput::placeholder { color: var(--color-text-secondary); }
 
 .filterSearchBtn {
   display: flex;
@@ -196,7 +186,7 @@
 }
 
 /* =====================
-   반납/이동 모드 공통 입력 영역
+   반납/이동 모드 공통 입력
    ===================== */
 .modeArea {
   display: flex;
@@ -235,56 +225,82 @@
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
-.modeAreaInput::placeholder {
-  color: var(--color-text-secondary);
-}
+.modeAreaInput::placeholder { color: var(--color-text-secondary); }
 
 /* =====================
-   테이블 액션 버튼
+   테이블 액션 버튼 영역
    ===================== */
 .tableActions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.returnBtn,
-.moveBtn {
-  height: 36px;
-  padding: 0 16px;
-  font-size: 13px;
+/* Import/Export 버튼 묶음 (좌측) */
+.tableActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 이동/반납 버튼 묶음 (우측) */
+.tableActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Import 버튼 */
+.importBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
-  color: #fff;
-  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color var(--transition-fast), opacity var(--transition-fast);
   white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
-.returnBtn {
-  background-color: var(--color-error);
+.importBtn:hover:not(:disabled) {
+  background-color: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
 }
 
-.returnBtn:hover:not(:disabled) {
-  background-color: var(--color-error-hover);
+.importBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Export 버튼 */
+.exportBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
-.moveBtn {
-  background-color: var(--color-submit);
+.exportBtn:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
 }
 
-.moveBtn:hover:not(:disabled) {
-  background-color: var(--color-submit-hover);
-}
-
-.returnBtn:disabled,
-.moveBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.exportBtn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* 이동 모드 버튼 */
 .moveSaveBtn {
@@ -338,14 +354,8 @@
   white-space: nowrap;
 }
 
-.returnConfirmBtn:hover:not(:disabled) {
-  background-color: var(--color-error-hover);
-}
-
-.returnConfirmBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.returnConfirmBtn:hover:not(:disabled) { background-color: var(--color-error-hover); }
+.returnConfirmBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .returnCancelBtn {
   height: 36px;
@@ -362,10 +372,32 @@
   white-space: nowrap;
 }
 
-.returnCancelBtn:hover {
-  background-color: var(--color-bg);
+.returnCancelBtn:hover { background-color: var(--color-bg); }
+
+/* 자산 이동 / 반납 일반 버튼 */
+.returnBtn,
+.moveBtn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
 }
 
+.returnBtn { background-color: var(--color-error); }
+.returnBtn:hover:not(:disabled) { background-color: var(--color-error-hover); }
+
+.moveBtn { background-color: var(--color-submit); }
+.moveBtn:hover:not(:disabled) { background-color: var(--color-submit-hover); }
+
+.returnBtn:disabled,
+.moveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* =====================
    상태 메시지
@@ -377,9 +409,7 @@
   color: var(--color-text-secondary);
 }
 
-.errorMsg {
-  color: var(--color-error);
-}
+.errorMsg { color: var(--color-error); }
 
 /* =====================
    페이지네이션
@@ -404,8 +434,7 @@
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast),
-    border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   line-height: 1;
 }
 
@@ -415,10 +444,7 @@
   border-color: var(--color-accent-border);
 }
 
-.pageBtn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
+.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .pageBtnActive {
   background-color: var(--color-primary);

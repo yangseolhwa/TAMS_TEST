@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search } from 'react-bootstrap-icons'
 import toast from 'react-hot-toast'
@@ -6,7 +6,10 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
-import { fetchDfAssets, returnDfAssets, moveDfAssets } from '../../../services/assetService'
+import {
+  fetchDfAssets, returnDfAssets, moveDfAssets,
+  importDfAssets, exportDfAssets,
+} from '../../../services/assetService'
 import styles from './UserDfAssetsPage.module.css'
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -50,7 +53,8 @@ const EMPTY_FILTER = {
 
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 const UserDfAssetsPage = () => {
-  const queryClient = useQueryClient()
+  const queryClient  = useQueryClient()
+  const fileInputRef = useRef(null)
 
   // ── 조회 필터 상태 ────────────────────────────────────────────────────────
   const [selectedIds,    setSelectedIds]    = useState([])
@@ -59,7 +63,7 @@ const UserDfAssetsPage = () => {
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
   // ── 반납 관련 상태 ────────────────────────────────────────────────────────
-  const [returnMode,        setReturnMode]        = useState(false)  // 비고란 활성화 여부
+  const [returnMode,        setReturnMode]        = useState(false)
   const [returnRemarks,     setReturnRemarks]     = useState('')
   const [showReturnConfirm, setShowReturnConfirm] = useState(false)
   const [showNoSelectModal, setShowNoSelectModal] = useState(false)
@@ -68,6 +72,9 @@ const UserDfAssetsPage = () => {
   const [moveMode,        setMoveMode]        = useState(false)
   const [moveLocation,    setMoveLocation]    = useState('')
   const [showMoveConfirm, setShowMoveConfirm] = useState(false)
+
+  // ── Export 로딩 상태 ──────────────────────────────────────────────────────
+  const [isExporting, setIsExporting] = useState(false)
 
   // ── Base query ────────────────────────────────────────────────────────────
   const { data: baseData } = useQuery({
@@ -121,35 +128,6 @@ const UserDfAssetsPage = () => {
     },
   })
 
-  // ── 반납 핸들러 ───────────────────────────────────────────────────────────
-  // 1단계: 반납 버튼 클릭
-  const handleReturnClick = () => {
-    if (selectedIds.length === 0) {
-      setShowNoSelectModal(true)
-      return
-    }
-    setReturnMode(true)     // 비고란 활성화
-  }
-
-  // 2단계: 반납 확인 버튼 클릭 → 모달 오픈
-  const handleReturnConfirmClick = () => {
-    setShowReturnConfirm(true)
-  }
-
-  // 3단계: 모달 확인 → API 호출
-  const handleReturnConfirm = () => {
-    returnMutation.mutate({ item_ids: selectedIds })
-    setShowReturnConfirm(false)
-  }
-
-  // 반납 모드 취소
-  const cancelReturnMode = () => {
-    setReturnMode(false)
-    setReturnRemarks('')
-    setSelectedIds([])
-    setShowReturnConfirm(false)
-  }
-
   // ── 이동 Mutation ─────────────────────────────────────────────────────────
   const moveMutation = useMutation({
     mutationFn: moveDfAssets,
@@ -164,28 +142,95 @@ const UserDfAssetsPage = () => {
     },
   })
 
+  // ── Import Mutation ───────────────────────────────────────────────────────
+  const importMutation = useMutation({
+    mutationFn: importDfAssets,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['dfAssets'] })
+      const { imported, failed } = data
+      if (failed === 0) {
+        toast.success(`Import 완료: ${imported}건 성공`)
+      } else {
+        toast.error(`Import 완료: ${imported}건 성공, ${failed}건 실패`)
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message)
+    },
+  })
+
+  // ── Import 핸들러 ─────────────────────────────────────────────────────────
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    importMutation.mutate(file)
+    e.target.value = ''
+  }
+
+  // ── Export 핸들러 ─────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      const params = {}
+      if (appliedFilters.projectId)    params.project_id   = appliedFilters.projectId
+      if (appliedFilters.itemTypeId)   params.item_type_id = appliedFilters.itemTypeId
+      if (appliedFilters.manufacturer) params.manufacturer = appliedFilters.manufacturer
+      if (appliedFilters.state)        params.state        = appliedFilters.state
+      if (appliedFilters.keyword)      params.keyword      = appliedFilters.keyword
+      await exportDfAssets(params)
+      toast.success('엑셀 파일이 다운로드되었습니다.')
+    } catch (err) {
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text().catch(() => '')
+        try {
+          const json = JSON.parse(text)
+          toast.error(json.message ?? 'Export에 실패했습니다.')
+        } catch {
+          toast.error('Export에 실패했습니다.')
+        }
+      } else {
+        toast.error(err.message ?? 'Export에 실패했습니다.')
+      }
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // ── 반납 핸들러 ───────────────────────────────────────────────────────────
+  const handleReturnClick = () => {
+    if (selectedIds.length === 0) { setShowNoSelectModal(true); return }
+    setReturnMode(true)
+  }
+  const handleReturnConfirmClick = () => setShowReturnConfirm(true)
+  const handleReturnConfirm = () => {
+    returnMutation.mutate({ item_ids: selectedIds })
+    setShowReturnConfirm(false)
+  }
+  const cancelReturnMode = () => {
+    setReturnMode(false)
+    setReturnRemarks('')
+    setSelectedIds([])
+    setShowReturnConfirm(false)
+  }
+
   // ── 이동 핸들러 ───────────────────────────────────────────────────────────
   const handleMoveClick = () => {
-    if (selectedIds.length === 0) {
-      setShowNoSelectModal(true)
-      return
-    }
+    if (selectedIds.length === 0) { setShowNoSelectModal(true); return }
     setMoveMode(true)
   }
-
   const handleMoveSaveClick = () => {
-    if (!moveLocation.trim()) {
-      toast.error('이동할 위치를 입력해주세요.')
-      return
-    }
+    if (!moveLocation.trim()) { toast.error('이동할 위치를 입력해주세요.'); return }
     setShowMoveConfirm(true)
   }
-
   const handleMoveConfirm = () => {
     moveMutation.mutate({ item_ids: selectedIds, location: moveLocation.trim() })
     setShowMoveConfirm(false)
   }
-
   const cancelMoveMode = () => {
     setMoveMode(false)
     setMoveLocation('')
@@ -197,20 +242,17 @@ const UserDfAssetsPage = () => {
   const handleFilterChange = (field, value) => {
     setFilterForm((prev) => ({ ...prev, [field]: value }))
   }
-
   const handleSearch = () => {
     setAppliedFilters({ ...filterForm })
     setCurrentPage(1)
     setSelectedIds([])
   }
-
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
     setCurrentPage(1)
     setSelectedIds([])
   }
-
   const handleCardClick = (projectId) => {
     const next = { ...EMPTY_FILTER, projectId: String(projectId) }
     setFilterForm(next)
@@ -218,7 +260,6 @@ const UserDfAssetsPage = () => {
     setCurrentPage(1)
     setSelectedIds([])
   }
-
   const handleCardAllClick = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -254,6 +295,8 @@ const UserDfAssetsPage = () => {
   }, [safePage, totalPages])
 
   // ─────────────────────────────────────────────────────────────────────────
+  const isBusy = returnMode || moveMode
+
   return (
     <div className={styles.page}>
       <PageHeader
@@ -270,12 +313,9 @@ const UserDfAssetsPage = () => {
         {/* 프로젝트 요약 카드 */}
         <div className={styles.projCards}>
           <div
-            className={`${styles.projCard} ${styles.projCardTotal} ${
-              appliedFilters.projectId === '' ? styles.projCardActive : ''
-            }`}
+            className={`${styles.projCard} ${styles.projCardTotal} ${appliedFilters.projectId === '' ? styles.projCardActive : ''}`}
             onClick={handleCardAllClick}
-            role="button"
-            tabIndex={0}
+            role="button" tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && handleCardAllClick()}
           >
             <div className={styles.projCardTitle}>전체 프로젝트</div>
@@ -284,22 +324,17 @@ const UserDfAssetsPage = () => {
               <span className={styles.projCardUnit}> 건</span>
             </div>
           </div>
-
           {projectSummaries.map((proj) => (
             <div
               key={proj.id}
-              className={`${styles.projCard} ${
-                appliedFilters.projectId === String(proj.id) ? styles.projCardActive : ''
-              }`}
+              className={`${styles.projCard} ${appliedFilters.projectId === String(proj.id) ? styles.projCardActive : ''}`}
               onClick={() => handleCardClick(proj.id)}
-              role="button"
-              tabIndex={0}
+              role="button" tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && handleCardClick(proj.id)}
             >
               <div className={styles.projCardTitle}>{proj.name}</div>
               <div className={styles.projCardCount}>
-                {proj.count}
-                <span className={styles.projCardUnit}> 건</span>
+                {proj.count}<span className={styles.projCardUnit}> 건</span>
               </div>
             </div>
           ))}
@@ -309,155 +344,97 @@ const UserDfAssetsPage = () => {
         <Card>
           {/* 필터 영역 */}
           <div className={styles.filterArea}>
-            <select
-              className={styles.filterSelect}
-              value={filterForm.projectId}
-              onChange={(e) => handleFilterChange('projectId', e.target.value)}
-            >
+            <select className={styles.filterSelect} value={filterForm.projectId} onChange={(e) => handleFilterChange('projectId', e.target.value)}>
               <option value="">전체 프로젝트</option>
-              {projectSummaries.map((proj) => (
-                <option key={proj.id} value={proj.id}>{proj.name}</option>
-              ))}
+              {projectSummaries.map((proj) => (<option key={proj.id} value={proj.id}>{proj.name}</option>))}
             </select>
-
-            <select
-              className={styles.filterSelect}
-              value={filterForm.itemTypeId}
-              onChange={(e) => handleFilterChange('itemTypeId', e.target.value)}
-            >
+            <select className={styles.filterSelect} value={filterForm.itemTypeId} onChange={(e) => handleFilterChange('itemTypeId', e.target.value)}>
               <option value="">자산 종류 전체</option>
-              {itemTypeOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.name}</option>
-              ))}
+              {itemTypeOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.name}</option>))}
             </select>
-
-            <select
-              className={styles.filterSelect}
-              value={filterForm.manufacturer}
-              onChange={(e) => handleFilterChange('manufacturer', e.target.value)}
-            >
+            <select className={styles.filterSelect} value={filterForm.manufacturer} onChange={(e) => handleFilterChange('manufacturer', e.target.value)}>
               <option value="">제조사 전체</option>
-              {manufacturerOptions.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {manufacturerOptions.map((m) => (<option key={m} value={m}>{m}</option>))}
             </select>
-
-            <select
-              className={styles.filterSelect}
-              value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
-            >
+            <select className={styles.filterSelect} value={filterForm.state} onChange={(e) => handleFilterChange('state', e.target.value)}>
               <option value="">자산 상태 전체</option>
-              {STATE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
+              {STATE_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
             </select>
-
-            <button className={styles.filterResetBtn} onClick={handleFilterReset}>
-              초기화
-            </button>
-
+            <button className={styles.filterResetBtn} onClick={handleFilterReset}>초기화</button>
             <div className={styles.filterSearchWrap}>
-              <input
-                type="text"
-                className={styles.filterInput}
-                placeholder="검색어를 입력하세요"
-                value={filterForm.keyword}
-                onChange={(e) => handleFilterChange('keyword', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <button className={styles.filterSearchBtn} onClick={handleSearch}>
-                <Search size={14} />
-              </button>
+              <input type="text" className={styles.filterInput} placeholder="검색어를 입력하세요" value={filterForm.keyword} onChange={(e) => handleFilterChange('keyword', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+              <button className={styles.filterSearchBtn} onClick={handleSearch}><Search size={14} /></button>
             </div>
           </div>
 
-          {/* 비고란 — 반납 모드에서만 표시 */}
+          {/* 반납 모드 비고 */}
           {returnMode && (
             <div className={styles.modeArea}>
               <label className={styles.modeAreaLabel}>비고</label>
-              <input
-                className={styles.modeAreaInput}
-                type="text"
-                placeholder="반납 사유 또는 메모를 입력하세요 (선택)"
-                value={returnRemarks}
-                onChange={(e) => setReturnRemarks(e.target.value)}
-              />
+              <input className={styles.modeAreaInput} type="text" placeholder="반납 사유 또는 메모를 입력하세요 (선택)" value={returnRemarks} onChange={(e) => setReturnRemarks(e.target.value)} />
             </div>
           )}
 
-          {/* 위치 입력란 — 이동 모드에서만 표시 */}
+          {/* 이동 모드 위치 */}
           {moveMode && (
             <div className={styles.modeArea}>
               <label className={styles.modeAreaLabel}>이동 위치</label>
-              <input
-                className={styles.modeAreaInput}
-                type="text"
-                placeholder="이동할 위치를 입력하세요"
-                value={moveLocation}
-                onChange={(e) => setMoveLocation(e.target.value)}
-                autoFocus
-              />
+              <input className={styles.modeAreaInput} type="text" placeholder="이동할 위치를 입력하세요" value={moveLocation} onChange={(e) => setMoveLocation(e.target.value)} autoFocus />
             </div>
           )}
 
-          {/* 액션 버튼 영역 */}
+          {/* ── 액션 버튼 영역 ── */}
           <div className={styles.tableActions}>
-            {moveMode ? (
-              <>
-                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>
-                  취소
-                </button>
-                <button
-                  className={styles.moveSaveBtn}
-                  onClick={handleMoveSaveClick}
-                  disabled={moveMutation.isPending}
-                >
-                  저장
-                </button>
-              </>
-            ) : (
+            {/* Import / Export — 좌측 */}
+            <div className={styles.tableActionsLeft}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                hidden
+                onChange={handleFileChange}
+              />
               <button
-                className={styles.moveBtn}
-                onClick={handleMoveClick}
-                disabled={returnMode}
+                className={styles.importBtn}
+                onClick={handleImportClick}
+                disabled={importMutation.isPending || isBusy}
+                title="엑셀 파일을 업로드하여 DF 자산을 일괄 등록합니다"
               >
-                자산 이동
+                {importMutation.isPending ? 'Import 중...' : '⬆ Import'}
               </button>
-            )}
+              <button
+                className={styles.exportBtn}
+                onClick={handleExport}
+                disabled={isExporting || isBusy}
+                title="현재 필터 조건으로 엑셀 파일을 다운로드합니다"
+              >
+                {isExporting ? 'Export 중...' : '⬇ Export'}
+              </button>
+            </div>
 
-            {returnMode ? (
-              <>
-                <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>
-                  취소
-                </button>
-                <button
-                  className={styles.returnConfirmBtn}
-                  onClick={handleReturnConfirmClick}
-                  disabled={returnMutation.isPending}
-                >
-                  반납 확인
-                </button>
-              </>
-            ) : (
-              <button
-                className={styles.returnBtn}
-                onClick={handleReturnClick}
-                disabled={moveMode}
-              >
-                반납
-              </button>
-            )}
+            {/* 이동 / 반납 — 우측 */}
+            <div className={styles.tableActionsRight}>
+              {moveMode ? (
+                <>
+                  <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>취소</button>
+                  <button className={styles.moveSaveBtn} onClick={handleMoveSaveClick} disabled={moveMutation.isPending}>저장</button>
+                </>
+              ) : (
+                <button className={styles.moveBtn} onClick={handleMoveClick} disabled={returnMode}>자산 이동</button>
+              )}
+              {returnMode ? (
+                <>
+                  <button className={styles.returnCancelBtn} onClick={cancelReturnMode}>취소</button>
+                  <button className={styles.returnConfirmBtn} onClick={handleReturnConfirmClick} disabled={returnMutation.isPending}>반납 확인</button>
+                </>
+              ) : (
+                <button className={styles.returnBtn} onClick={handleReturnClick} disabled={moveMode}>반납</button>
+              )}
+            </div>
           </div>
 
-          {isLoading && (
-            <div className={styles.stateMsg}>데이터를 불러오는 중...</div>
-          )}
-          {isError && (
-            <div className={`${styles.stateMsg} ${styles.errorMsg}`}>
-              데이터 조회에 실패했습니다.
-            </div>
-          )}
+          {isLoading && <div className={styles.stateMsg}>데이터를 불러오는 중...</div>}
+          {isError   && <div className={`${styles.stateMsg} ${styles.errorMsg}`}>데이터 조회에 실패했습니다.</div>}
 
           {!isLoading && !isError && (
             <>
@@ -470,48 +447,25 @@ const UserDfAssetsPage = () => {
                 totalCount={totalCount}
                 highlight={appliedFilters.keyword}
               />
-
               {totalPages > 1 && (
                 <div className={styles.pagination}>
-                  <button
-                    className={styles.pageBtn}
-                    disabled={safePage === 1}
-                    onClick={() => handlePageChange(safePage - 1)}
-                    aria-label="이전 페이지"
-                  >‹</button>
-
+                  <button className={styles.pageBtn} disabled={safePage === 1} onClick={() => handlePageChange(safePage - 1)} aria-label="이전 페이지">‹</button>
                   {pageNumbers[0] > 1 && (
                     <>
                       <button className={styles.pageBtn} onClick={() => handlePageChange(1)}>1</button>
                       {pageNumbers[0] > 2 && <span className={styles.pageDots}>…</span>}
                     </>
                   )}
-
                   {pageNumbers.map((p) => (
-                    <button
-                      key={p}
-                      className={`${styles.pageBtn} ${safePage === p ? styles.pageBtnActive : ''}`}
-                      onClick={() => handlePageChange(p)}
-                    >{p}</button>
+                    <button key={p} className={`${styles.pageBtn} ${safePage === p ? styles.pageBtnActive : ''}`} onClick={() => handlePageChange(p)}>{p}</button>
                   ))}
-
                   {pageNumbers[pageNumbers.length - 1] < totalPages && (
                     <>
-                      {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                        <span className={styles.pageDots}>…</span>
-                      )}
-                      <button className={styles.pageBtn} onClick={() => handlePageChange(totalPages)}>
-                        {totalPages}
-                      </button>
+                      {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && <span className={styles.pageDots}>…</span>}
+                      <button className={styles.pageBtn} onClick={() => handlePageChange(totalPages)}>{totalPages}</button>
                     </>
                   )}
-
-                  <button
-                    className={styles.pageBtn}
-                    disabled={safePage === totalPages}
-                    onClick={() => handlePageChange(safePage + 1)}
-                    aria-label="다음 페이지"
-                  >›</button>
+                  <button className={styles.pageBtn} disabled={safePage === totalPages} onClick={() => handlePageChange(safePage + 1)} aria-label="다음 페이지">›</button>
                 </div>
               )}
             </>
@@ -520,35 +474,9 @@ const UserDfAssetsPage = () => {
       </section>
 
       {/* ── 모달 ── */}
-      <ConfirmModal
-        isOpen={showNoSelectModal}
-        title="자산을 선택해주세요."
-        desc="반납 또는 이동할 자산을 먼저 선택해주세요."
-        confirmLabel="확인"
-        confirmVariant="primary"
-        onConfirm={() => setShowNoSelectModal(false)}
-        onCancel={() => setShowNoSelectModal(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showMoveConfirm}
-        title={`선택한 자산 ${selectedIds.length}개를 이동할까요?`}
-        desc={`이동 위치: ${moveLocation}`}
-        confirmLabel="이동"
-        confirmVariant="primary"
-        onConfirm={handleMoveConfirm}
-        onCancel={() => setShowMoveConfirm(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showReturnConfirm}
-        title={`선택한 자산 ${selectedIds.length}개를 반납할까요?`}
-        desc="반납된 자산은 목록에서 제외됩니다."
-        confirmLabel="반납"
-        confirmVariant="danger"
-        onConfirm={handleReturnConfirm}
-        onCancel={() => setShowReturnConfirm(false)}
-      />
+      <ConfirmModal isOpen={showNoSelectModal} title="자산을 선택해주세요." desc="반납 또는 이동할 자산을 먼저 선택해주세요." confirmLabel="확인" confirmVariant="primary" onConfirm={() => setShowNoSelectModal(false)} onCancel={() => setShowNoSelectModal(false)} />
+      <ConfirmModal isOpen={showMoveConfirm} title={`선택한 자산 ${selectedIds.length}개를 이동할까요?`} desc={`이동 위치: ${moveLocation}`} confirmLabel="이동" confirmVariant="primary" onConfirm={handleMoveConfirm} onCancel={() => setShowMoveConfirm(false)} />
+      <ConfirmModal isOpen={showReturnConfirm} title={`선택한 자산 ${selectedIds.length}개를 반납할까요?`} desc="반납된 자산은 목록에서 제외됩니다." confirmLabel="반납" confirmVariant="danger" onConfirm={handleReturnConfirm} onCancel={() => setShowReturnConfirm(false)} />
     </div>
   )
 }
