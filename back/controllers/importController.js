@@ -127,7 +127,7 @@ const importDf = async (req, res) => {
         { check: assetTypeName,    message: 'asset_type이 없습니다.' },
         { check: manufacturer,     message: '제조사(manufacturer)가 없습니다.' },
         { check: model_name,       message: '모델명(model_name)이 없습니다.' },
-        { check: !(quantityRaw == null || isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)),
+        { check: quantityRaw != null && !isNaN(quantity) && quantity >= 1 && Number.isInteger(quantity),
                                    message: '수량(quantity)은 1 이상의 정수여야 합니다.' },
         { check: rental_start_date, message: '대여일(rental_date) 형식이 올바르지 않습니다.' },
       ];
