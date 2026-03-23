@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const assetController = require('../controllers/assetController');
+const upload = require('../middleware/excelUpload');
+const { importDf } = require('../controllers/importController')
 const { verifyAccessToken } = require('../middleware/authMiddleware');
 
 // 모든 자산 라우트는 AT 검증 필수
@@ -33,5 +35,9 @@ router.patch('/df/return', assetController.returnDf);
 router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/sw/move', assetController.moveSw);
 router.patch('/df/move', assetController.moveDf);
+
+// 엑셀 업로드
+// user/admin: DF 자산 업로드
+router.post('/df/import', upload.single('file'), importDf);
 
 module.exports = router;
