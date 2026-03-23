@@ -38,6 +38,6 @@ router.patch('/df/move', assetController.moveDf);
 
 // 엑셀 업로드
 // user/admin: DF 자산 업로드
-router.post('/df/import', verifyAccessToken, upload.single('file'), importDf);
+router.post('/df/import', upload.single('file'), importDf);
 
 module.exports = router;
