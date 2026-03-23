@@ -1,0 +1,321 @@
+/* =====================
+   전체 래퍼
+   ===================== */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* =====================
+   Header
+   ===================== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 32px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 2px solid var(--color-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.headerLogo {
+  display: flex;
+  align-items: center;
+  min-width: 160px;
+}
+
+.logoImg {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary);
+}
+
+.profileIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-primary);
+  display: block;
+}
+
+.profileName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.logoutBtn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: none;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.logoutBtn:hover {
+  background-color: var(--color-bg);
+}
+
+/* =====================
+   Navigation Tab Bar
+   ===================== */
+.nav {
+  background-color: var(--color-surface);
+  flex-shrink: 0;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.navTabs {
+  display: flex;
+  align-items: flex-end;
+  height: 44px;
+  gap: 4px;
+}
+
+.tab {
+  padding: 0 20px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-border);
+  background-color: var(--color-surface);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--color-primary);
+}
+
+.tabActive {
+  color: var(--color-primary);
+  background-color: var(--color-surface);
+  border-color: var(--color-border-light);
+}
+
+/* =====================
+   Body (Sidebar + Content)
+   ===================== */
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* =====================
+   Sidebar
+   ===================== */
+.sidebar {
+  flex-shrink: 0;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border-light);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.sidebarOpen {
+  width: 220px;
+}
+
+.sidebarClosed {
+  width: 0;
+}
+
+.sidebarInner {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 12px 12px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.sidebarTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sidebarToggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarToggle:hover {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+}
+
+.sidebarMenu {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.sidebarMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarMenuItem:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.sidebarMenuDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast);
+}
+
+.sidebarMenuLabel {
+  white-space: nowrap;
+}
+
+.sidebarMenuItemActive {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebarMenuItemActive .sidebarMenuDot {
+  background-color: var(--color-primary);
+}
+
+/* 닫혔을 때 토글 버튼 */
+.sidebarOpenBtn {
+  width: 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 12px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebarOpenBtn:hover {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+}
+
+/* =====================
+   Main Content
+   ===================== */
+.main {
+  flex: 1;
+  padding: 28px 32px;
+  overflow-y: auto;
+}
+
+/* =====================
+   Footer
+   ===================== */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 24px;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+}
+
+/* =====================
+   반응형
+   ===================== */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 20px;
+    height: 56px;
+  }
+
+  .nav {
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main {
+    padding: 20px;
+  }
+
+  .footer {
+    padding: 0 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 16px;
+  }
+}
