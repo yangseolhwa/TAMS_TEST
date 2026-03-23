@@ -28,7 +28,6 @@ coverage/
 .idea/
 
 # Package manager lock files (원하는 것만 사용)
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
