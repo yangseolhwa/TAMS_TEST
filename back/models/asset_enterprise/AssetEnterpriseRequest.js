@@ -10,7 +10,6 @@ const AssetEnterpriseRequest = sequelize.define('AssetEnterpriseRequest', {
   request_date: { type: DataTypes.DATEONLY },
   request_reason: { type: DataTypes.STRING(255) },
   new_asset_data: { type: DataTypes.TEXT },
-  admin_reason: { type: DataTypes.STRING(255) },
   request_type: { type: DataTypes.ENUM('register', 'return') },
   processed_at: { type: DataTypes.DATE },
 }, {

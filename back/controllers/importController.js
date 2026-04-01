@@ -2,29 +2,31 @@ const XLSX = require('xlsx');
 const sequelize = require('../config/db');
 const { AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory } = require('../models');
 
-const VALID_STATES = ['active', 'stored', 'rented', 'returned'];
+const VALID_STATES = ['in_use', 'stored', 'rented', 'returned'];
 
 // ── 컬럼 인덱스 상수 ─────────────────────────────────────────────
+// 엑셀 헤더 순서 (B열부터): number, asset_type, owner_organization, equipment_number,
+// manufacturer, model_name, serial_number, spec, acquisition_date, return_date, state, location, remarks
 const COL = {
   NUMBER:             0,
-  DOOSAN_ITEM_NUMBER: 1,
-  ASSET_TYPE:         2,
-  MANUFACTURER:       3,
-  MODEL_NAME:         4,
-  SERIAL_NUMBER:      5,
-  SPEC:               6,
-  QUANTITY:           7,
-  RENTAL_DATE:        8,
+  ASSET_TYPE:         1,
+  OWNER_ORGANIZATION: 2,
+  EQUIPMENT_NUMBER:   3,
+  MANUFACTURER:       4,
+  MODEL_NAME:         5,
+  SERIAL_NUMBER:      6,
+  SPEC:               7,
+  ACQUISITION_DATE:   8,
   RETURN_DATE:        9,
   STATE:              10,
   LOCATION:           11,
   REMARKS:            12,
 };
 
-// carry-forward 적용 컬럼 (고유값 제외: NUMBER, DOOSAN_ITEM_NUMBER, SERIAL_NUMBER)
+// carry-forward 적용 컬럼 (고유값 제외: NUMBER, EQUIPMENT_NUMBER, SERIAL_NUMBER)
 const CARRY_INDEXES = [
-  COL.ASSET_TYPE, COL.MANUFACTURER, COL.MODEL_NAME, COL.SPEC,
-  COL.QUANTITY, COL.RENTAL_DATE, COL.RETURN_DATE, COL.STATE,
+  COL.ASSET_TYPE, COL.OWNER_ORGANIZATION, COL.MANUFACTURER, COL.MODEL_NAME,
+  COL.SPEC, COL.ACQUISITION_DATE, COL.RETURN_DATE, COL.STATE,
   COL.LOCATION, COL.REMARKS,
 ];
 
@@ -64,7 +66,6 @@ const importDf = async (req, res) => {
   projectSheets.forEach((s) => { sheetNameToDbName[s] = s.replace(/_/g, ' '); });
 
   const projectCache = {};
-
   const typeCache = {};
   const existingTypes = await AssetProjectItemType.findAll();
   existingTypes.forEach((t) => { typeCache[t.name] = t.id; });
@@ -104,32 +105,29 @@ const importDf = async (req, res) => {
       const rowNum = i + 2;
 
       const assetTypeName      = toVal(row[COL.ASSET_TYPE]);
+      const owner_organization = toVal(row[COL.OWNER_ORGANIZATION]);
+      const equipment_number   = toVal(row[COL.EQUIPMENT_NUMBER]);
       const manufacturer       = toVal(row[COL.MANUFACTURER]);
       const model_name         = toVal(row[COL.MODEL_NAME]);
       const serial_number      = toVal(row[COL.SERIAL_NUMBER]);
       const spec               = toVal(row[COL.SPEC]);
-      const quantityRaw        = row[COL.QUANTITY];
-      const rentalDateRaw      = row[COL.RENTAL_DATE];
+      const acquisitionDateRaw = row[COL.ACQUISITION_DATE];
       const returnDateRaw      = row[COL.RETURN_DATE];
       const stateRaw           = toVal(row[COL.STATE]);
       const location           = toVal(row[COL.LOCATION]);
       const remarks            = toVal(row[COL.REMARKS]);
-      const doosan_item_number = toVal(row[COL.DOOSAN_ITEM_NUMBER]);
 
       // 완전히 빈 행 건너뛰기
       if (!assetTypeName && !manufacturer && !model_name) continue;
 
       // ── 유효성 검사 ──────────────────────────────────────────────
-      const quantity = Number(quantityRaw);
-      const rental_start_date = parseDate(rentalDateRaw);
+      const acquisition_date = parseDate(acquisitionDateRaw);
 
       const validations = [
         { check: assetTypeName,    message: 'asset_type이 없습니다.' },
         { check: manufacturer,     message: '제조사(manufacturer)가 없습니다.' },
         { check: model_name,       message: '모델명(model_name)이 없습니다.' },
-        { check: !(quantityRaw == null || isNaN(quantity) || quantity < 1 || !Number.isInteger(quantity)),
-                                   message: '수량(quantity)은 1 이상의 정수여야 합니다.' },
-        { check: rental_start_date, message: '대여일(rental_date) 형식이 올바르지 않습니다.' },
+        { check: acquisition_date, message: '취득일(acquisition_date) 형식이 올바르지 않습니다.' },
       ];
 
       let validationFailed = false;
@@ -147,14 +145,13 @@ const importDf = async (req, res) => {
       if (!typeCache[assetTypeName]) {
         const [newType] = await AssetProjectItemType.findOrCreate({
           where: { name: assetTypeName },
-          defaults: { name: assetTypeName, is_cable: false },
+          defaults: { name: assetTypeName, parent_id: null },
         });
         typeCache[assetTypeName] = newType.id;
       }
       const asset_type_id = typeCache[assetTypeName];
-
-      const rental_end_date = parseDate(returnDateRaw);
-      const state = stateRaw && VALID_STATES.includes(stateRaw) ? stateRaw : 'active';
+      const return_date   = parseDate(returnDateRaw);
+      const state         = stateRaw && VALID_STATES.includes(stateRaw) ? stateRaw : 'in_use';
 
       const t = await sequelize.transaction();
       try {
@@ -168,22 +165,21 @@ const importDf = async (req, res) => {
 
         const item = await AssetProjectItem.create(
           {
-            user_id: req.user.id,
+            user_id:            req.user.id,
             project_id,
             item_number,
             asset_type_id,
-            doosan_item_number: doosan_item_number || null,
+            owner_organization: owner_organization || null,
+            equipment_number:   equipment_number   || null,
             manufacturer,
             model_name,
-            serial_number: serial_number || null,
-            spec: spec || null,
-            quantity,
-            quantity_unit: 'ea',
-            rental_start_date,
-            rental_end_date: rental_end_date || null,
+            serial_number:      serial_number      || null,
+            spec:               spec               || null,
+            acquisition_date,
+            return_date:        return_date        || null,
             state,
-            location: location || null,
-            remarks: remarks || null,
+            location:           location           || null,
+            remarks:            remarks            || null,
           },
           { transaction: t }
         );
@@ -192,24 +188,21 @@ const importDf = async (req, res) => {
           {
             asset_project_item_id: item.id,
             project_id,
-            change_by: req.user.id,
-            change_type: 'register',
-            location_before: null,
-            location_after: location || null,
-            rental_start_date,
-            rental_end_date: rental_end_date || null,
-            state,
+            user_id:      req.user.id,
+            change_type:  'register',
+            before_value: null,
+            after_value:  state,
           },
           { transaction: t }
         );
 
         await t.commit();
         results.push({
-          project: sheetName,
+          project:         sheetName,
           project_created: projectIsNew,
-          row: rowNum,
-          status: 'success',
-          item_id: item.id,
+          row:             rowNum,
+          status:          'success',
+          item_id:         item.id,
           item_number,
         });
         imported++;
