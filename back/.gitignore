@@ -1,0 +1,37 @@
+# Node modules
+node_modules/
+
+# 환경 변수
+.env
+.env.* 
+
+# 로그 파일
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS 관련 파일
+.DS_Store
+Thumbs.db
+
+# 빌드/캐시 파일
+dist/
+build/
+.cache/
+coverage/
+.nyc_output/
+
+# IDE/Editor 설정
+.vscode/
+.idea/
+
+# Package manager lock files (원하는 것만 사용)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Temporary files
+*.tmp
+*.swp

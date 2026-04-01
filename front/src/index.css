@@ -1,0 +1,77 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg);
+}
+
+:root {
+  /* Colors */
+  --color-accent:          #3b82f6;
+  --color-accent-hover:    rgba(59, 130, 246, 0.6);
+  --color-accent-bg:       rgba(59, 130, 246, 0.06);
+  --color-accent-border:   rgba(59, 130, 246, 0.2);
+  --color-error:           #C0392B;
+  --color-error-hover:     #A93226;
+  --color-error-ring:      rgba(192, 57, 43, 0.07);
+  --color-error-border:    rgba(192, 57, 43, 0.25);
+  --color-focus-ring:      rgba(59, 130, 246, 0.1);
+
+  /* Submit Button */
+  --color-submit:          #4A7FC1;
+  --color-submit-hover:    #3D6FAD;
+
+  /* Layout Colors */
+  --color-bg:              #F0F2F5;
+  --color-surface:         #ffffff;
+  --color-primary:         #1E2D45;
+  --color-border:          #A0AEC0;
+  --color-border-light:    #E2E8F0;
+
+  /* Text Colors */
+  /* Primary Tints */
+  --color-primary-tint:         rgba(30, 45, 69, 0.05);
+  --color-primary-tint-hover:   rgba(30, 45, 69, 0.09);
+  --color-primary-border:       rgba(30, 45, 69, 0.25);
+  --color-primary-border-hover: rgba(30, 45, 69, 0.45);
+
+  /* Text Colors */
+  --color-text:            #1E2D45;
+  --color-text-secondary:  #718096;
+
+  /* Typography */
+  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 0 var(--color-border-light), 0 2px 8px rgba(30, 45, 69, 0.06);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-med:  300ms ease;
+
+  /* Border Radius */
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Badge - Asset Type */
+  --color-badge-pc-bg:       rgba(59, 130, 246, 0.12);
+  --color-badge-pc-text:     #2563eb;
+  --color-badge-sw-bg:       rgba(16, 185, 129, 0.12);
+  --color-badge-sw-text:     #059669;
+
+  /* Badge - Status */
+  --color-badge-yellow-bg:   rgba(245, 158, 11, 0.12);
+  --color-badge-yellow:      #d97706;
+  --color-badge-green-bg:    rgba(16, 185, 129, 0.12);
+  --color-badge-green:       #059669;
+  --color-badge-red-bg:      rgba(192, 57, 43, 0.1);
+  --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
+  /* Table */
+  --color-table-header-bg: #f2f4f9;
+}
