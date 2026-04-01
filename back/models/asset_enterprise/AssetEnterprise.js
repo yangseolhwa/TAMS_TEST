@@ -7,7 +7,7 @@ const AssetEnterprise = sequelize.define('AssetEnterprise', {
   category_id: { type: DataTypes.INTEGER },
   item_type_id: { type: DataTypes.INTEGER },
   department_id: { type: DataTypes.INTEGER },
-  responsible_type: { type: DataTypes.ENUM('personal', 'place', 'vacant') },
+  responsible_type: { type: DataTypes.ENUM('personal', 'place', 'vacant', 'shred') },
   user_id: { type: DataTypes.INTEGER },
   responsible_value: { type: DataTypes.STRING(100) },
   state: { type: DataTypes.ENUM('in_use', 'stored', 'returned') },
