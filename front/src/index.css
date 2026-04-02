@@ -26,6 +26,10 @@ html, body {
   --color-submit:          #4A7FC1;
   --color-submit-hover:    #3D6FAD;
 
+    /* Dark Button */
+  --color-dark:            #1E2D45;
+  --color-dark-hover:      #16243A;
+
   /* Layout Colors */
   --color-bg:              #F0F2F5;
   --color-surface:         #ffffff;
