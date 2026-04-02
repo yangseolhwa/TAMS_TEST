@@ -17,10 +17,22 @@
   margin: 0;
 }
 
+.pageDescRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .pageDesc {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin: 0;
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pageDate {
