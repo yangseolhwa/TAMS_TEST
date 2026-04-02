@@ -3,7 +3,7 @@ import styles from './HeaderButton.module.css';
 
 const HeaderButton = ({ label, onClick }) => {
   return (
-    <button className={styles.headerBtn} onClick={onClick}>
+    <button type="button" className={styles.headerBtn} onClick={onClick} {...props}>
       {label}
     </button>
   );
