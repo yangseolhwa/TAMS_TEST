@@ -55,6 +55,7 @@ html, body {
   --transition-med:  300ms ease;
 
   /* Border Radius */
+  --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
