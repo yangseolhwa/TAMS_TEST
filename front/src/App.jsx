@@ -40,7 +40,7 @@ function App() {
             <Route path="/admin/df-assets/*" element={role === 'admin' ? <AdminDfAssetsPage /> : <Navigate to="/login" replace />} />
 
             {/* User */}
-            <Route path="/user/my-assets/*"      element={role === 'user' ? <UserMyAssetsPage />      : <Navigate to="/login" replace />} />
+            <Route path="/user/my-assets"      element={role === 'user' ? <UserMyAssetsPage />      : <Navigate to="/login" replace />} />
             <Route path="/user/df-assets/*"       element={role === 'user' ? <UserDfAssetsPage />       : <Navigate to="/login" replace />} />
             <Route path="/user/my-assets/request" element={role === 'user' ? <UserRequestPage />        : <Navigate to="/login" replace />} />
             <Route path="/user/my-assets/history" element={role === 'user' ? <UserRequestHistoryPage /> : <Navigate to="/login" replace />} />
