@@ -6,6 +6,8 @@ import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
 import AdminDfAssetsPage from './pages/admin/DfAssets/AdminDfAssetsPage'
 import UserMyAssetsPage from './pages/user/MyAssets/UserMyAssetsPage'
 import UserDfAssetsPage from './pages/user/DfAssets/UserDfAssetsPage'
+import UserRequestPage from './pages/user/Request/UserRequestPage'
+import UserRequestHistoryPage from './pages/user/RequestHistory/UserRequestHistoryPage'
 
 function App() {
   const [role, setRole] = useState(sessionStorage.getItem('role'))
@@ -38,8 +40,10 @@ function App() {
             <Route path="/admin/df-assets/*" element={role === 'admin' ? <AdminDfAssetsPage /> : <Navigate to="/login" replace />} />
 
             {/* User */}
-            <Route path="/user/my-assets/*" element={role === 'user' ? <UserMyAssetsPage /> : <Navigate to="/login" replace />} />
-            <Route path="/user/df-assets/*" element={role === 'user' ? <UserDfAssetsPage /> : <Navigate to="/login" replace />} />
+            <Route path="/user/my-assets"      element={role === 'user' ? <UserMyAssetsPage />      : <Navigate to="/login" replace />} />
+            <Route path="/user/df-assets/*"       element={role === 'user' ? <UserDfAssetsPage />       : <Navigate to="/login" replace />} />
+            <Route path="/user/my-assets/request" element={role === 'user' ? <UserRequestPage />        : <Navigate to="/login" replace />} />
+            <Route path="/user/my-assets/history" element={role === 'user' ? <UserRequestHistoryPage /> : <Navigate to="/login" replace />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />
