@@ -1,13 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
+import { useNavigate } from "react-router-dom";
+import { Search } from "react-bootstrap-icons";
 import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import toast from "react-hot-toast";
-import Banner from "../../../components/Banner/Banner";
-import TabCard from "../../../components/TabCard/TabCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
-import RequestFormFields, { createInitialItem } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import Card from "../../../components/Card/Card";
 import styles from "./UserMyAssetsPage.module.css";
@@ -15,47 +13,13 @@ import DataTable from "../../../components/DataTable/DataTable";
 import {
   fetchPersonalAssets,
   fetchEnterpriseCategories,
-  fetchEnterpriseAssetsForForm,
-  fetchSwAssetsForForm,
   moveEnterpriseAssets,
   moveSwAssets,
   returnEnterpriseAssets,
   returnSwAssets,
-  requestEnterpriseAsset,
-  requestSwAsset,
-  fetchAssetRequests,
 } from "../../../services/assetService";
 
-/**
- * [공통 설정]
- */
-const MAX_ITEMS = 5;
-
-const INNER_TABS = [
-  { id: "request", label: "자산 등록 요청" },
-  { id: "status",  label: "자산 요청 현황" },
-];
-
 // 자산 현황 탭용 컬럼
-const REQUEST_STATUS_COLUMNS = [
-  { key: "no",          label: "No" },
-  { key: "assetType",   label: "자산 유형",  type: "assetType" },
-  { key: "assetName",   label: "자산명" },
-  { key: "spec",        label: "규격",        type: "dash" },
-  { key: "requestType", label: "요청 구분" },
-  { key: "requestedAt", label: "요청일" },
-  { key: "processedAt", label: "처리일",      type: "dash" },
-  { key: "status",      label: "상태",        type: "status" },
-  { key: "reason",      label: "사유",        type: "dash" },
-];
-
-const REQUEST_STATUS_MAP = {
-  PENDING:  { label: "대기", color: "yellow" },
-  APPROVED: { label: "승인", color: "green"  },
-  REJECTED: { label: "반려", color: "red"    },
-};
-
-// 내 자산 조회 탭용 컬럼
 const ASSET_LIST_COMMON_COLUMNS = [
   { key: "no",                 label: "No" },
   { key: "asset_type_label",   label: "자산 유형",   type: "assetType" },
@@ -66,7 +30,7 @@ const ASSET_LIST_COMMON_COLUMNS = [
   { key: "state",              label: "상태",         type: "status" },
 ];
 
-const ASSET_LIST_STATE_COLUMN  = { key: "state",    label: "상태", type: "status" };
+const ASSET_LIST_STATE_COLUMN    = { key: "state",    label: "상태", type: "status" };
 const ASSET_LIST_LOCATION_COLUMN = { key: "location", label: "위치", type: "dash" };
 
 const ASSET_LIST_COLUMNS_PC = [
@@ -115,22 +79,19 @@ const STATE_OPTIONS = {
 const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
 const UserMyAssetsPage = () => {
+  const navigate = useNavigate();
+
   // --- [State] ---
-  const [activeTab, setActiveTab] = useState(INNER_TABS[0].id);
-  const [items, setItems] = useState([createInitialItem()]); // 등록 요청 폼 아이템
-  const [requestSelectedIds, setRequestSelectedIds] = useState([]); // 요청 현황 선택
   const [listSelectedIds, setListSelectedIds] = useState([]); // 내 자산 조회 선택
 
   // 필터 상태
   const [filterType,     setFilterType]     = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterState,     setFilterState]    = useState("");
-  const [filterKeyword,   setFilterKeyword]  = useState("");
-  const [queryParams,     setQueryParams]    = useState({});
+  const [filterState,    setFilterState]    = useState("");
+  const [filterKeyword,  setFilterKeyword]  = useState("");
+  const [queryParams,    setQueryParams]    = useState({});
 
   // 모달 상태
-  const [showResetConfirm,     setShowResetConfirm]     = useState(false);
-  const [showSubmitConfirm,    setShowSubmitConfirm]    = useState(false);
   const [showReturnConfirm,    setShowReturnConfirm]    = useState(false);
   const [showMoveConfirm,      setShowMoveConfirm]      = useState(false);
   const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
@@ -139,20 +100,12 @@ const UserMyAssetsPage = () => {
   const [isMoveMode,    setIsMoveMode]    = useState(false);
   const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
 
-
-
   const queryClient = useQueryClient();
 
   // --- [React Query] ---
   const { data: listRows = [], isLoading } = useQuery({
     queryKey: ["personalAssets", queryParams],
     queryFn: () => fetchPersonalAssets(queryParams),
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: requestRows = [], isLoading: isRequestLoading } = useQuery({
-    queryKey: ["assetRequests"],
-    queryFn: fetchAssetRequests,
     refetchOnWindowFocus: false,
   });
 
@@ -210,20 +163,6 @@ const UserMyAssetsPage = () => {
     refetchOnWindowFocus: false,
   });
 
-  // 등록 요청 폼용 Enterprise 자산 목록 (원본)
-  const { data: enterpriseAssetsForForm = [] } = useQuery({
-    queryKey: ["enterpriseAssetsForForm"],
-    queryFn: fetchEnterpriseAssetsForForm,
-    refetchOnWindowFocus: false,
-  });
-
-  // 등록 요청 폼용 SW 자산 목록 (원본)
-  const { data: swAssetsForForm = [] } = useQuery({
-    queryKey: ["swAssetsForForm"],
-    queryFn: fetchSwAssetsForForm,
-    refetchOnWindowFocus: false,
-  });
-
   // 자산 유형에 따라 카테고리 옵션 결정
   const categoryOptions =
     filterType === "enterprise" ? enterpriseCategories.map((c) => ({ value: c.id,   label: c.name })) :
@@ -232,181 +171,6 @@ const UserMyAssetsPage = () => {
       ...enterpriseCategories.map((c) => ({ value: `pc_${c.id}`, label: c.name })),
       ...SW_FILTER_CATEGORIES.map((v)  => ({ value: `sw_${v}`,   label: v      })),
     ];
-
-  // --- [Handlers: 등록 요청 폼] ---
-  const handleAssetTypeChange = (index, value) => {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...createInitialItem(), id: item.id, assetType: value } : item
-      )
-    );
-  };
-
-  // fieldOrObject: 단일 필드명(string) 또는 { field: value, ... } 객체 (카스케이딩 초기화 등에 활용)
-  const handleItemChange = (index, fieldOrObject, value) => {
-    setItems((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item;
-        if (typeof fieldOrObject === "object") return { ...item, ...fieldOrObject };
-        return { ...item, [fieldOrObject]: value };
-      })
-    );
-  };
-
-  const handleAddItem = () => {
-    if (items.length >= MAX_ITEMS) return;
-    setItems((prev) => [...prev, createInitialItem()]);
-  };
-
-  const handleRemoveItem = (index) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddLicenseKey = (index) => {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, licenseKeys: [...item.licenseKeys, ""] } : item
-      )
-    );
-  };
-
-  const handleRemoveLicenseKey = (itemIndex, keyIndex) => {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === itemIndex
-          ? { ...item, licenseKeys: item.licenseKeys.filter((_, j) => j !== keyIndex) }
-          : item
-      )
-    );
-  };
-
-  const handleLicenseKeyChange = (itemIndex, keyIndex, value) => {
-    setItems((prev) =>
-      prev.map((item, i) =>
-        i === itemIndex
-          ? {
-              ...item,
-              licenseKeys: item.licenseKeys.map((key, j) => (j === keyIndex ? value : key)),
-            }
-          : item
-      )
-    );
-  };
-
-  const handleReset = () => {
-    setItems([createInitialItem()]);
-    setShowResetConfirm(false);
-  };
-
-  // 등록 요청 Mutation — PC/SW, 기존/신규 분리 후 Promise.all로 동시 호출
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      const pcNew      = items.filter((i) => i.assetType === "pc" && i.requestType === "new");
-      const pcExisting = items.filter((i) => i.assetType === "pc" && i.requestType === "existing");
-      const swNew      = items.filter((i) => i.assetType === "sw" && i.requestType === "new");
-      const swExisting = items.filter((i) => i.assetType === "sw" && i.requestType === "existing");
-
-      const calls = [
-        ...(pcNew.length > 0 ? [requestEnterpriseAsset({
-          is_existing: false,
-          assets: pcNew.map((i) => ({
-            asset_number:     i.assetNumber.trim(),
-            model_name:       i.modelName.trim(),
-            category_id:      Number(i.categoryId),
-            item_type_id:     Number(i.itemTypeId),
-            manufacturer:     i.manufacturer.trim(),
-            acquisition_date: i.acquisitionDate,
-            ...(i.spec.trim()          && { spec:              i.spec.trim() }),
-            ...(i.serialNumber.trim()  && { serial_number:     i.serialNumber.trim() }),
-            ...(i.requiredQuantity     && { required_quantity: Number(i.requiredQuantity) }),
-            ...(i.requestReason.trim() && { request_reason:    i.requestReason.trim() }),
-          })),
-        })] : []),
-
-        ...(pcExisting.length > 0 ? [requestEnterpriseAsset({
-          is_existing: true,
-          assets: pcExisting.map((i) => ({
-            asset_id:         Number(i.selectedAssetId),
-            acquisition_date: i.acquisitionDate,
-            ...(i.spec.trim()          && { spec:              i.spec.trim() }),
-            ...(i.serialNumber.trim()  && { serial_number:     i.serialNumber.trim() }),
-            ...(i.requiredQuantity     && { required_quantity: Number(i.requiredQuantity) }),
-            ...(i.requestReason.trim() && { request_reason:    i.requestReason.trim() }),
-          })),
-        })] : []),
-
-        ...(swNew.length > 0 ? [requestSwAsset({
-          is_existing: false,
-          licenses: swNew.map((i) => ({
-            name:          i.swName.trim(),
-            software_type: i.softwareType,
-            manufacturer:  i.swManufacturer.trim(),
-            license_key:   i.licenseKey.trim(),
-            key_type:      i.keyType,
-            ...(i.isSubscription !== ""  && { is_subscription: i.isSubscription === "true" }),
-            ...(i.requestReason.trim()   && { request_reason:  i.requestReason.trim() }),
-          })),
-        })] : []),
-
-        ...(swExisting.length > 0 ? [requestSwAsset({
-          is_existing: true,
-          licenses: swExisting.map((i) => ({
-            asset_sw_id:  Number(i.selectedSwId),
-            license_key:  i.licenseKey.trim(),
-            key_type:     i.keyType,
-            ...(i.requestReason.trim() && { request_reason: i.requestReason.trim() }),
-          })),
-        })] : []),
-      ];
-
-      await Promise.all(calls);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assetRequests"] });
-      toast.success("자산 등록 요청이 완료되었습니다.");
-      setItems([createInitialItem()]);
-      setShowSubmitConfirm(false);
-    },
-    onError: (err) => {
-      toast.error(err.message);
-      setShowSubmitConfirm(false);
-    },
-  });
-
-  const handleSubmit = () => {
-    // 각 항목 유효성 검사
-    for (const item of items) {
-      if (!item.assetType) {
-        toast.error("자산 유형을 선택해주세요.");
-        return;
-      }
-      if (item.assetType === "pc" && item.requestType === "existing") {
-        if (!item.selectedAssetId || !item.acquisitionDate) {
-          toast.error("PC 기존 자산: 자산 선택과 취득일은 필수 항목입니다.");
-          return;
-        }
-      }
-      if (item.assetType === "pc" && item.requestType === "new") {
-        if (!item.assetNumber || !item.categoryId || !item.itemTypeId || !item.manufacturer || !item.modelName || !item.acquisitionDate) {
-          toast.error("PC 신규 자산: 필수 항목을 모두 입력해주세요.");
-          return;
-        }
-      }
-      if (item.assetType === "sw" && item.requestType === "existing") {
-        if (!item.selectedSwId || !item.licenseKey || !item.keyType) {
-          toast.error("SW 기존 자산: 소프트웨어 선택, 라이선스키, 키 유형은 필수 항목입니다.");
-          return;
-        }
-      }
-      if (item.assetType === "sw" && item.requestType === "new") {
-        if (!item.swName || !item.softwareType || !item.swManufacturer || !item.licenseKey || !item.keyType) {
-          toast.error("SW 신규 자산: 필수 항목을 모두 입력해주세요.");
-          return;
-        }
-      }
-    }
-    setShowSubmitConfirm(true);
-  };
 
   // --- [Handlers: 조회 필터] ---
 
@@ -430,10 +194,10 @@ const UserMyAssetsPage = () => {
     } else if (type) {
       params.type = type;
     }
- 
+
     if (state)   params.state   = state;
     if (keyword) params.keyword = keyword;
- 
+
     return params;
   };
 
@@ -580,79 +344,19 @@ const UserMyAssetsPage = () => {
 
   return (
     <div className={styles.page}>
-      <PageHeader 
-        title="내 자산 관리" 
+      <PageHeader
+        title="내 자산 관리"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
         actions={
           <>
-            <HeaderButton label="등록 요청" />
-            <HeaderButton label="요청 내역" />
+            <HeaderButton label="등록 요청" onClick={() => navigate("/user/my-assets/request")} />
+            <HeaderButton label="요청 내역" onClick={() => navigate("/user/my-assets/history")} />
           </>
         }
       />
 
-
-      {/* 섹션 1: 내 자산 등록 및 현황 */}
+      {/* 섹션: 내 자산 조회 */}
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <ClipboardPlus size={15} />
-          <span>내 자산 등록</span>
-        </div>
-
-        <TabCard tabs={INNER_TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-          {activeTab === INNER_TABS[0].id ? (
-            <>
-              <Banner
-                text={
-                  <>
-                    소프트웨어 및 PC 장비를 최대 <strong>5개</strong>까지 동시에 요청할 수 있습니다. 처리 상태는 <strong>자산 요청 현황</strong>에서 확인하세요.
-                  </>
-                }
-              />
-              <RequestFormFields
-                items={items}
-                enterpriseAssets={enterpriseAssetsForForm}
-                swAssets={swAssetsForForm}
-                onAssetTypeChange={handleAssetTypeChange}
-                onItemChange={handleItemChange}
-                onRemoveItem={handleRemoveItem}
-              />
-              <div className={styles.formActions}>
-                {items.length < MAX_ITEMS && (
-                  <button className={styles.addItemBtn} onClick={handleAddItem}>
-                    <PlusCircleFill size={15} /> 항목 추가 ({items.length} / {MAX_ITEMS})
-                  </button>
-                )}
-                <div className={styles.actionBtns}>
-                  <ActionButton variant="white" size="md" label="초기화" onClick={() => setShowResetConfirm(true)}/>
-                  <ActionButton variant="blue" size="md" label="요청" onClick={handleSubmit} disabled={submitMutation.isPending}/>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <Banner text={<>승인 / 반려 항목은 처리 후 <strong>24시간</strong>이 경과하면 목록에서 자동 삭제됩니다.</>} />
-              <DataTable
-                columns={REQUEST_STATUS_COLUMNS}
-                rows={requestRows}
-                statusMap={REQUEST_STATUS_MAP}
-                selectedIds={requestSelectedIds}
-                onSelectionChange={setRequestSelectedIds}
-                totalCount={requestRows.length}
-                isLoading={isRequestLoading}
-              />
-            </>
-          )}
-        </TabCard>
-      </section>
-
-      {/* 섹션 2: 내 자산 조회 */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <Search size={15} />
-          <span>내 자산 조회</span>
-        </div>
-
         <Card>
           <div className={styles.filterArea}>
             <select className={styles.filterSelect} value={filterType} onChange={handleFilterTypeChange}>
@@ -675,7 +379,7 @@ const UserMyAssetsPage = () => {
               ))}
             </select>
 
-            <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset}/>
+            <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
             <div className={styles.filterSearchWrap}>
               <input
@@ -693,14 +397,14 @@ const UserMyAssetsPage = () => {
           <div className={styles.listTableActions}>
             {isMoveMode ? (
               <>
-                <ActionButton variant="white" size="sm" label="취소" onClick={cancelMoveMode}/>
-                <ActionButton variant="blue" size="sm" label="저장" onClick={handleMoveSaveClick} disabled={moveMutation.isPending}/>
+                <ActionButton variant="white" size="sm" label="취소" onClick={cancelMoveMode} />
+                <ActionButton variant="blue"  size="sm" label="저장" onClick={handleMoveSaveClick} disabled={moveMutation.isPending} />
               </>
             ) : (
               <>
-                <ActionButton variant="black" size="sm" label="상태 변경"/>
-                <ActionButton variant="blue" size="sm" label="자산 이동" onClick={handleMoveClick}/>
-                <ActionButton variant="red" size="sm" label="반납 요청" onClick={handleReturnClick}/>
+                <ActionButton variant="black" size="sm" label="상태 변경" />
+                <ActionButton variant="blue"  size="sm" label="자산 이동"  onClick={handleMoveClick} />
+                <ActionButton variant="red"   size="sm" label="반납 요청"  onClick={handleReturnClick} />
               </>
             )}
           </div>
@@ -718,24 +422,6 @@ const UserMyAssetsPage = () => {
       </section>
 
       {/* 모달 모음 */}
-      <ConfirmModal
-        isOpen={showResetConfirm}
-        title="입력 내용을 초기화할까요?"
-        desc="작성한 모든 항목이 삭제되고 초기 상태로 돌아갑니다."
-        confirmLabel="초기화"
-        confirmVariant="danger"
-        onConfirm={handleReset}
-        onCancel={() => setShowResetConfirm(false)}
-      />
-      <ConfirmModal
-        isOpen={showSubmitConfirm}
-        title={`자산 ${items.length}개를 등록 요청할까요?`}
-        desc="관리자 승인 후 자산이 등록됩니다."
-        confirmLabel="요청"
-        confirmVariant="primary"
-        onConfirm={() => submitMutation.mutate()}
-        onCancel={() => setShowSubmitConfirm(false)}
-      />
       <ConfirmModal
         isOpen={showNoSelectionModal}
         title="자산을 선택해주세요."
