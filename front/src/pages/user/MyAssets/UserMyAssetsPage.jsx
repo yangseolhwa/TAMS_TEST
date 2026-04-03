@@ -23,6 +23,7 @@ import {
   requestSwAsset,
   fetchAssetRequests,
 } from "../../../services/assetService";
+import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 
 /**
  * [공통 설정]
@@ -578,7 +579,17 @@ const UserMyAssetsPage = () => {
 
   return (
     <div className={styles.page}>
-      <PageHeader title="내 자산 관리" desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요." />
+      <PageHeader 
+        title="내 자산 관리" 
+        desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
+        actions={
+          <>
+            <HeaderButton label="등록 요청" />
+            <HeaderButton label="요청 내역" />
+          </>
+        }
+      />
+
 
       {/* 섹션 1: 내 자산 등록 및 현황 */}
       <section className={styles.section}>
