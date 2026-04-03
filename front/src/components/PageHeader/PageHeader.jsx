@@ -9,17 +9,16 @@ const PageHeader = ({ title, desc, actions }) => {
     <div className={styles.pageHeader}>
       <div className={styles.pageHeaderLeft}>
         <h1 className={styles.pageTitle}>{title}</h1>
-        {(desc || actions) && (
-          <div className={styles.pageDescRow}>
-            {desc && <p className={styles.pageDesc}>{desc}</p>}
-            {actions && <div className={styles.pageActions}>{actions}</div>}
-          </div>
-        )}
+        {desc && <p className={styles.pageDesc}>{desc}</p>}
       </div>
-      <span className={styles.pageDate}>{formattedDate} 기준</span>
+      <div className={styles.pageHeaderRight}>
+        <span className={styles.pageDate}>{formattedDate} 기준</span>
+        {actions && <div className={styles.pageActions}>{actions}</div>}
+      </div>
     </div>
   );
 };
+
 
 PageHeader.propTypes = {
   title: PropTypes.string.isRequired,
