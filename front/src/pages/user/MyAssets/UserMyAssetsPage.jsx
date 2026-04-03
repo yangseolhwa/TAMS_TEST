@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircleFill, Search, ClipboardPlus } from "react-bootstrap-icons";
+import HeaderButton from "../../../components/HeaderButton/HeaderButton";
+import ActionButton from "../../../components/ActionButton/ActionButton";
 import toast from "react-hot-toast";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
@@ -23,7 +25,6 @@ import {
   requestSwAsset,
   fetchAssetRequests,
 } from "../../../services/assetService";
-import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 
 /**
  * [공통 설정]
@@ -623,14 +624,8 @@ const UserMyAssetsPage = () => {
                   </button>
                 )}
                 <div className={styles.actionBtns}>
-                  <button className={styles.resetBtn} onClick={() => setShowResetConfirm(true)}>초기화</button>
-                  <button
-                    className={styles.submitBtn}
-                    onClick={handleSubmit}
-                    disabled={submitMutation.isPending}
-                  >
-                    {submitMutation.isPending ? "요청 중..." : "요청"}
-                  </button>
+                  <ActionButton variant="white" size="md" label="초기화" onClick={() => setShowResetConfirm(true)}/>
+                  <ActionButton variant="blue" size="md" label="요청" onClick={handleSubmit} disabled={submitMutation.isPending}/>
                 </div>
               </div>
             </>
@@ -680,7 +675,7 @@ const UserMyAssetsPage = () => {
               ))}
             </select>
 
-            <button className={styles.filterResetBtn} onClick={handleFilterReset}>초기화</button>
+            <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset}/>
 
             <div className={styles.filterSearchWrap}>
               <input
@@ -698,19 +693,14 @@ const UserMyAssetsPage = () => {
           <div className={styles.listTableActions}>
             {isMoveMode ? (
               <>
-                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>취소</button>
-                <button
-                  className={styles.moveSaveBtn}
-                  onClick={handleMoveSaveClick}
-                  disabled={moveMutation.isPending}
-                >
-                  저장
-                </button>
+                <ActionButton variant="white" size="sm" label="취소" onClick={cancelMoveMode}/>
+                <ActionButton variant="blue" size="sm" label="저장" onClick={handleMoveSaveClick} disabled={moveMutation.isPending}/>
               </>
             ) : (
               <>
-                <button className={styles.moveBtn} onClick={handleMoveClick}>자산 이동</button>
-                <button className={styles.returnBtn} onClick={handleReturnClick}>반납 요청</button>
+                <ActionButton variant="black" size="sm" label="상태 변경"/>
+                <ActionButton variant="blue" size="sm" label="자산 이동" onClick={handleMoveClick}/>
+                <ActionButton variant="red" size="sm" label="반납 요청" onClick={handleReturnClick}/>
               </>
             )}
           </div>
