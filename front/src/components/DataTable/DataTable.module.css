@@ -61,15 +61,21 @@
   background-color: var(--color-accent-bg);
 }
 
+/* td와 checkboxCell 공통 border */
+.td,
+.checkboxCell {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
 .td {
   padding: 10px 14px;
   vertical-align: middle;
   white-space: nowrap;
-  border-bottom: 1px solid var(--color-border-light);
 }
 
 /* 마지막 행 border-bottom 제거 */
-.table tbody tr:last-child .td {
+.table tbody tr:last-child .td,
+.table tbody tr:last-child .checkboxCell {
   border-bottom: none;
 }
 
