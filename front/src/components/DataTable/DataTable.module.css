@@ -113,25 +113,49 @@
   color: var(--color-badge-sw-text);
 }
 
-/* status color variants */
 .status_yellow {
   background-color: var(--color-badge-yellow-bg);
   color: var(--color-badge-yellow);
 }
 
 .status_green {
-  background-color: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
+  background-color: var(--badge-green-bg);
+  color: var(--badge-green);
+}
+
+.status_blue {
+  background-color: var(--badge-blue-bg);
+  color: var(--badge-blue);
+}
+
+.status_cyan {
+  background-color: var(--badge-cyan-bg);
+  color: var(--badge-cyan);
+}
+
+.status_purple {
+  background-color: var(--badge-purple-bg);
+  color: var(--badge-purple);
+}
+
+.status_purple_red {
+  background-color: var(--badge-purple-bg);
+  color: var(--badge-red-text);
+}
+
+.status_orange {
+  background-color: var(--badge-orange-bg);
+  color: var(--badge-orange);
+}
+
+.status_return {
+  background-color: var(--badge-return-bg);
+  color: var(--badge-red-text);
 }
 
 .status_red {
   background-color: var(--color-badge-red-bg);
   color: var(--color-error);
-}
-
-.status_blue {
-  background-color: var(--color-accent-bg);
-  color: var(--color-accent);
 }
 
 .status_gray {
@@ -155,3 +179,4 @@
   border-radius: 2px;
   padding: 0 1px;
 }
+
