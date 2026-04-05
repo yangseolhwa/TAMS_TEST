@@ -15,3 +15,14 @@
   background-color: var(--color-primary-tint);
   border-color: var(--color-primary-border-hover);
 }
+
+.headerBtnActive {
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+ 
+.headerBtnActive:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
