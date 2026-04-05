@@ -13,15 +13,6 @@
   gap: 10px;
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-}
-
 /* =====================
    폼 하단 액션 영역
    ===================== */
