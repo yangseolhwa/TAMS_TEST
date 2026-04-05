@@ -74,8 +74,7 @@
 }
 
 /* 마지막 행 border-bottom 제거 */
-.table tbody tr:last-child .td,
-.table tbody tr:last-child .checkboxCell {
+.table tbody tr:last-child td {
   border-bottom: none;
 }
 
