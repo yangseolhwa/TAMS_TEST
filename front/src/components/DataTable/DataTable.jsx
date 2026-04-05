@@ -98,8 +98,9 @@ const DataTable = ({
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tableScroll}>
-        <table className={styles.table}>
+      <div className={styles.tableWrapper}>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
           <thead>
             <tr>
               {selectable && (
@@ -156,7 +157,8 @@ const DataTable = ({
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
       {totalCount !== undefined && (
         <p className={styles.totalCount}>총 {totalCount}건</p>
