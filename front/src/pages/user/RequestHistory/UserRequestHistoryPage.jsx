@@ -18,9 +18,10 @@ const UserRequestHistoryPage = () => {
               label="등록 요청"
               onClick={() => navigate("/user/my-assets/request")}
             />
-            <HeaderButton active
+            <HeaderButton 
+              active
               label="요청 내역"
-              onClick={() => navigate("/user/my-assets/history")}
+              onClick={() => {}}
             />
           </>
         }

@@ -286,9 +286,10 @@ const UserRequestPage = () => {
         desc={<BackButton label="내 자산 관리" to="/user/my-assets" />}
         actions={
           <>
-            <HeaderButton active
+            <HeaderButton 
+              active
               label="등록 요청"
-              onClick={() => navigate("/user/my-assets/request")}
+              onClick={() => {}}
             />
             <HeaderButton
               label="요청 내역"
