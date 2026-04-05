@@ -60,8 +60,6 @@ const UserRequestHistoryPage = () => {
             rows={rows}
             statusMap={STATUS_MAP}
             selectable={false}
-            selectedIds={[]}
-            onSelectionChange={() => {}}
             totalCount={rows.length}
           />
         </Card>

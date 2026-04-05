@@ -30,8 +30,8 @@ const DataTable = ({
   rows,
   statusMap,
   selectable = true,
-  selectedIds,
-  onSelectionChange,
+  selectedIds = [],
+  onSelectionChange = () => {},
   totalCount,
   highlight,
 }) => {

@@ -119,38 +119,38 @@
 }
 
 .status_green {
-  background-color: var(--badge-green-bg);
-  color: var(--badge-green);
+  background-color: var(--color-badge-green2-bg);
+  color: var(--color-badge-green2);
 }
 
 .status_blue {
-  background-color: var(--badge-blue-bg);
-  color: var(--badge-blue);
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
 }
 
 .status_cyan {
-  background-color: var(--badge-cyan-bg);
-  color: var(--badge-cyan);
+  background-color: var(--color-badge-cyan-bg);
+  color: var(--color-badge-cyan);
 }
 
 .status_purple {
-  background-color: var(--badge-purple-bg);
-  color: var(--badge-purple);
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
 }
 
 .status_purple_red {
-  background-color: var(--badge-purple-bg);
-  color: var(--badge-red-text);
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-red2);
 }
 
 .status_orange {
-  background-color: var(--badge-orange-bg);
-  color: var(--badge-orange);
+  background-color: var(--color-badge-orange-bg);
+  color: var(--color-badge-orange);
 }
 
 .status_return {
-  background-color: var(--badge-return-bg);
-  color: var(--badge-red-text);
+  background-color: var(--color-badge-return-bg);
+  color: var(--color-badge-red2);
 }
 
 .status_red {
@@ -179,4 +179,3 @@
   border-radius: 2px;
   padding: 0 1px;
 }
-

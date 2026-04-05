@@ -79,18 +79,18 @@ html, body {
   --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
 
   /* Badge - Status (커스텀) */
-  --badge-green-bg:          #AFFBC5;
-  --badge-green:             #19A019;
-  --badge-blue-bg:           #DBEAFE;
-  --badge-blue:              #1D4EDA;
-  --badge-cyan-bg:           #8CE6F3;
-  --badge-cyan:              #2A53C8;
-  --badge-purple-bg:         #DDD7FB;
-  --badge-purple:            #6834D0;
-  --badge-red-text:          #B91C1C;
-  --badge-orange-bg:         #FFC583;
-  --badge-orange:            #8C4C03;
-  --badge-return-bg:         #FEE2E2;
+  --color-badge-green2-bg:       #AFFBC5;
+  --color-badge-green2:          #19A019;
+  --color-badge-blue2-bg:        #DBEAFE;
+  --color-badge-blue2:           #1D4EDA;
+  --color-badge-cyan-bg:         #8CE6F3;
+  --color-badge-cyan:            #2A53C8;
+  --color-badge-purple-bg:       #DDD7FB;
+  --color-badge-purple:          #6834D0;
+  --color-badge-red2:            #B91C1C;
+  --color-badge-orange-bg:       #FFC583;
+  --color-badge-orange:          #8C4C03;
+  --color-badge-return-bg:       #FEE2E2;
   /* Table */
   --color-table-header-bg: #f2f4f9;
 }
