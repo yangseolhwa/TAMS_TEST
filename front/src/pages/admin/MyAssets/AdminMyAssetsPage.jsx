@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, ClipboardPlus, ChevronDown, ChevronUp } from "react-bootstrap-icons";
@@ -209,8 +209,18 @@ const AdminMyAssetsPage = () => {
   // SW 대시보드 아코디언 상태
   const [openSwId, setOpenSwId] = useState(null);
 
-  // 각 패널의 실제 높이 측정용 ref
-  const panelRefs = useRef({});
+  // 각 패널의 실제 높이 (useLayoutEffect로 측정)
+  const panelRefs    = useRef({});
+  const [panelHeights, setPanelHeights] = useState({});
+
+  useLayoutEffect(() => {
+    const heights = {};
+    MOCK_SW_DASHBOARD.forEach((sw) => {
+      const el = panelRefs.current[sw.id];
+      if (el) heights[sw.id] = el.scrollHeight;
+    });
+    setPanelHeights(heights);
+  }, []);
 
   const queryClient = useQueryClient();
 
@@ -690,7 +700,7 @@ const AdminMyAssetsPage = () => {
           <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
           <div className={styles.swDashboardTitleRight}>
             <span className={styles.swDashboardTitleCount}>총 {MOCK_SW_DASHBOARD.length}건</span>
-            <button className={styles.swDashboardViewBtn}>조회 &gt;</button>
+            <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
           </div>
         </div>
 
@@ -712,6 +722,7 @@ const AdminMyAssetsPage = () => {
                 <li key={sw.id} className={styles.swDashboardItem}>
                   {/* 소프트웨어 행 */}
                   <button
+                    type="button"
                     className={`${styles.swDashboardRow} ${isOpen ? styles.swDashboardRowOpen : ""}`}
                     onClick={() => setOpenSwId(isOpen ? null : sw.id)}
                   >
@@ -730,7 +741,7 @@ const AdminMyAssetsPage = () => {
                   <div
                     ref={el => panelRefs.current[sw.id] = el}
                     className={`${styles.swLicensePanel} ${isOpen ? styles.swLicensePanelOpen : ""}`}
-                    style={{ maxHeight: isOpen ? (panelRefs.current[sw.id]?.scrollHeight ?? 600) + 'px' : '0px' }}
+                    style={{ maxHeight: isOpen ? (panelHeights[sw.id] ?? 0) + 'px' : '0px' }}
                   >
                     {sw.licenses.length === 0 ? (
                       <p className={styles.swLicenseEmpty}>사용 중인 라이선스가 없습니다.</p>

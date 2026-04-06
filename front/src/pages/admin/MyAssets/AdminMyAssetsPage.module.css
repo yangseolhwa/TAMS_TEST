@@ -481,7 +481,7 @@
 .swLicensePanel {
   overflow: hidden;
   background-color: var(--color-accent-bg);
-  transition: max-height 250ms ease-in-out;
+  transition: max-height 300ms ease-in-out;
 }
 
 .swLicensePanelOpen {
