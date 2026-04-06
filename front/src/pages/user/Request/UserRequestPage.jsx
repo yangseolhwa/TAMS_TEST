@@ -310,17 +310,23 @@ const UserRequestPage = () => {
               </>
             }
           />
-          <RequestFormFields
-            items={items}
-            enterpriseAssets={enterpriseAssetsForForm}
-            swAssets={swAssetsForForm}
-            onAssetTypeChange={handleAssetTypeChange}
-            onItemChange={handleItemChange}
-            onRemoveItem={handleRemoveItem}
-          />
+          <fieldset disabled={submitMutation.isPending} style={{ border: "none", padding: 0, margin: 0 }}>
+            <RequestFormFields
+              items={items}
+              enterpriseAssets={enterpriseAssetsForForm}
+              swAssets={swAssetsForForm}
+              onAssetTypeChange={handleAssetTypeChange}
+              onItemChange={handleItemChange}
+              onRemoveItem={handleRemoveItem}
+            />
+          </fieldset>
           <div className={styles.formActions}>
             {items.length < MAX_ITEMS && (
-              <button className={styles.addItemBtn} onClick={handleAddItem}>
+              <button
+                className={styles.addItemBtn}
+                onClick={handleAddItem}
+                disabled={submitMutation.isPending}
+              >
                 <PlusCircleFill size={15} /> 항목 추가 ({items.length} /{" "}
                 {MAX_ITEMS})
               </button>
@@ -331,6 +337,7 @@ const UserRequestPage = () => {
                 size="md"
                 label="초기화"
                 onClick={() => setShowResetConfirm(true)}
+                disabled={submitMutation.isPending}
               />
               <ActionButton
                 variant="blue"
