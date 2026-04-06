@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import BackButton from "../../../components/BackButton/BackButton";
+import ActionButton from "../../../components/ActionButton/ActionButton";
 import Banner from "../../../components/Banner/Banner";
 import Card from "../../../components/Card/Card";
 import DataTable from "../../../components/DataTable/DataTable";
@@ -117,18 +118,18 @@ const AdminRequestHistoryPage = () => {
       label: "처리",
       renderCell: (row) => (
         <div className={styles.rowActions}>
-          <button
-            className={styles.approveBtn}
+          <ActionButton
+            variant="blue"
+            size="xs"
+            label="승인"
             onClick={() => { setTargetRowId(row.id); setShowApproveConfirm(true); }}
-          >
-            승인
-          </button>
-          <button
-            className={styles.rejectBtn}
+          />
+          <ActionButton
+            variant="red"
+            size="xs"
+            label="반려"
             onClick={() => { setTargetRowId(row.id); setRejectReason(""); setShowRejectModal(true); }}
-          >
-            반려
-          </button>
+          />
         </div>
       ),
     },

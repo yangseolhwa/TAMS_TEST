@@ -19,7 +19,7 @@ ActionButton.propTypes = {
   label:    PropTypes.string.isRequired,
   onClick:  PropTypes.func.isRequired,
   variant:  PropTypes.oneOf(['blue', 'red', 'white', 'black']),
-  size:     PropTypes.oneOf(['sm', 'md']),
+  size:     PropTypes.oneOf(['xs', 'sm', 'md']),
   disabled: PropTypes.bool,
 };
 
