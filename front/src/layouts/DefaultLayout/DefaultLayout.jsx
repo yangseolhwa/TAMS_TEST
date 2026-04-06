@@ -11,8 +11,8 @@ const TABS = [
     id: 'my-assets',
     label: '내 자산 관리',
     menus: [
-      { id: 'my-assets-list', label: '내 자산 항목조회', path: 'list' },
-      { id: 'my-assets-history', label: '요청 히스토리', path: 'history' },
+      { id: 'my-assets-list', label: '내 자산 항목조회', path: 'my-assets' },
+      { id: 'my-assets-history', label: '자산 히스토리', path: 'history' },
     ],
   },
   {
@@ -102,7 +102,7 @@ const DefaultLayout = ({ role, onLogout }) => {
                     <li key={menu.id}>
                       <Link
                         to={`/${role}/${activeTab.id}/${menu.path}`}
-                        className={`${styles.sidebarMenuItem} ${location.pathname.includes(menu.path) ? styles.sidebarMenuItemActive : ''}`}
+                        className={`${styles.sidebarMenuItem} ${location.pathname.endsWith('/' + menu.path) ? styles.sidebarMenuItemActive : ''}`}
                       >
                         <span className={styles.sidebarMenuDot} />
                         <span className={styles.sidebarMenuLabel}>{menu.label}</span>

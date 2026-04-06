@@ -295,7 +295,7 @@ const AdminRequestPage = () => {
             />
             <HeaderButton
               label="요청 내역"
-              onClick={() => navigate("/admin/my-assets/history")}
+              onClick={() => navigate("/admin/my-assets/request-history")}
             />
           </>
         }
