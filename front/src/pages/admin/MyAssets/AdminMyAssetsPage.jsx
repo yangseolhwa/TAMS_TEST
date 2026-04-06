@@ -116,7 +116,7 @@ const STATE_OPTIONS = {
 
 const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
-// TODO: API 연동 시 대체 예정
+//API 연동 시 대체 예정
 const MOCK_SW_DASHBOARD = [
   {
     // 일반 케이스: 미사용 있음
@@ -171,6 +171,34 @@ const MOCK_SW_DASHBOARD = [
     activeCount: 0,
     inactiveCount: 3,
     licenses: [],
+  },
+];
+
+// API 연동 시 대체 예정
+const MOCK_PC_DASHBOARD = [
+  {
+    // 일반 케이스: 미사용 있음
+    id: 1,
+    category: "노트북",
+    totalCount: 20,
+    activeCount: 17,
+    inactiveCount: 3,
+  },
+  {
+    // 일반 케이스: 미사용 있음
+    id: 2,
+    category: "데스크탑",
+    totalCount: 10,
+    activeCount: 8,
+    inactiveCount: 2,
+  },
+  {
+    // 미사용 = 0 케이스: '-' 표시 확인
+    id: 3,
+    category: "모니터",
+    totalCount: 15,
+    activeCount: 15,
+    inactiveCount: 0,
   },
 ];
 
@@ -699,7 +727,7 @@ const AdminMyAssetsPage = () => {
         <div className={styles.swDashboardTitleBar}>
           <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
           <div className={styles.swDashboardTitleRight}>
-            <span className={styles.swDashboardTitleCount}>총 {MOCK_SW_DASHBOARD.length}건</span>
+            <span className={styles.swDashboardTitleCount}>총 {MOCK_SW_DASHBOARD.reduce((sum, sw) => sum + sw.totalCount, 0)}건</span>
             <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
           </div>
         </div>
@@ -771,197 +799,44 @@ const AdminMyAssetsPage = () => {
         </Card>
       </section>
 
-      {/* 섹션 1: 자산 등록 요청 처리 및 셀프 등록 */}
+      {/* 섹션 0-1: PC 현황 대시보드 */}
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <ClipboardPlus size={15} />
-          <span>자산 등록</span>
-        </div>
-
-        <TabCard tabs={INNER_TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-          {activeTab === INNER_TABS[0].id ? (
-            <>
-              <Banner text={<>유저의 <strong>등록 요청</strong>을 승인하거나 반려할 수 있습니다. 처리된 요청은 목록에서 자동으로 제거됩니다.</>} />
-              <div className={styles.requestTableActions}>
-                <button className={styles.approveBtn} onClick={handleApproveClick}>승인</button>
-                <button className={styles.rejectBtn}  onClick={handleRejectClick}>반려</button>
-              </div>
-              <DataTable
-                columns={ADMIN_REQUEST_COLUMNS}
-                rows={requestRows}
-                statusMap={REQUEST_STATUS_MAP}
-                selectedIds={requestSelectedIds}
-                onSelectionChange={setRequestSelectedIds}
-                totalCount={requestRows.length}
-                isLoading={isRequestLoading}
-              />
-            </>
-          ) : (
-            <>
-              <Banner text={<>자산 <strong>1개</strong>를 직접 등록합니다. 관리자 승인 없이 즉시 활성화됩니다.</>} />
-              <RequestFormFields
-                items={items}
-                enterpriseAssets={enterpriseAssetsForForm}
-                swAssets={swAssetsForForm}
-                onAssetTypeChange={handleAssetTypeChange}
-                onItemChange={handleItemChange}
-              />
-              <div className={styles.formActions}>
-                <div className={styles.actionBtns}>
-                  <button className={styles.resetBtn} onClick={() => setShowResetConfirm(true)}>초기화</button>
-                  <button
-                    className={styles.submitBtn}
-                    onClick={handleRegister}
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? "등록 중..." : "등록"}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </TabCard>
-      </section>
-
-      {/* 섹션 2: 자산 조회 */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <Search size={15} />
-          <span>자산 조회</span>
+        <div className={styles.swDashboardTitleBar}>
+          <span className={styles.swDashboardTitleText}>전체 PC 현황</span>
+          <div className={styles.swDashboardTitleRight}>
+            <span className={styles.swDashboardTitleCount}>총 {MOCK_PC_DASHBOARD.reduce((sum, pc) => sum + pc.totalCount, 0)}건</span>
+            <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
+          </div>
         </div>
 
         <Card>
-          <div className={styles.filterArea}>
-            <select className={styles.filterSelect} value={filterType} onChange={handleFilterTypeChange}>
-              <option value="">자산 유형 전체</option>
-              <option value="enterprise">PC</option>
-              <option value="sw">SW</option>
-            </select>
-
-            <select className={styles.filterSelect} value={filterCategory} onChange={handleFilterCategoryChange}>
-              <option value="">자산 종류 전체</option>
-              {categoryOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-
-            <select className={styles.filterSelect} value={filterState} onChange={handleFilterStateChange}>
-              <option value="">상태 전체</option>
-              {(STATE_OPTIONS[filterType] || []).map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-
-            <button className={styles.filterResetBtn} onClick={handleFilterReset}>초기화</button>
-
-            <div className={styles.filterSearchWrap}>
-              <input
-                type="text"
-                className={styles.filterInput}
-                placeholder="검색어를 입력하세요"
-                value={filterKeyword}
-                onChange={(e) => setFilterKeyword(e.target.value)}
-                onKeyDown={handleKeywordKeyDown}
-              />
-              <button className={styles.filterSearchBtn} onClick={handleSearch}><Search size={14} /></button>
-            </div>
+          {/* 헤더 행 */}
+          <div className={styles.pcDashboardHeader}>
+            <span className={styles.swDashboardHeaderName}>자산 종류</span>
+            <span className={styles.swDashboardHeaderCount}>총 수량</span>
+            <span className={styles.swDashboardHeaderCount}>사용 중</span>
+            <span className={styles.swDashboardHeaderCount}>미사용</span>
           </div>
 
-          <div className={styles.listTableActions}>
-            {isMoveMode ? (
-              <>
-                <button className={styles.moveCancelBtn} onClick={cancelMoveMode}>취소</button>
-                <button
-                  className={styles.moveSaveBtn}
-                  onClick={handleMoveSaveClick}
-                  disabled={moveMutation.isPending}
-                >
-                  저장
-                </button>
-              </>
-            ) : (
-              <>
-                <button className={styles.moveBtn}   onClick={handleMoveClick}>자산 이동</button>
-                <button className={styles.returnBtn} onClick={handleReturnClick}>반납</button>
-              </>
-            )}
-          </div>
-
-          <DataTable
-            columns={assetListColumns}
-            rows={listRows}
-            statusMap={ASSET_LIST_STATUS_MAP}
-            selectedIds={listSelectedIds}
-            onSelectionChange={setListSelectedIds}
-            totalCount={listRows.length}
-            isLoading={isLoading}
-          />
+          {/* 목록 */}
+          <ul className={styles.swDashboardList}>
+            {MOCK_PC_DASHBOARD.map((pc) => (
+              <li key={pc.id} className={styles.swDashboardItem}>
+                <div className={styles.pcDashboardRow}>
+                  <span className={styles.swDashboardName}>{pc.category}</span>
+                  <span className={styles.swDashboardCount}>{pc.totalCount}</span>
+                  <span className={styles.swDashboardCount}>{pc.activeCount}</span>
+                  <span className={`${styles.swDashboardCount} ${pc.inactiveCount > 0 ? styles.swDashboardCountWarning : styles.swDashboardCountZero}`}>
+                    {pc.inactiveCount > 0 ? pc.inactiveCount : "-"}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
       </section>
 
-      {/* 모달 모음 */}
-      <ConfirmModal
-        isOpen={showResetConfirm}
-        title="입력 내용을 초기화할까요?"
-        desc="작성한 모든 항목이 삭제되고 초기 상태로 돌아갑니다."
-        confirmLabel="초기화"
-        confirmVariant="danger"
-        onConfirm={handleReset}
-        onCancel={() => setShowResetConfirm(false)}
-      />
-      <ConfirmModal
-        isOpen={showRegisterConfirm}
-        title="자산을 등록할까요?"
-        desc="등록 즉시 자산이 활성화됩니다."
-        confirmLabel="등록"
-        confirmVariant="primary"
-        onConfirm={() => registerMutation.mutate()}
-        onCancel={() => setShowRegisterConfirm(false)}
-      />
-      <ConfirmModal
-        isOpen={showApproveConfirm}
-        title={`선택한 요청 ${requestSelectedIds.length}건을 승인할까요?`}
-        desc="승인된 자산은 즉시 활성화됩니다."
-        confirmLabel="승인"
-        confirmVariant="primary"
-        onConfirm={() => approveMutation.mutate()}
-        onCancel={() => setShowApproveConfirm(false)}
-      />
-      <ConfirmModal
-        isOpen={showNoSelectionModal}
-        title="항목을 선택해주세요."
-        confirmLabel="확인"
-        confirmVariant="primary"
-        onConfirm={() => setShowNoSelectionModal(false)}
-        onCancel={() => setShowNoSelectionModal(false)}
-      />
-      <ConfirmModal
-        isOpen={showReturnConfirm}
-        title={`선택한 자산 ${listSelectedIds.length}개를 반납할까요?`}
-        desc="반납된 자산은 목록에서 제외됩니다."
-        confirmLabel="반납"
-        confirmVariant="danger"
-        onConfirm={handleReturnConfirm}
-        onCancel={() => setShowReturnConfirm(false)}
-      />
-      <ConfirmModal
-        isOpen={showMoveConfirm}
-        title={`선택한 자산 ${listSelectedIds.length}개를 이동할까요?`}
-        desc="입력한 위치로 각 자산이 이동됩니다."
-        confirmLabel="이동"
-        confirmVariant="primary"
-        onConfirm={handleMoveConfirm}
-        onCancel={() => setShowMoveConfirm(false)}
-      />
 
-      <RejectReasonModal
-        isOpen={showRejectModal}
-        rejectReason={rejectReason}
-        onReasonChange={setRejectReason}
-        onConfirm={() => rejectMutation.mutate()}
-        onCancel={() => setShowRejectModal(false)}
-        isPending={rejectMutation.isPending}
-      />
     </div>
   );
 };
