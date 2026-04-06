@@ -717,7 +717,7 @@ const AdminMyAssetsPage = () => {
         actions={
           <>
             <HeaderButton label="자산 등록" onClick={() => navigate("/admin/my-assets/request")} />
-            <HeaderButton label="요청 내역" onClick={() => navigate("/admin/my-assets/history")} />
+            <HeaderButton label="요청 내역" onClick={() => navigate("/admin/my-assets/request-history")} />
           </>
         }
       />

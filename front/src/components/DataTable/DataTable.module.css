@@ -15,7 +15,7 @@
   overflow-x: auto;
   overflow-y: auto;
   max-height: 396px;
-  scrollbar-gutter: stable;
+  /* scrollbar-gutter: stable; */
   -webkit-overflow-scrolling: touch;
 }
 

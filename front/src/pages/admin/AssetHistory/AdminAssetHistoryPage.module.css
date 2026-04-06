@@ -1,0 +1,216 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =====================
+   섹션 래퍼
+   ===================== */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* =====================
+   필터 영역
+   ===================== */
+.filterArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+
+.filterSelect:hover  { border-color: var(--color-border); }
+.filterSelect:focus  { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
+
+.filterDate {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.filterDate:hover { border-color: var(--color-border); }
+.filterDate:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
+
+.dateSeparator {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.filterResetBtn {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-tint);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.filterResetBtn:hover {
+  background: var(--color-primary-tint-hover);
+  border-color: var(--color-primary-border-hover);
+}
+
+.filterSearchWrap {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.filterSearchWrap:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.filterInput {
+  width: 200px;
+  height: 36px;
+  padding: 0 12px;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.filterInput::placeholder { color: var(--color-text-secondary); }
+
+.filterSearchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-left: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.filterSearchBtn:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+/* =====================
+   총 건수 + 삭제 버튼 영역
+   ===================== */
+.tableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+
+
+/* =====================
+   뱃지 — 요청 유형
+   ===================== */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeRegister {
+  background-color: var(--color-badge-green-bg);
+  color: var(--color-badge-green);
+}
+
+.badgeReturn {
+  background-color: var(--color-badge-return-bg);
+  color: var(--color-badge-red2);
+}
+
+.badgeStateChange {
+  background-color: var(--color-badge-yellow-bg);
+  color: var(--color-badge-yellow);
+}
+
+.badgeMove {
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
+}
+
+/* =====================
+   뱃지 — 상태
+   ===================== */
+.stateActive {
+  background-color: var(--color-badge-green2-bg);
+  color: var(--color-badge-green2);
+}
+
+.stateStored {
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
+}
+
+.stateInactive {
+  background-color: var(--color-badge-gray-bg);
+  color: var(--color-text-secondary);
+}
+
+.stateExpiring {
+  background-color: var(--color-badge-yellow-bg);
+  color: var(--color-badge-yellow);
+}
+
+/* =====================
+   대시 표시
+   ===================== */
+.dash {
+  color: var(--color-text-secondary);
+}
