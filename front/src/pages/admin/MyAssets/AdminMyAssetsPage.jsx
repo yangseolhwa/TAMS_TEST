@@ -716,7 +716,7 @@ const AdminMyAssetsPage = () => {
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
         actions={
           <>
-            <HeaderButton label="등록 요청" onClick={() => navigate("/admin/my-assets/request")} />
+            <HeaderButton label="자산 등록" onClick={() => navigate("/admin/my-assets/request")} />
             <HeaderButton label="요청 내역" onClick={() => navigate("/admin/my-assets/history")} />
           </>
         }
