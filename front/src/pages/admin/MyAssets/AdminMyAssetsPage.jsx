@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, ClipboardPlus } from "react-bootstrap-icons";
+import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import toast from "react-hot-toast";
 import Banner from "../../../components/Banner/Banner";
 import TabCard from "../../../components/TabCard/TabCard";
@@ -115,6 +117,8 @@ const STATE_OPTIONS = {
 const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
 const AdminMyAssetsPage = () => {
+  const navigate = useNavigate();
+
   // --- [State] ---
   const [activeTab, setActiveTab] = useState(INNER_TABS[0].id);
   const [items, setItems] = useState([createInitialItem()]); // 셀프 등록 폼 (단일)
@@ -605,7 +609,16 @@ const AdminMyAssetsPage = () => {
 
   return (
     <div className={styles.page}>
-      <PageHeader title="내 자산 관리" desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요." />
+      <PageHeader
+        title="내 자산 관리"
+        desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
+        actions={
+          <>
+            <HeaderButton label="등록 요청" onClick={() => navigate("/admin/my-assets/request")} />
+            <HeaderButton label="요청 내역" onClick={() => navigate("/admin/my-assets/history")} />
+          </>
+        }
+      />
 
       {/* 섹션 1: 자산 등록 요청 처리 및 셀프 등록 */}
       <section className={styles.section}>
