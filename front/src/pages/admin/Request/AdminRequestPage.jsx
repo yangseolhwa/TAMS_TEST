@@ -37,21 +37,21 @@ const AdminRequestPage = () => {
 
   // --- [React Query] ---
 
-  // 등록 요청 폼용 Enterprise 자산 목록
+  // 등록 폼용 Enterprise 자산 목록
   const { data: enterpriseAssetsForForm = [] } = useQuery({
     queryKey: ["enterpriseAssetsForForm"],
     queryFn: fetchEnterpriseAssetsForForm,
     refetchOnWindowFocus: false,
   });
 
-  // 등록 요청 폼용 SW 자산 목록
+  // 등록 폼용 SW 자산 목록
   const { data: swAssetsForForm = [] } = useQuery({
     queryKey: ["swAssetsForForm"],
     queryFn: fetchSwAssetsForForm,
     refetchOnWindowFocus: false,
   });
 
-  // --- [Handlers: 등록 요청 폼] ---
+  // --- [Handlers: 등록 폼] ---
   const handleAssetTypeChange = (index, value) => {
     setItems((prev) =>
       prev.map((item, i) =>
@@ -88,7 +88,7 @@ const AdminRequestPage = () => {
     setShowResetConfirm(false);
   };
 
-  // 등록 요청 Mutation — PC/SW, 기존/신규 분리 후 Promise.allSettled로 동시 호출
+  // 등록 Mutation — PC/SW, 기존/신규 분리 후 Promise.allSettled로 동시 호출
   // 각 task에 해당 items를 함께 묶어, 실패한 task의 items만 폼에 남겨 재시도 가능하게 처리
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -207,7 +207,9 @@ const AdminRequestPage = () => {
       return failedItems;
     },
     onSuccess: (failedItems) => {
-      queryClient.invalidateQueries({ queryKey: ["assetRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["personalAssets"] });
+      queryClient.invalidateQueries({ queryKey: ["enterpriseAssetsForForm"] });
+      queryClient.invalidateQueries({ queryKey: ["swAssetsForForm"] });
       setShowSubmitConfirm(false);
 
       if (failedItems.length === 0) {
@@ -282,7 +284,7 @@ const AdminRequestPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="자산 등록 요청"
+        title="자산 등록"
         desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
         actions={
           <>
@@ -310,17 +312,23 @@ const AdminRequestPage = () => {
               </>
             }
           />
-          <RequestFormFields
-            items={items}
-            enterpriseAssets={enterpriseAssetsForForm}
-            swAssets={swAssetsForForm}
-            onAssetTypeChange={handleAssetTypeChange}
-            onItemChange={handleItemChange}
-            onRemoveItem={handleRemoveItem}
-          />
+          <fieldset disabled={submitMutation.isPending} style={{ border: "none", padding: 0, margin: 0 }}>
+            <RequestFormFields
+              items={items}
+              enterpriseAssets={enterpriseAssetsForForm}
+              swAssets={swAssetsForForm}
+              onAssetTypeChange={handleAssetTypeChange}
+              onItemChange={handleItemChange}
+              onRemoveItem={handleRemoveItem}
+            />
+          </fieldset>
           <div className={styles.formActions}>
             {items.length < MAX_ITEMS && (
-              <button className={styles.addItemBtn} onClick={handleAddItem}>
+              <button
+                className={styles.addItemBtn}
+                onClick={handleAddItem}
+                disabled={submitMutation.isPending}
+              >
                 <PlusCircleFill size={15} /> 항목 추가 ({items.length} /{" "}
                 {MAX_ITEMS})
               </button>
@@ -331,6 +339,7 @@ const AdminRequestPage = () => {
                 size="md"
                 label="초기화"
                 onClick={() => setShowResetConfirm(true)}
+                disabled={submitMutation.isPending}
               />
               <ActionButton
                 variant="blue"
