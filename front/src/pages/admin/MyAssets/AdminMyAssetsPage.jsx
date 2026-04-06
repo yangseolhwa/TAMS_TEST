@@ -116,7 +116,7 @@ const STATE_OPTIONS = {
 
 const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
-// TODO: API 연동 시 대체 예정
+// API 연동 시 대체 예정
 const MOCK_SW_DASHBOARD = [
   {
     // 일반 케이스: 미사용 있음
@@ -171,6 +171,34 @@ const MOCK_SW_DASHBOARD = [
     activeCount: 0,
     inactiveCount: 3,
     licenses: [],
+  },
+];
+
+// API 연동 시 대체 예정
+const MOCK_PC_DASHBOARD = [
+  {
+    // 일반 케이스: 미사용 있음
+    id: 1,
+    category: "노트북",
+    totalCount: 20,
+    activeCount: 17,
+    inactiveCount: 3,
+  },
+  {
+    // 일반 케이스: 미사용 있음
+    id: 2,
+    category: "데스크탑",
+    totalCount: 10,
+    activeCount: 8,
+    inactiveCount: 2,
+  },
+  {
+    // 미사용 = 0 케이스: '-' 표시 확인
+    id: 3,
+    category: "모니터",
+    totalCount: 15,
+    activeCount: 15,
+    inactiveCount: 0,
   },
 ];
 
@@ -767,6 +795,43 @@ const AdminMyAssetsPage = () => {
                 </li>
               );
             })}
+          </ul>
+        </Card>
+      </section>
+
+      {/* 섹션 0-1: PC 현황 대시보드 */}
+      <section className={styles.section}>
+        <div className={styles.swDashboardTitleBar}>
+          <span className={styles.swDashboardTitleText}>전체 PC 현황</span>
+          <div className={styles.swDashboardTitleRight}>
+            <span className={styles.swDashboardTitleCount}>총 {MOCK_PC_DASHBOARD.length}건</span>
+            <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
+          </div>
+        </div>
+
+        <Card>
+          {/* 헤더 행 */}
+          <div className={styles.pcDashboardHeader}>
+            <span className={styles.swDashboardHeaderName}>자산 종류</span>
+            <span className={styles.swDashboardHeaderCount}>총 수량</span>
+            <span className={styles.swDashboardHeaderCount}>사용 중</span>
+            <span className={styles.swDashboardHeaderCount}>미사용</span>
+          </div>
+
+          {/* 목록 */}
+          <ul className={styles.swDashboardList}>
+            {MOCK_PC_DASHBOARD.map((pc) => (
+              <li key={pc.id} className={styles.swDashboardItem}>
+                <div className={styles.pcDashboardRow}>
+                  <span className={styles.swDashboardName}>{pc.category}</span>
+                  <span className={styles.swDashboardCount}>{pc.totalCount}</span>
+                  <span className={styles.swDashboardCount}>{pc.activeCount}</span>
+                  <span className={`${styles.swDashboardCount} ${pc.inactiveCount > 0 ? styles.swDashboardCountWarning : styles.swDashboardCountZero}`}>
+                    {pc.inactiveCount > 0 ? pc.inactiveCount : "-"}
+                  </span>
+                </div>
+              </li>
+            ))}
           </ul>
         </Card>
       </section>
