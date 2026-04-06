@@ -328,3 +328,204 @@
 .locationInput:focus {
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
+
+/* =====================
+   SW 현황 대시보드
+   ===================== */
+
+/* 전체 소프트웨어 개수 */
+.swDashboardTitleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.swDashboardTitleText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+}
+
+.swDashboardTitleRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.swDashboardTitleCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+}
+
+.swDashboardViewBtn {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.7);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+
+.swDashboardViewBtn:hover {
+  color: var(--color-surface);
+}
+
+/* 컬럼 헤더 */
+.swDashboardHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 100px 32px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.swDashboardHeaderName,
+.swDashboardHeaderCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.swDashboardHeaderCount {
+  text-align: right;
+}
+
+.swDashboardHeaderChevron {
+  width: 32px;
+}
+
+/* 아코디언 목록 */
+.swDashboardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.swDashboardItem {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.swDashboardItem:last-child {
+  border-bottom: none;
+}
+
+/* 소프트웨어 행 버튼 */
+.swDashboardRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 100px 32px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  transition: background-color var(--transition-fast);
+}
+
+.swDashboardRow:hover {
+  background-color: var(--color-primary-tint);
+}
+
+.swDashboardRowOpen {
+  background-color: var(--color-accent-bg);
+}
+
+.swDashboardRowOpen:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.swDashboardName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.swDashboardCount {
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: right;
+}
+
+/* 미사용 수량 > 0 일 때 경고 색상 */
+.swDashboardCountWarning {
+  color: var(--color-badge-yellow);
+  font-weight: 600;
+}
+
+/* 미사용 수량 = 0 일 때 회색 */
+.swDashboardCountZero {
+  color: var(--color-text-secondary);
+}
+
+.swDashboardChevron {
+  display: flex;
+  justify-content: flex-end;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+/* 열렸을 때 chevron 파란색 */
+.swDashboardChevronOpen {
+  color: var(--color-accent);
+}
+
+/* 라이선스 패널 */
+.swLicensePanel {
+  overflow: hidden;
+  background-color: var(--color-accent-bg);
+  transition: max-height 250ms ease-in-out;
+}
+
+.swLicensePanelOpen {
+  border-top: 1px solid var(--color-accent-border);
+}
+
+.swLicenseTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.swLicenseTable th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  background-color: var(--color-accent-border);
+  border-bottom: 1px solid var(--color-accent-border);
+}
+
+.swLicenseTable td {
+  padding: 6px 12px;
+  color: var(--color-text);
+  background-color: var(--color-accent-bg);
+  border-bottom: 1px solid var(--color-accent-border);
+  transition: background-color var(--transition-fast);
+}
+
+.swLicenseTable tr:hover td {
+  background-color: var(--color-accent-border);
+}
+
+.swLicenseTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* 빈 상태 메시지 */
+.swLicenseEmpty {
+  margin: 0;
+  padding: 16px 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  background-color: var(--color-accent-bg);
+}

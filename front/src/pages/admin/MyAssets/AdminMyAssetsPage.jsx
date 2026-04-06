@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, ClipboardPlus } from "react-bootstrap-icons";
+import { Search, ClipboardPlus, ChevronDown, ChevronUp } from "react-bootstrap-icons";
 import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import toast from "react-hot-toast";
 import Banner from "../../../components/Banner/Banner";
@@ -116,6 +116,64 @@ const STATE_OPTIONS = {
 
 const SW_FILTER_CATEGORIES = ["dev", "design", "collaboration", "security", "other"];
 
+// TODO: API 연동 시 대체 예정
+const MOCK_SW_DASHBOARD = [
+  {
+    // 일반 케이스: 미사용 있음
+    id: 1,
+    name: "Office 365",
+    totalCount: 10,
+    activeCount: 7,
+    inactiveCount: 3,
+    licenses: [
+      { id: 1, key: "ABCD-1234-EFGH-5678", user: "kim@company.com" },
+      { id: 2, key: "IJKL-9012-MNOP-3456", user: "lee@company.com" },
+      { id: 3, key: "QRST-7890-UVWX-1234", user: "park@company.com" },
+      { id: 4, key: "YZAB-5678-CDEF-9012", user: "choi@company.com" },
+      { id: 5, key: "GHIJ-3456-KLMN-7890", user: "jung@company.com" },
+      { id: 6, key: "OPQR-1234-STUV-5678", user: "yoon@company.com" },
+      { id: 7, key: "WXYZ-9012-ABCD-3456", user: "han@company.com" },
+    ],
+  },
+  {
+    // 일반 케이스: 미사용 있음
+    id: 2,
+    name: "Slack",
+    totalCount: 20,
+    activeCount: 18,
+    inactiveCount: 2,
+    licenses: [
+      { id: 8,  key: "SLCK-1111-AAAA-0001", user: "kim@company.com" },
+      { id: 9,  key: "SLCK-2222-BBBB-0002", user: "lee@company.com" },
+      { id: 10, key: "SLCK-3333-CCCC-0003", user: "park@company.com" },
+    ],
+  },
+  {
+    // 미사용 = 0 케이스: '-' 표시 확인
+    id: 3,
+    name: "Figma",
+    totalCount: 5,
+    activeCount: 5,
+    inactiveCount: 0,
+    licenses: [
+      { id: 11, key: "FGMA-AAAA-1111-ZZZZ", user: "design1@company.com" },
+      { id: 12, key: "FGMA-BBBB-2222-YYYY", user: "design2@company.com" },
+      { id: 13, key: "FGMA-CCCC-3333-XXXX", user: "design3@company.com" },
+      { id: 14, key: "FGMA-DDDD-4444-WWWW", user: "design4@company.com" },
+      { id: 15, key: "FGMA-EEEE-5555-VVVV", user: "design5@company.com" },
+    ],
+  },
+  {
+    // 라이선스 빈 배열 케이스: 빈 상태 메시지 확인
+    id: 4,
+    name: "Adobe XD",
+    totalCount: 3,
+    activeCount: 0,
+    inactiveCount: 3,
+    licenses: [],
+  },
+];
+
 const AdminMyAssetsPage = () => {
   const navigate = useNavigate();
 
@@ -147,6 +205,12 @@ const AdminMyAssetsPage = () => {
   // 이동 모드 상태
   const [isMoveMode,    setIsMoveMode]    = useState(false);
   const [locationEdits, setLocationEdits] = useState({});
+
+  // SW 대시보드 아코디언 상태
+  const [openSwId, setOpenSwId] = useState(null);
+
+  // 각 패널의 실제 높이 측정용 ref
+  const panelRefs = useRef({});
 
   const queryClient = useQueryClient();
 
@@ -619,6 +683,82 @@ const AdminMyAssetsPage = () => {
           </>
         }
       />
+
+      {/* 섹션 0: SW 현황 대시보드 */}
+      <section className={styles.section}>
+        <div className={styles.swDashboardTitleBar}>
+          <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
+          <div className={styles.swDashboardTitleRight}>
+            <span className={styles.swDashboardTitleCount}>총 {MOCK_SW_DASHBOARD.length}건</span>
+            <button className={styles.swDashboardViewBtn}>조회 &gt;</button>
+          </div>
+        </div>
+
+        <Card>
+          {/* 헤더 행 */}
+          <div className={styles.swDashboardHeader}>
+            <span className={styles.swDashboardHeaderName}>소프트웨어명</span>
+            <span className={styles.swDashboardHeaderCount}>총 수량</span>
+            <span className={styles.swDashboardHeaderCount}>사용 중</span>
+            <span className={styles.swDashboardHeaderCount}>미사용</span>
+            <span className={styles.swDashboardHeaderChevron} />
+          </div>
+
+          {/* 아코디언 목록 */}
+          <ul className={styles.swDashboardList}>
+            {MOCK_SW_DASHBOARD.map((sw) => {
+              const isOpen = openSwId === sw.id;
+              return (
+                <li key={sw.id} className={styles.swDashboardItem}>
+                  {/* 소프트웨어 행 */}
+                  <button
+                    className={`${styles.swDashboardRow} ${isOpen ? styles.swDashboardRowOpen : ""}`}
+                    onClick={() => setOpenSwId(isOpen ? null : sw.id)}
+                  >
+                    <span className={styles.swDashboardName}>{sw.name}</span>
+                    <span className={styles.swDashboardCount}>{sw.totalCount}</span>
+                    <span className={styles.swDashboardCount}>{sw.activeCount}</span>
+                    <span className={`${styles.swDashboardCount} ${sw.inactiveCount > 0 ? styles.swDashboardCountWarning : styles.swDashboardCountZero}`}>
+                      {sw.inactiveCount > 0 ? sw.inactiveCount : "-"}
+                    </span>
+                    <span className={`${styles.swDashboardChevron} ${isOpen ? styles.swDashboardChevronOpen : ""}`}>
+                      {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </span>
+                  </button>
+
+                  {/* 펼쳐지는 라이선스 목록 */}
+                  <div
+                    ref={el => panelRefs.current[sw.id] = el}
+                    className={`${styles.swLicensePanel} ${isOpen ? styles.swLicensePanelOpen : ""}`}
+                    style={{ maxHeight: isOpen ? (panelRefs.current[sw.id]?.scrollHeight ?? 600) + 'px' : '0px' }}
+                  >
+                    {sw.licenses.length === 0 ? (
+                      <p className={styles.swLicenseEmpty}>사용 중인 라이선스가 없습니다.</p>
+                    ) : (
+                      <table className={styles.swLicenseTable}>
+                        <thead>
+                          <tr>
+                            <th>라이선스 키</th>
+                            <th>사용자</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sw.licenses.map((license) => (
+                            <tr key={license.id}>
+                              <td>{license.key}</td>
+                              <td>{license.user}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      </section>
 
       {/* 섹션 1: 자산 등록 요청 처리 및 셀프 등록 */}
       <section className={styles.section}>
