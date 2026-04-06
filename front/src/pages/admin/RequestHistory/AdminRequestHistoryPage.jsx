@@ -44,6 +44,7 @@ const AdminRequestHistoryPage = () => {
   const queryClient = useQueryClient();
 
   // --- [State] ---
+  // targetRowId: 모달 오픈 시 처리할 행 id 저장, mutate() 호출 시 인자로 전달
   const [targetRowId,        setTargetRowId]        = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showRejectModal,    setShowRejectModal]    = useState(false);
@@ -56,18 +57,23 @@ const AdminRequestHistoryPage = () => {
     refetchOnWindowFocus: false,
   });
 
+  // --- [Helpers] ---
+
+  // rowId("req-ent-1", "req-sw-2" 등)에서 자산 유형과 숫자 id를 추출
+  const parseRowId = (rowId) => ({
+    type: rowId.startsWith("req-ent-") ? "enterprise" : "sw",
+    id:   parseInt(rowId.replace(/^req-(ent|sw)-/, ""), 10),
+  });
+
   // --- [Mutations] ---
 
-  // 승인 Mutation — 단일 행 처리
+  // 승인 Mutation — rowId를 인자로 받아 처리 (state 클로저 의존 방지)
   const approveMutation = useMutation({
-    mutationFn: async () => {
-      if (targetRowId.startsWith("req-ent-")) {
-        const id = parseInt(targetRowId.replace("req-ent-", ""), 10);
-        return approveEnterpriseRequest(id);
-      } else {
-        const id = parseInt(targetRowId.replace("req-sw-", ""), 10);
-        return approveSwRequest(id);
-      }
+    mutationFn: async (rowId) => {
+      const { type, id } = parseRowId(rowId);
+      return type === "enterprise"
+        ? approveEnterpriseRequest(id)
+        : approveSwRequest(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assetRequests"] });
@@ -82,16 +88,13 @@ const AdminRequestHistoryPage = () => {
     },
   });
 
-  // 반려 Mutation — 단일 행 처리
+  // 반려 Mutation — rowId를 인자로 받아 처리 (state 클로저 의존 방지)
   const rejectMutation = useMutation({
-    mutationFn: async () => {
-      if (targetRowId.startsWith("req-ent-")) {
-        const id = parseInt(targetRowId.replace("req-ent-", ""), 10);
-        return rejectEnterpriseRequest(id, rejectReason);
-      } else {
-        const id = parseInt(targetRowId.replace("req-sw-", ""), 10);
-        return rejectSwRequest(id, rejectReason);
-      }
+    mutationFn: async (rowId) => {
+      const { type, id } = parseRowId(rowId);
+      return type === "enterprise"
+        ? rejectEnterpriseRequest(id, rejectReason)
+        : rejectSwRequest(id, rejectReason);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assetRequests"] });
@@ -134,12 +137,12 @@ const AdminRequestHistoryPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="자산 등록 요청"
+        title="자산 등록"
         desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
         actions={
           <>
             <HeaderButton
-              label="등록 요청"
+              label="자산 등록"
               onClick={() => navigate("/admin/my-assets/request")}
             />
             <HeaderButton
@@ -174,14 +177,14 @@ const AdminRequestHistoryPage = () => {
         desc="승인된 자산은 즉시 활성화됩니다."
         confirmLabel="승인"
         confirmVariant="primary"
-        onConfirm={() => approveMutation.mutate()}
+        onConfirm={() => approveMutation.mutate(targetRowId)}
         onCancel={() => setShowApproveConfirm(false)}
       />
       <RejectReasonModal
         isOpen={showRejectModal}
         rejectReason={rejectReason}
         onReasonChange={setRejectReason}
-        onConfirm={() => rejectMutation.mutate()}
+        onConfirm={() => rejectMutation.mutate(targetRowId)}
         onCancel={() => setShowRejectModal(false)}
         isPending={rejectMutation.isPending}
       />
