@@ -104,22 +104,19 @@ const DfDashboardPage = ({ role }) => {
               return (
                 <li key={project.id} className={styles.item}>
                   {/* 프로젝트 행 */}
-                  <button
-                    type="button"
+                  <div
                     className={`${styles.row} ${isOpen ? styles.rowOpen : ''}`}
                     onClick={() => handleToggle(project.id)}
                   >
                     <span className={styles.projectLeft}>
                       <span className={styles.projectName}>{project.name}</span>
-                      <span
+                      <button
+                        type="button"
                         className={styles.projectViewBtn}
-                        role="button"
-                        tabIndex={0}
                         onClick={(e) => handleProjectView(project.id, e)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleProjectView(project.id, e)}
                       >
                         조회 &gt;
-                      </span>
+                      </button>
                     </span>
                     <span className={styles.projectCount}>{projTotal}</span>
                     <span className={styles.rowRight}>
@@ -127,7 +124,7 @@ const DfDashboardPage = ({ role }) => {
                         {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </span>
                     </span>
-                  </button>
+                  </div>
 
                   {/* 장비 목록 패널 (아코디언) */}
                   <div
