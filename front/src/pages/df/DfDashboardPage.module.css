@@ -12,9 +12,9 @@
 
 /* ── 타이틀 바 ── */
 .titleBar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
   align-items: center;
-  justify-content: space-between;
   padding: 10px 16px;
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
@@ -26,7 +26,7 @@
   color: var(--color-surface);
 }
 
-.titleRight {
+.titleLeft {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -36,6 +36,8 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--color-surface);
+  text-align: right;
+  padding-right: 4px;
 }
 
 .viewBtn {
@@ -141,8 +143,7 @@
 .rowRight {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-right: 4px;
+  justify-content: flex-end;
 }
 
 .projectViewBtn {
