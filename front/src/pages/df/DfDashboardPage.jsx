@@ -78,13 +78,14 @@ const DfDashboardPage = ({ role }) => {
       <section className={styles.section}>
         {/* 타이틀 바 */}
         <div className={styles.titleBar}>
-          <span className={styles.titleText}>전체 프로젝트 현황</span>
-          <div className={styles.titleRight}>
-            <span className={styles.titleCount}>총 {totalEquipment}건</span>
+          <div className={styles.titleLeft}>
+            <span className={styles.titleText}>전체 프로젝트 현황</span>
             <button type="button" className={styles.viewBtn} onClick={handleAllView}>
               조회 &gt;
             </button>
           </div>
+          <span className={styles.titleCount}>총 {totalEquipment}건</span>
+          <span />
         </div>
 
         <Card>
