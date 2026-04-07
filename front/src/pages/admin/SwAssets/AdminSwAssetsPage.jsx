@@ -5,6 +5,7 @@ import DataTable from "../../../components/DataTable/DataTable";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import BackButton from "../../../components/BackButton/BackButton";
+import common from "../AssetPage.common.module.css";
 import styles from "./AdminSwAssetsPage.module.css";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -56,17 +57,17 @@ const AdminSwAssetsPage = () => {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader title="SW 전체 조회" 
       desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
       />
 
-      <section className={styles.section}>
+      <section className={common.section}>
         <Card>
           {/* 필터 영역 */}
-          <div className={styles.filterArea}>
+          <div className={common.filterArea}>
             <select
-              className={styles.filterSelect}
+              className={common.filterSelect}
               value={filterForm.product}
               onChange={(e) => handleFilterChange("product", e.target.value)}
             >
@@ -77,7 +78,7 @@ const AdminSwAssetsPage = () => {
             </select>
 
             <select
-              className={styles.filterSelect}
+              className={common.filterSelect}
               value={filterForm.mfr}
               onChange={(e) => handleFilterChange("mfr", e.target.value)}
             >
@@ -88,7 +89,7 @@ const AdminSwAssetsPage = () => {
             </select>
 
             <select
-              className={styles.filterSelect}
+              className={common.filterSelect}
               value={filterForm.user}
               onChange={(e) => handleFilterChange("user", e.target.value)}
             >
@@ -105,16 +106,16 @@ const AdminSwAssetsPage = () => {
               onClick={handleFilterReset}
             />
 
-            <div className={styles.filterSearchWrap}>
+            <div className={common.filterSearchWrap}>
               <input
                 type="text"
-                className={styles.filterInput}
+                className={common.filterInput}
                 placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange("keyword", e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-              <button className={styles.filterSearchBtn} onClick={handleSearch}>
+              <button className={common.filterSearchBtn} onClick={handleSearch}>
                 <Search size={14} />
               </button>
             </div>
