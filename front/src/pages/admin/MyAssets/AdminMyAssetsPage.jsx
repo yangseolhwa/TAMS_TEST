@@ -728,7 +728,7 @@ const AdminMyAssetsPage = () => {
           <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
           <div className={styles.swDashboardTitleRight}>
             <span className={styles.swDashboardTitleCount}>총 {MOCK_SW_DASHBOARD.reduce((sum, sw) => sum + sw.totalCount, 0)}건</span>
-            <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
+            <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate("/admin/sw-assets")}>조회 &gt;</button>
           </div>
         </div>
 
@@ -805,7 +805,7 @@ const AdminMyAssetsPage = () => {
           <span className={styles.swDashboardTitleText}>전체 PC 현황</span>
           <div className={styles.swDashboardTitleRight}>
             <span className={styles.swDashboardTitleCount}>총 {MOCK_PC_DASHBOARD.reduce((sum, pc) => sum + pc.totalCount, 0)}건</span>
-            <button type="button" className={styles.swDashboardViewBtn} onClick={() => {}}>조회 &gt;</button>
+            <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate("/admin/pc-assets")}>조회 &gt;</button>
           </div>
         </div>
 

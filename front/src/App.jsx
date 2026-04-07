@@ -7,6 +7,8 @@ import AdminDfAssetsPage from './pages/admin/DfAssets/AdminDfAssetsPage'
 import AdminRequestPage from './pages/admin/Request/AdminRequestPage'
 import AdminRequestHistoryPage from './pages/admin/RequestHistory/AdminRequestHistoryPage'
 import AdminAssetHistoryPage from './pages/admin/AssetHistory/AdminAssetHistoryPage'
+import AdminPcAssetsPage from './pages/admin/PcAssets/AdminPcAssetsPage'
+import AdminSwAssetsPage from './pages/admin/SwAssets/AdminSwAssetsPage'
 import UserMyAssetsPage from './pages/user/MyAssets/UserMyAssetsPage'
 import UserDfAssetsPage from './pages/user/DfAssets/UserDfAssetsPage'
 import UserRequestPage from './pages/user/Request/UserRequestPage'
@@ -44,6 +46,8 @@ function App() {
             <Route path="/admin/my-assets/request" element={role === 'admin' ? <AdminRequestPage /> : <Navigate to="/login" replace />} />
             <Route path="/admin/my-assets/request-history" element={role === 'admin' ? <AdminRequestHistoryPage /> : <Navigate to="/login" replace />} />
             <Route path="/admin/my-assets/history" element={role === 'admin' ? <AdminAssetHistoryPage /> : <Navigate to="/login" replace />} />
+            <Route path="/admin/pc-assets" element={role === 'admin' ? <AdminPcAssetsPage /> : <Navigate to="/login" replace />} />
+            <Route path="/admin/sw-assets" element={role === 'admin' ? <AdminSwAssetsPage /> : <Navigate to="/login" replace />} />
 
             {/* User */}
             <Route path="/user/my-assets"      element={role === 'user' ? <UserMyAssetsPage />      : <Navigate to="/login" replace />} />
