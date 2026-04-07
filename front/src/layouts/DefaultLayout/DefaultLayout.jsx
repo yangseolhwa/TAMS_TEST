@@ -19,8 +19,9 @@ const TABS = [
     id: 'df-assets',
     label: 'DF 자산 관리',
     menus: [
-      { id: 'df-assets-list', label: 'DF 자산 항목조회', path: 'list' },
-      { id: 'df-assets-history', label: 'DF 자산 히스토리', path: 'history' },
+      { id: 'df-dashboard',    label: '프로젝트 현황 대시보드', path: 'dashboard' },
+      { id: 'df-register',     label: 'DF 자산 등록',           path: 'register' },
+      { id: 'df-history',      label: 'DF 자산 히스토리',       path: 'history' },
     ],
   },
 ]
@@ -72,7 +73,7 @@ const DefaultLayout = ({ role, onLogout }) => {
             <button
               key={tab.id}
               className={`${styles.tab} ${activeTab.id === tab.id ? styles.tabActive : ''}`}
-              onClick={() => navigate(`/${role}/${tab.id}`)}
+              onClick={() => navigate(`/${role}/${tab.id}${tab.id === 'df-assets' ? '/dashboard' : ''}`)}
             >
               {tab.label}
             </button>
@@ -83,46 +84,42 @@ const DefaultLayout = ({ role, onLogout }) => {
       {/* Body (Sidebar + Content) */}
       <div className={styles.body}>
 
-        {/* Sidebar (admin only) */}
-        {role === 'admin' && (
-          <>
-            <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
-              <div className={styles.sidebarInner}>
-                <div className={styles.sidebarHeader}>
-                  <span className={styles.sidebarTitle}>{activeTab.label}</span>
-                  <button
-                    className={styles.sidebarToggle}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <ChevronLeft />
-                  </button>
-                </div>
-                <ul className={styles.sidebarMenu}>
-                  {activeTab.menus.map((menu) => (
-                    <li key={menu.id}>
-                      <Link
-                        to={`/${role}/${activeTab.id}/${menu.path}`}
-                        className={`${styles.sidebarMenuItem} ${location.pathname.endsWith('/' + menu.path) ? styles.sidebarMenuItemActive : ''}`}
-                      >
-                        <span className={styles.sidebarMenuDot} />
-                        <span className={styles.sidebarMenuLabel}>{menu.label}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </aside>
-
-            {/* 닫혔을 때 토글 버튼 */}
-            {!sidebarOpen && (
+        {/* Sidebar */}
+        <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
+          <div className={styles.sidebarInner}>
+            <div className={styles.sidebarHeader}>
+              <span className={styles.sidebarTitle}>{activeTab.label}</span>
               <button
-                className={styles.sidebarOpenBtn}
-                onClick={() => setSidebarOpen(true)}
+                className={styles.sidebarToggle}
+                onClick={() => setSidebarOpen(false)}
               >
-                <ChevronRight />
+                <ChevronLeft />
               </button>
-            )}
-          </>
+            </div>
+            <ul className={styles.sidebarMenu}>
+              {activeTab.menus.map((menu) => (
+                <li key={menu.id}>
+                  <Link
+                    to={`/${role}/${activeTab.id}/${menu.path}`}
+                    className={`${styles.sidebarMenuItem} ${location.pathname.endsWith('/' + menu.path) ? styles.sidebarMenuItemActive : ''}`}
+                  >
+                    <span className={styles.sidebarMenuDot} />
+                    <span className={styles.sidebarMenuLabel}>{menu.label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        {/* 닫혔을 때 토글 버튼 */}
+        {!sidebarOpen && (
+          <button
+            className={styles.sidebarOpenBtn}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <ChevronRight />
+          </button>
         )}
 
         {/* Main Content */}
