@@ -19,7 +19,7 @@ const TABS = [
     id: 'df-assets',
     label: 'DF 자산 관리',
     menus: [
-      { id: 'df-dashboard',    label: '프로젝트 현황 대시보드', path: 'dashboard' },
+      { id: 'df-dashboard',    label: 'DF 자산 현황', path: 'dashboard' },
       { id: 'df-register',     label: 'DF 자산 등록',           path: 'register' },
       { id: 'df-history',      label: 'DF 자산 히스토리',       path: 'history' },
     ],
