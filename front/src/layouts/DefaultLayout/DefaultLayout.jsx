@@ -75,7 +75,7 @@ const DefaultLayout = ({ role, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const TABS = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
-  const activeTab = TABS.find((tab) => location.pathname.includes(tab.id)) ?? TABS[0]
+  const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
 
   const handleLogout = async () => {
     try {
