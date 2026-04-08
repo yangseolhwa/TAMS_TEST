@@ -113,7 +113,7 @@ const AdminMyAssetsPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="내 자산 관리"
+        title="내 자산 현황"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
       />
 

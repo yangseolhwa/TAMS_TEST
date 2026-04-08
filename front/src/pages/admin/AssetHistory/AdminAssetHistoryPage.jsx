@@ -177,7 +177,7 @@ const AdminAssetHistoryPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="자산 히스토리"
+        title="내 자산 히스토리"
         desc="반납, 등록, 위치 이동에 관한 모든 이력을 조회합니다."
       />
 
