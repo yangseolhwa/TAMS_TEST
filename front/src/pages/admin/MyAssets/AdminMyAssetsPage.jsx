@@ -1,7 +1,6 @@
 import { useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp } from "react-bootstrap-icons";
-import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import Card from "../../../components/Card/Card";
 import styles from "./AdminMyAssetsPage.module.css";
@@ -116,12 +115,6 @@ const AdminMyAssetsPage = () => {
       <PageHeader
         title="내 자산 관리"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
-        actions={
-          <>
-            <HeaderButton label="자산 등록" onClick={() => navigate("/admin/my-assets/request")} />
-            <HeaderButton label="요청 내역" onClick={() => navigate("/admin/my-assets/request-history")} />
-          </>
-        }
       />
 
       {/* 섹션 0: SW 현황 대시보드 */}
@@ -154,7 +147,7 @@ const AdminMyAssetsPage = () => {
                   <button
                     type="button"
                     className={`${styles.swDashboardRow} ${isOpen ? styles.swDashboardRowOpen : ""}`}
-                    onClick={() => setOpenSwId((prev) => { const next = new Set(prev); isOpen ? next.delete(sw.id) : next.add(sw.id); return next; })}
+                    onClick={() => setOpenSwId((prev) => { const next = new Set(prev); prev.has(sw.id) ? next.delete(sw.id) : next.add(sw.id); return next; })}
                   >
                     <span className={styles.swDashboardName}>{sw.name}</span>
                     <span className={styles.swDashboardCount}>{sw.totalCount}</span>
