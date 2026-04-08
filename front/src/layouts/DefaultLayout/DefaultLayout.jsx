@@ -6,32 +6,76 @@ import styles from './DefaultLayout.module.css'
 import toast from 'react-hot-toast'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 
-const TABS = [
-  {
-    id: 'my-assets',
-    label: '내 자산 관리',
-    menus: [
-      { id: 'my-assets-list', label: '내 자산 항목조회', path: 'my-assets' },
-      { id: 'my-assets-history', label: '자산 히스토리', path: 'history' },
-    ],
-  },
-  {
-    id: 'df-assets',
-    label: 'DF 자산 관리',
-    menus: [
-      { id: 'df-dashboard',    label: 'DF 자산 현황', path: 'dashboard' },
-      { id: 'df-register',     label: 'DF 자산 등록',           path: 'register' },
-      { id: 'df-history',      label: 'DF 자산 히스토리',       path: 'history' },
-    ],
-  },
-]
+const TABS_BY_ROLE = {
+  admin: [
+    {
+      id: 'my-assets',
+      label: '내 자산 관리',
+      menus: [
+        { id: 'my-assets-list',            label: '내 자산 현황', path: 'my-assets'        },
+        { id: 'my-assets-request',         label: '내 자산 등록',        path: 'request'          },
+        { id: 'my-assets-request-history', label: '내 자산 요청 내역',        path: 'request-history'  },
+        { id: 'my-assets-history',         label: '내 자산 히스토리',    path: 'history'          },
+      ],
+    },
+    {
+      id: 'df-assets',
+      label: 'DF 자산 관리',
+      menus: [
+        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
+        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
+        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
+      ],
+    },
+  ],
+  user: [
+    {
+      id: 'my-assets',
+      label: '내 자산 관리',
+      menus: [
+        { id: 'my-assets-list',    label: '내 자산 현황', path: 'my-assets' },
+        { id: 'my-assets-request', label: '내 자산 등록 요청',        path: 'request'   },
+        { id: 'my-assets-history', label: '내 자산 요청 내역',        path: 'history'   },
+      ],
+    },
+    {
+      id: 'df-assets',
+      label: 'DF 자산 관리',
+      menus: [
+        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
+        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
+        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
+      ],
+    },
+  ],
+  df: [
+    {
+      id: 'my-assets',
+      label: '내 자산 관리',
+      menus: [
+        { id: 'my-assets-list',    label: '내 자산 항목조회', path: 'my-assets' },
+        { id: 'my-assets-history', label: '자산 히스토리',    path: 'history'   },
+      ],
+    },
+    {
+      id: 'df-assets',
+      label: 'DF 자산 관리',
+      menus: [
+        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
+        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
+        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
+      ],
+    },
+  ],
+}
 
 const DefaultLayout = ({ role, onLogout }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const activeTab = TABS.find((tab) => location.pathname.includes(tab.id)) ?? TABS[0]
+  const TABS = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
+  const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
 
   const handleLogout = async () => {
     try {

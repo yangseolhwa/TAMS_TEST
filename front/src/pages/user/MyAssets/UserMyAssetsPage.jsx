@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Search } from "react-bootstrap-icons";
-import HeaderButton from "../../../components/HeaderButton/HeaderButton";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import toast from "react-hot-toast";
 import PageHeader from "../../../components/PageHeader/PageHeader";
@@ -345,14 +344,8 @@ const UserMyAssetsPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="내 자산 관리"
+        title="내 자산 현황"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
-        actions={
-          <>
-            <HeaderButton label="등록 요청" onClick={() => navigate("/user/my-assets/request")} />
-            <HeaderButton label="요청 내역" onClick={() => navigate("/user/my-assets/history")} />
-          </>
-        }
       />
 
       {/* 섹션: 내 자산 조회 */}

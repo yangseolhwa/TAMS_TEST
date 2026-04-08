@@ -3,8 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageHeader from "../../../components/PageHeader/PageHeader";
-import HeaderButton from "../../../components/HeaderButton/HeaderButton";
-import BackButton from "../../../components/BackButton/BackButton";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import Banner from "../../../components/Banner/Banner";
 import Card from "../../../components/Card/Card";
@@ -138,21 +136,7 @@ const AdminRequestHistoryPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="자산 등록"
-        desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
-        actions={
-          <>
-            <HeaderButton
-              label="자산 등록"
-              onClick={() => navigate("/admin/my-assets/request")}
-            />
-            <HeaderButton
-              active
-              label="요청 내역"
-              onClick={() => {}}
-            />
-          </>
-        }
+        title="내 자산 요청 내역"
       />
 
       <section className={styles.section}>
