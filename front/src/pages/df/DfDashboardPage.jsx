@@ -40,7 +40,7 @@ const DfDashboardPage = ({ role }) => {
   const navigate = useNavigate()
 
   // 현재 열린 프로젝트 id
-  const [openId, setOpenId] = useState(null)
+  const [openId, setOpenId] = useState(new Set())
 
   // 아코디언 패널 높이 측정용
   const panelRefs     = useRef({})
@@ -61,7 +61,7 @@ const DfDashboardPage = ({ role }) => {
     0,
   )
 
-  const handleToggle      = (id) => setOpenId((prev) => (prev === id ? null : id))
+  const handleToggle      = (id) => setOpenId((prev) => { const next = new Set(prev); prev.has(id) ? next.delete(id) : next.add(id); return next; })
   const handleAllView     = () => navigate(`/${role}/df-assets/list`)
   const handleProjectView = (projectId, e) => {
     e.stopPropagation()
@@ -99,7 +99,7 @@ const DfDashboardPage = ({ role }) => {
           {/* 프로젝트 아코디언 목록 */}
           <ul className={styles.list}>
             {MOCK_PROJECTS.map((project) => {
-              const isOpen    = openId === project.id
+              const isOpen    = openId.has(project.id)
               const projTotal = project.items.reduce((s, i) => s + i.quantity, 0)
 
               return (
