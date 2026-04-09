@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { User, RefreshToken } = require("../models");
+const { User, RefreshToken, Profile } = require("../models");
 const asyncWrapper = require("../middleware/asyncWrapper");
 
 // 이메일 형식 검증 정규식
@@ -25,7 +25,16 @@ exports.login = asyncWrapper(async (req, res) => {
   }
 
   // [back-mem-login-1] DB에서 이메일 존재 여부 확인
-  const user = await User.findOne({ where: { email: trimmedEmail } });
+  const user = await User.findOne({ 
+    where: { email: trimmedEmail } ,
+    include: [
+      {
+        model: Profile,
+        as: 'profile',
+        attributes: ['name'],
+      }
+    ]
+  });
   if (!user) {
     return res.status(401).json({ message: "등록되지 않은 이메일입니다." });
   }
@@ -79,7 +88,7 @@ exports.login = asyncWrapper(async (req, res) => {
       maxAge: REFRESH_TOKEN_EXPIRATION_MS,
     })
     .status(200)
-    .json({ email: user.email, role: user.role, message: "로그인 성공" });
+    .json({ name: user.profile?.name ?? null, email: user.email, role: user.role, message: "로그인 성공" });
 });
 
 exports.logout = asyncWrapper(async (req, res) => {
