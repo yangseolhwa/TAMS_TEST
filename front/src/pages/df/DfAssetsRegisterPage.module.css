@@ -10,29 +10,8 @@
   margin-bottom: 28px;
 }
 
-/* 템플릿 다운로드 버튼 */
-.templateBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-
-.templateBtn:hover {
-  background: var(--color-bg);
-}
-
-/* 엑셀 가져오기 버튼 */
+/* 양식 다운로드 / 엑셀 가져오기 공통 버튼 */
+.templateBtn,
 .importBtn {
   display: inline-flex;
   align-items: center;
@@ -50,6 +29,7 @@
   transition: background-color var(--transition-fast);
 }
 
+.templateBtn:hover,
 .importBtn:hover {
   background: var(--color-bg);
 }
@@ -138,8 +118,7 @@
 }
 
 /* 비활성 select */
-.select:disabled,
-.disabledSelect {
+.select:disabled {
   background: var(--color-bg);
   color: var(--color-text-secondary);
   cursor: not-allowed;

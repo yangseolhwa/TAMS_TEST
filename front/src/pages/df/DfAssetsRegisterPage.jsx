@@ -23,7 +23,8 @@ const MOCK_SPEC_OPTIONS = ['고사양', '중사양', '저사양']
 // ── 필수 항목 키 목록 ─────────────────────────────────────────────────────
 const REQUIRED_FIELDS = ['project', 'majorCategory', 'minorCategory', 'serialNumber', 'registeredAt']
 
-const EMPTY_FORM = {
+// 호출 시마다 오늘 날짜로 새 객체 생성 (초기화 시 날짜 갱신을 위해 함수로 정의)
+const createEmptyForm = () => ({
   project:       '',
   ownerOrg:      '',
   deviceNumber:  '',
@@ -37,11 +38,11 @@ const EMPTY_FORM = {
   returnedAt:    '',
   location:      '장비실',
   remarks:       '',
-}
+})
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DfAssetsRegisterPage = ({ role }) => {
-  const [form,        setForm]        = useState(EMPTY_FORM)
+  const [form,        setForm]        = useState(createEmptyForm)
   const [errors,      setErrors]      = useState({})
   const [resetModal,  setResetModal]  = useState(false)
   const fileInputRef = useRef(null)
@@ -50,18 +51,20 @@ const DfAssetsRegisterPage = ({ role }) => {
     // 값 변경 시 해당 필드 에러 제거
     setErrors((prev) => ({ ...prev, [key]: false }))
 
-    // 소유기관 변경 시 장비번호 초기화
-    if (key === 'ownerOrg')      return setForm((prev) => ({ ...prev, ownerOrg: value, deviceNumber: '' }))
-    // 자산 대분류 변경 시 중분류 초기화
-    if (key === 'majorCategory') return setForm((prev) => ({ ...prev, majorCategory: value, minorCategory: '' }))
-
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+      // 소유기관 변경 시 장비번호 초기화
+      ...(key === 'ownerOrg'      && { deviceNumber:  '' }),
+      // 자산 대분류 변경 시 중분류 초기화
+      ...(key === 'majorCategory' && { minorCategory: '' }),
+    }))
   }
 
   const handleReset = () => setResetModal(true)
 
   const handleResetConfirm = () => {
-    setForm(EMPTY_FORM)
+    setForm(createEmptyForm())
     setErrors({})
     setResetModal(false)
   }
@@ -165,7 +168,7 @@ const DfAssetsRegisterPage = ({ role }) => {
               <label htmlFor="deviceNumber" className={styles.label}>장비번호</label>
               <select
                 id="deviceNumber"
-                className={`${styles.select} ${!form.ownerOrg ? styles.disabledSelect : ''}`}
+                className={`${styles.select} ${errors.deviceNumber ? styles.errorField : ''}`}
                 value={form.deviceNumber}
                 onChange={(e) => handleChange('deviceNumber', e.target.value)}
                 disabled={!form.ownerOrg}
@@ -198,7 +201,7 @@ const DfAssetsRegisterPage = ({ role }) => {
               </label>
               <select
                 id="minorCategory"
-                className={`${styles.select} ${!form.majorCategory ? styles.disabledSelect : ''} ${errors.minorCategory ? styles.errorField : ''}`}
+                className={`${styles.select} ${errors.minorCategory ? styles.errorField : ''}`}
                 value={form.minorCategory}
                 onChange={(e) => handleChange('minorCategory', e.target.value)}
                 disabled={!form.majorCategory}
