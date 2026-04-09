@@ -17,6 +17,15 @@ function toVal(v) {
   return (s === '' || s === '-' || s.toLowerCase() === 'n/a') ? null : s;
 }
 
+// serial_number 전용: 'N/A' 또는 '확인불가' → '확인불가', 빈값/'-' → null
+function toSerialVal(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === '' || s === '-') return null;
+  if (s.toLowerCase() === 'n/a' || s === '확인불가') return '확인불가';
+  return s;
+}
+
 function parseDate(value) {
   if (!value) return null;
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
@@ -129,12 +138,19 @@ const importDf = async (req, res) => {
     const project_id = projectCache[ws.name];
 
     const CARRY_COLS = ['manufacturer','parent_type','sub_type','model_name','spec',
-                        'acquisition_date','return_date','location','remarks',
                         'owner_organization','equipment_number'];
     const last = {};
 
     for (let r = dataStartRow; r <= ws.rowCount; r++) {
       const g = (key) => readCell(ws, r, colMap[key]);
+
+      // 빈 행 감지: carry-forward 적용 전 원본 값 기준으로 판단
+      const rawSubType    = toVal(g('sub_type'));
+      const rawModelName  = toVal(g('model_name'));
+      const rawMfr        = toVal(g('manufacturer'));
+      const rawAcqDate    = g('acquisition_date');
+      const rawSerial     = toVal(g('serial_number'));
+      if (!rawSubType && !rawModelName && !rawMfr && !rawAcqDate && !rawSerial) continue;
 
       // carry-forward
       const row = {};
@@ -144,13 +160,15 @@ const importDf = async (req, res) => {
         if (val !== null) { last[key] = raw; row[key] = val; }
         else { row[key] = last[key] instanceof Date ? last[key] : toVal(last[key] ?? null); }
       }
-      row.serial_number = toVal(g('serial_number'));
+      row.serial_number    = toSerialVal(g('serial_number'));
+      row.acquisition_date = g('acquisition_date');
+      row.return_date      = g('return_date');
+      row.location         = toVal(g('location'));
+      row.remarks          = toVal(g('remarks'));
 
-      if (!row.sub_type && !row.model_name && !row.manufacturer) continue;
-
-      const typeName = row.sub_type || row.parent_type;
+      const typeName = row.sub_type;
       if (!typeName) {
-        results.push({ sheet: ws.name, row: r, status: 'failed', reason: '자산 분류 없음' });
+        results.push({ sheet: ws.name, row: r, status: 'failed', reason: '자산 중분류 없음' });
         failed++; continue;
       }
 
@@ -180,6 +198,7 @@ const importDf = async (req, res) => {
 
       const acqDate = row.acquisition_date instanceof Date ? row.acquisition_date : parseDate(row.acquisition_date);
       const retDate = row.return_date instanceof Date ? row.return_date : parseDate(row.return_date);
+      const state   = retDate ? 'returned' : 'in_use';
 
       const t = await sequelize.transaction();
       try {
@@ -200,7 +219,7 @@ const importDf = async (req, res) => {
           spec:               row.spec          || null,
           acquisition_date:   acqDate           || null,
           return_date:        retDate           || null,
-          state:              'in_use',
+          state,
           location:           row.location      || null,
           remarks:            row.remarks        || null,
         }, { transaction: t });
@@ -208,7 +227,7 @@ const importDf = async (req, res) => {
         await AssetProjectHistory.create({
           asset_project_item_id: item.id, project_id,
           user_id: req.user.userId, change_type: 'register',
-          before_value: null, after_value: 'in_use',
+          before_value: null, after_value: state,
         }, { transaction: t });
 
         await t.commit();
