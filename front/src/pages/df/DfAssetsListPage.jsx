@@ -168,10 +168,9 @@ const DfAssetsListPage = ({ role }) => {
               onChange={(e) => handleFilterChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
-              <option value="active">사용중</option>
-              <option value="inactive">미사용</option>
-              <option value="stored">보관중</option>
-              <option value="returned">반납됨</option>
+              {Object.entries(STATUS_MAP).map(([value, { label }]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
 
             <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
@@ -199,7 +198,7 @@ const DfAssetsListPage = ({ role }) => {
               Export
             </button>
 
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <div className={styles.actionButtons}>
               {activeMode === null ? (
               <>
                 <ActionButton variant="black" size="sm" label="상태 변경" onClick={() => handleModeEnter('stateChange')} />
