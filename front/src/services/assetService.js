@@ -388,7 +388,7 @@ export const returnDfAssets = async (body) => {
 }
 
 /**
- * DF 자산 엑셀 Import
+ * DF 자산 엑셀 업로드
  * @param {File} file - .xlsx 파일
  * @returns {Promise<{ message: string, imported: number, failed: number, results: object[] }>}
  */
@@ -407,7 +407,7 @@ export const importDfAssets = async (file) => {
 }
 
 /**
- * DF 자산 엑셀 Export (현재 필터 적용)
+ * DF 자산 엑셀 다운로드 (현재 필터 적용)
  * @param {object} params - 쿼리 파라미터 (project_id, item_type_id, manufacturer, state, keyword)
  * @returns {Promise<void>} - 브라우저 파일 다운로드 트리거
  */
