@@ -489,12 +489,12 @@ function parseAssetNumber(assetNumber) {
 }
 
 function resolveResponsible(location, nameToUserId) {
-  if (!location || location === '-') return { type: 'vacant', value: null };
+  if (!location || location === '-') return 'vacant';
   const s = location.trim();
-  if (s === '공석') return { type: 'vacant',   value: null };
-  if (s === '공용') return { type: 'shared',    value: s };
-  if (nameToUserId[s] !== undefined) return { type: 'personal', value: s };
-  return { type: 'place', value: s };
+  if (s === '공석') return 'vacant';
+  if (s === '공용') return 'shared';
+  if (nameToUserId[s] !== undefined) return 'personal';
+  return 'place';
 }
 
 const importEnterpriseOriginal = async (req, res) => {
@@ -566,12 +566,10 @@ const importEnterpriseOriginal = async (req, res) => {
       }
 
       // responsible
-      const { type: responsibleType, value: responsibleValue } = resolveResponsible(location, nameToUserId);
+      const responsibleType = resolveResponsible(location, nameToUserId);
       const userId = responsibleType === 'personal' ? (nameToUserId[location?.trim()] ?? null) : null;
 
-      // department:
-      // personal → 유저 프로필의 부서 자동 할당 (없으면 소관부서 컬럼 fallback)
-      // 그 외    → 소관부서 컬럼 사용
+      // department: personal이면 유저 프로필 부서 자동 할당, 없으면 소관부서 컬럼 사용
       let department_id = null;
       if (responsibleType === 'personal' && location && nameToDeptId[location.trim()]) {
         department_id = nameToDeptId[location.trim()];
@@ -590,7 +588,6 @@ const importEnterpriseOriginal = async (req, res) => {
         department_id,
         responsible_type:  responsibleType,
         user_id:           userId,
-        responsible_value: responsibleValue,
         state:             'in_use',
         acquisition_date:  parseDate(g(C.acq)) || null,
         manufacturer:      toVal(g(C.mfr))     || null,
