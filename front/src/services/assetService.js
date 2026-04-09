@@ -401,7 +401,7 @@ export const importDfAssets = async (file) => {
     })
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'Import에 실패했습니다.'
+    const message = error.response?.data?.message ?? '업로드에 실패했습니다.'
     throw new Error(message)
   }
 }
@@ -426,7 +426,7 @@ export const exportDfAssets = async (params = {}) => {
   const match       = disposition.match(/filename="(.+)"/)
   const filename    = match
     ? match[1]
-    : `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`
+    : `TAMS_DF_DOWNLOAD_${new Date().toISOString().slice(0, 10)}.xlsx`
 
   const url  = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
