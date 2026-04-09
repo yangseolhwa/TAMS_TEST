@@ -1,0 +1,171 @@
+/* 공통 스타일은 AssetPage.common.module.css 참고 */
+
+/* =====================
+   카드 상단 버튼 영역
+   ===================== */
+.cardHeader {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+/* 템플릿 다운로드 버튼 */
+.templateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.templateBtn:hover {
+  background: var(--color-bg);
+}
+
+/* 엑셀 가져오기 버튼 */
+.importBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.importBtn:hover {
+  background: var(--color-bg);
+}
+
+/* 숨김 파일 입력 */
+.hiddenFileInput {
+  display: none;
+}
+
+/* =====================
+   폼 그리드 (3열)
+   ===================== */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px 24px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+/* =====================
+   필드 그룹
+   ===================== */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.required {
+  color: var(--color-error);
+}
+
+/* =====================
+   입력 필드 공통
+   ===================== */
+.input,
+.select,
+.textarea {
+  padding: 0 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input,
+.select {
+  height: 40px;
+  line-height: 40px;
+}
+
+.textarea {
+  padding: 10px 12px;
+  height: 80px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.select {
+  cursor: pointer;
+}
+
+/* 비활성 select */
+.select:disabled,
+.disabledSelect {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+/* =====================
+   에러 상태
+   ===================== */
+.errorField {
+  border-color: var(--color-error-border);
+  box-shadow: 0 0 0 3px var(--color-error-ring);
+}
+
+.errorMsg {
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+/* =====================
+   폼 하단 버튼 영역
+   ===================== */
+.formFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-light);
+}
