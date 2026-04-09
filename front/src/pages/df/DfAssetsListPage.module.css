@@ -1,0 +1,36 @@
+/* 공통 스타일은 AssetPage.common.module.css 참고 */
+
+/* =====================
+   액션 버튼 영역
+   ===================== */
+.tableActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* =====================
+   Export 버튼
+   ===================== */
+.exportBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast);
+}
+
+.exportBtn:hover {
+  background: var(--color-bg);
+}
