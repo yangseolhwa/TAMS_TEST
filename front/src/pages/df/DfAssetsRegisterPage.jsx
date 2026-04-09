@@ -119,7 +119,7 @@ const DfAssetsRegisterPage = ({ role }) => {
             </button>
             <button type="button" className={styles.importBtn} onClick={() => fileInputRef.current.click()}>
               <Upload size={13} />
-              엑셀 가져오기
+              엑셀 업로드
             </button>
             {/* 실제 파일 입력 (숨김) */}
             <input

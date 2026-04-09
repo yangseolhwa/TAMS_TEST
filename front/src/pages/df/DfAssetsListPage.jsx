@@ -192,10 +192,10 @@ const DfAssetsListPage = ({ role }) => {
 
           {/* 액션 버튼 영역 */}
           <div className={styles.tableActions}>
-            {/* Export 버튼은 항상 왼쪽 고정 */}
+            {/* 엑셀 다운로드 버튼은 항상 왼쪽 고정 */}
             <button type="button" className={styles.exportBtn} onClick={() => {}}>
               <Download size={13} />
-              Export
+              엑셀 다운로드
             </button>
 
             <div className={styles.actionButtons}>
