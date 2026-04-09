@@ -5,7 +5,7 @@ import DataTable from "../../../components/DataTable/DataTable";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import BackButton from "../../../components/BackButton/BackButton";
-import common from "../AssetPage.common.module.css";
+import common from "../../AssetPage.common.module.css";
 import styles from "./AdminPcAssetsPage.module.css";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
