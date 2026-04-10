@@ -30,11 +30,18 @@ const MOCK_HISTORY = [
   { id: 10, requestedAt: "2026-02-04", user: "admin", requestType: "반납",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "C 프로젝트", category: "데스크탑", modelName: "Lenovo IdeaPad", serialNumber: "032738" },
 ];
 
+const REQUEST_TYPE = {
+  REGISTER:     "등록",
+  MOVE:         "이동",
+  RETURN:       "반납",
+  STATE_CHANGE: "상태 변경",
+};
+
 const REQUEST_TYPE_STYLE = {
-  "등록":     styles.badgeRegister,
-  "이동":     styles.badgeMove,
-  "반납":     styles.badgeReturn,
-  "상태 변경": styles.badgeStateChange,
+  [REQUEST_TYPE.REGISTER]:     styles.badgeRegister,
+  [REQUEST_TYPE.MOVE]:         styles.badgeMove,
+  [REQUEST_TYPE.RETURN]:       styles.badgeReturn,
+  [REQUEST_TYPE.STATE_CHANGE]: styles.badgeStateChange,
 };
 
 const STATE_BADGE_STYLE = {
@@ -45,12 +52,12 @@ const STATE_BADGE_STYLE = {
 
 // 변경 전/후 셀 렌더링 헬퍼
 const renderChangedCell = (requestType, locationVal, stateVal) => {
-  if (requestType === "이동") {
+  if (requestType === REQUEST_TYPE.MOVE) {
     return locationVal
       ? <span>{locationVal}</span>
       : <span className={styles.dash}>-</span>;
   }
-  if (requestType === "상태 변경") {
+  if (requestType === REQUEST_TYPE.STATE_CHANGE) {
     return stateVal
       ? <span className={`${styles.badge} ${STATE_BADGE_STYLE[stateVal] ?? ""}`}>{stateVal}</span>
       : <span className={styles.dash}>-</span>;
@@ -108,6 +115,8 @@ const DfAssetsHistoryPage = ({ role }) => {
 
   // --- [필터 적용된 rows] ---
   const filteredRows = useMemo(() => {
+    const kw = appliedFilters.keyword.toLowerCase();
+
     return MOCK_HISTORY.filter((row) => {
       if (appliedFilters.projectName && row.projectName !== appliedFilters.projectName) return false;
       if (appliedFilters.user        && row.user        !== appliedFilters.user)        return false;
@@ -117,8 +126,7 @@ const DfAssetsHistoryPage = ({ role }) => {
         const loc = appliedFilters.location;
         if (row.prevLocation !== loc && row.nextLocation !== loc) return false;
       }
-      if (appliedFilters.keyword) {
-        const kw = appliedFilters.keyword.toLowerCase();
+      if (kw) {
         const target = [row.user, row.projectName, row.category, row.modelName, row.serialNumber, row.prevLocation, row.nextLocation]
           .filter(Boolean).join(" ").toLowerCase();
         if (!target.includes(kw)) return false;
@@ -157,7 +165,7 @@ const DfAssetsHistoryPage = ({ role }) => {
   return (
     <div className={common.page}>
       <PageHeader
-        title="DF 자산 히스토리"
+        title="히스토리"
         desc="자산 이동, 상태 변경, 반납, 등록에 관한 모든 이력을 조회합니다."
       />
 
