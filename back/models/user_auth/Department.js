@@ -1,13 +1,12 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 
-const AssetProjectItemType = sequelize.define('AssetProjectItemType', {
+const Department = sequelize.define('Department', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  parent_id: { type: DataTypes.INTEGER, allowNull: true },
   name: { type: DataTypes.STRING(100), allowNull: false },
 }, {
-  tableName: 'asset_project_item_type',
+  tableName: 'departments',
   timestamps: false,
 });
 
-module.exports = AssetProjectItemType;
+module.exports = Department;
