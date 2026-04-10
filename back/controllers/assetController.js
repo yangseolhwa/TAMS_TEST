@@ -56,7 +56,6 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
         { serial_number:     { [Op.like]: `%${keyword}%` } },
         { spec:              { [Op.like]: `%${keyword}%` } },
         { location:          { [Op.like]: `%${keyword}%` } },
-        { responsible_value: { [Op.like]: `%${keyword}%` } },
       ];
     }
     enterprise = await AssetEnterprise.findAll({
@@ -193,7 +192,6 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         manufacturer:      assets[0].manufacturer      ?? original.manufacturer,
         spec:              assets[0].spec              ?? null,
         serial_number:     assets[0].serial_number     ?? null,
-        responsible_value: assets[0].responsible_value ?? original.responsible_value,
         location:          assets[0].location          ?? original.location,
         remarks:           assets[0].remarks           ?? original.remarks,
         acquisition_date:  assets[0].acquisition_date,
@@ -240,7 +238,6 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
             manufacturer:      asset.manufacturer      ?? null,
             spec:              asset.spec              ?? null,
             serial_number:     asset.serial_number     ?? null,
-            responsible_value: asset.responsible_value ?? null,
             acquisition_date:  asset.acquisition_date,
             location:          asset.location          ?? null,
           }
@@ -251,7 +248,6 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
             manufacturer:      asset.manufacturer,
             spec:              asset.spec              ?? null,
             serial_number:     asset.serial_number     ?? null,
-            responsible_value: asset.responsible_value ?? null,
             acquisition_date:  asset.acquisition_date,
             location:          asset.location          ?? null,
           }
@@ -521,7 +517,6 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       manufacturer:      overrides.manufacturer      ?? original.manufacturer,
       spec:              overrides.spec              ?? null,
       serial_number:     overrides.serial_number     ?? null,
-      responsible_value: overrides.responsible_value ?? null,
       acquisition_date:  overrides.acquisition_date,
       location:          overrides.location          ?? null,
     };

@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const assetController = require('../controllers/assetController');
 const upload = require('../middleware/excelUpload');
-const { importDf } = require('../controllers/importController');
+const {
+  importDf,
+  downloadDfTemplate,
+  importSwOriginal,
+  importEnterpriseOriginal,
+} = require('../controllers/importController');
 const { exportDf } = require('../controllers/exportController');
 const { verifyAccessToken } = require('../middleware/authMiddleware');
 
@@ -32,12 +37,17 @@ router.patch('/enterprise/return', assetController.returnEnterprise);
 router.patch('/sw/return',         assetController.returnSw);
 router.patch('/df/return',         assetController.returnDf);
 
-// 이동 (SW는 location 필드 없으므로 미지원)
+// 이동
 router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/df/move',         assetController.moveDf);
 
-// 엑셀 import / export
+// DF 엑셀 import / export / 양식 다운로드
 router.post('/df/import', upload.single('file'), importDf);
-router.get('/df/export',  exportDf);
+router.get('/df/export', exportDf);
+router.get('/df/template', downloadDfTemplate);
+
+// 원본 데이터 1회성 Import (관리자 전용)
+router.post('/sw/import/original', upload.single('file'), importSwOriginal);
+router.post('/enterprise/import/original', upload.single('file'), importEnterpriseOriginal);
 
 module.exports = router;

@@ -9,6 +9,7 @@ const AssetSw = sequelize.define('AssetSw', {
   quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   acquisition_date: { type: DataTypes.DATEONLY },
   state: { type: DataTypes.ENUM('in_use', 'available', 'returned') },
+  remarks: { type: DataTypes.STRING(255), allowNull: true },
 }, {
   tableName: 'asset_sw',
   timestamps: true,
