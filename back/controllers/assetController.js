@@ -313,6 +313,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           manufacturer:     lic.manufacturer,
           quantity:         lic.quantity         ?? 1,
           acquisition_date: lic.acquisition_date ?? null,
+          remarks:          lic.remarks          ?? null,
           state:            'available',
         }, { transaction: t });
         swId = newSw.id;
@@ -355,7 +356,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       request_date:      new Date(),
       required_quantity: 1,
       request_reason:    lic.request_reason ?? null,
-      new_asset_data:    is_existing ? null : JSON.stringify({
+      new_asset_data: is_existing ? null : JSON.stringify({
         name:             lic.name,
         version:          lic.version          ?? null,
         manufacturer:     lic.manufacturer,
@@ -364,7 +365,9 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_key:      lic.license_key,
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
-        related_link:     lic.related_link      ?? null,
+        related_link:     lic.related_link     ?? null,
+        issue_date:       lic.issue_date       ?? null,
+        remarks:          lic.remarks          ?? null,
       }),
     }))
   );
@@ -617,6 +620,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         manufacturer:     swData.manufacturer,
         quantity:         swData.quantity         ?? 1,
         acquisition_date: swData.acquisition_date ?? null,
+        remarks:          swData.remarks          ?? null,
         state:            'available',
       }, { transaction: t });
       swId = newSw.id;
