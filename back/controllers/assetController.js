@@ -1100,7 +1100,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
         state:            l.state,
         issue_date:       l.issue_date,
         remarks:          l.remarks,
-        user: l.User ? { id: l.User.id, email: l.User.email } : null,
+        user: l.User ? { id: l.User.id, email: l.User.email, role: l.User.role, name: l.User.profile?.name } : null,
       })),
     };
   });
