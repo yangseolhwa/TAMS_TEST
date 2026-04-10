@@ -6,7 +6,7 @@ const {
   AssetEnterpriseRequest, AssetEnterpriseHistory,
   AssetSw, AssetSwLicense, AssetSwRequest, AssetSwHistory,
   AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory,
-  User,
+  User, Department, Profile
 } = require('../models');
 
 // ─────────────────────────────────────────
@@ -15,6 +15,11 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
+const USER_INCLUDE = {
+  model: User,
+  attributes: ['id', 'email', 'role'],
+  include: [{ model: Profile, as: 'profile', attributes: ['name']}]
+};
 
 
 // ─────────────────────────────────────────
@@ -63,7 +68,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
       include: [
         { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
         { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
-        { model: User,                                          attributes: ['id', 'email'] },
+        USER_INCLUDE,
       ],
       order: [['created_at', 'DESC']],
     });
@@ -90,7 +95,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
         as: 'licenses',
         where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
         required: role !== 'admin',
-        include: [{ model: User, attributes: ['id', 'email'] }],
+        include: [USER_INCLUDE],
       }],
       order: [['created_at', 'DESC']],
     });
@@ -138,7 +143,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
       required: true,
       include: [
         { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'parent_id'] },
-        { model: User,                 as: 'manager',   attributes: ['id', 'email'] },
+        { ...USER_INCLUDE, as: 'manager' },
       ],
     }],
     order: [['created_at', 'DESC']],
@@ -204,8 +209,9 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
       const asset = await AssetEnterprise.create({
         ...assetData,
         responsible_type: 'personal',
-        user_id: userId,
-        state: 'in_use',
+        user_id:          userId,
+        department_id:    assetData.department_id ?? null,
+        state:            'in_use',
       }, { transaction: t });
 
       await AssetEnterpriseHistory.create({
@@ -307,6 +313,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           manufacturer:     lic.manufacturer,
           quantity:         lic.quantity         ?? 1,
           acquisition_date: lic.acquisition_date ?? null,
+          remarks:          lic.remarks          ?? null,
           state:            'available',
         }, { transaction: t });
         swId = newSw.id;
@@ -319,6 +326,8 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_password: lic.license_password  ?? null,
         key_type:         lic.key_type,
         related_link:     lic.related_link       ?? null,
+        issue_date:       lic.issue_date         ?? null,
+        remarks:          lic.remarks            ?? null,
         state:            'in_use',
       }, { transaction: t });
 
@@ -347,7 +356,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       request_date:      new Date(),
       required_quantity: 1,
       request_reason:    lic.request_reason ?? null,
-      new_asset_data:    is_existing ? null : JSON.stringify({
+      new_asset_data: is_existing ? null : JSON.stringify({
         name:             lic.name,
         version:          lic.version          ?? null,
         manufacturer:     lic.manufacturer,
@@ -356,7 +365,9 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_key:      lic.license_key,
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
-        related_link:     lic.related_link      ?? null,
+        related_link:     lic.related_link     ?? null,
+        issue_date:       lic.issue_date       ?? null,
+        remarks:          lic.remarks          ?? null,
       }),
     }))
   );
@@ -534,6 +545,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       ...assetData,
       responsible_type: 'personal',
       user_id:          request.requester_id,
+      department_id:    assetData.department_id ?? null,
       state:            'in_use',
     }, { transaction: t });
 
@@ -608,6 +620,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         manufacturer:     swData.manufacturer,
         quantity:         swData.quantity         ?? 1,
         acquisition_date: swData.acquisition_date ?? null,
+        remarks:          swData.remarks          ?? null,
         state:            'available',
       }, { transaction: t });
       swId = newSw.id;
@@ -620,6 +633,8 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       license_password: licData.license_password  ?? null,
       key_type:         licData.key_type           ?? null,
       related_link:     licData.related_link       ?? null,
+      issue_date:       licData.issue_date         ?? null,
+      remarks:          licData.remarks            ?? null,
       state:            'in_use',
     }, { transaction: t });
 
@@ -912,4 +927,237 @@ exports.moveDf = asyncWrapper(async (req, res) => {
   });
 
   res.status(200).json({ message: `${items.length}개의 자산 위치가 변경되었습니다.` });
+});
+
+// ─────────────────────────────────────────
+// DF 대시보드 (admin + user 공통)
+// GET /assets/dashboard/df
+// ─────────────────────────────────────────
+exports.getDfDashboard = asyncWrapper(async (req, res) => {
+  const items = await AssetProjectItem.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'project_id', 'asset_type_id'],
+    include: [
+      { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  });
+
+  // 프로젝트별 집계
+  const projectMap = {};
+  for (const item of items) {
+    const pid  = item.project_id;
+    const pname = item.project?.name ?? '미지정';
+    if (!projectMap[pid]) {
+      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {} };
+    }
+    projectMap[pid].total_count += 1;
+
+    const tid   = item.asset_type_id;
+    const tname = item.item_type?.name ?? '미분류';
+    if (!projectMap[pid].by_type[tid]) {
+      projectMap[pid].by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
+    }
+    projectMap[pid].by_type[tid].count += 1;
+  }
+
+  const projects = Object.values(projectMap).map((p) => ({
+    id:          p.id,
+    name:        p.name,
+    total_count: p.total_count,
+    by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.status(200).json({
+    total: items.length,
+    projects,
+  });
+});
+
+// ─────────────────────────────────────────
+// 대시보드 (admin 전용)
+// GET /assets/dashboard
+// ─────────────────────────────────────────
+exports.getDashboard = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  // ── SW 집계 ──────────────────────────────
+  const swList = await AssetSw.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    include: [{
+      model: AssetSwLicense,
+      as: 'licenses',
+      attributes: ['id', 'state', 'user_id'],
+      include: [USER_INCLUDE],
+    }],
+    order: [['name', 'ASC']],
+  });
+
+  const sw = swList.map((s) => {
+    const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
+    return {
+      id:           s.id,
+      name:         s.name,
+      version:      s.version,
+      manufacturer: s.manufacturer,
+      quantity:     s.quantity,
+      state:        s.state,
+      in_use_count: inUseCount,
+      available_count: s.quantity - inUseCount,
+    };
+  });
+
+  const swTotal = {
+    total_sw_count:      sw.length,
+    total_license_count: sw.reduce((acc, s) => acc + s.quantity, 0),
+    total_in_use:        sw.reduce((acc, s) => acc + s.in_use_count, 0),
+    list: sw,
+  };
+
+  // ── Enterprise(PC) 집계 ──────────────────
+  const enterpriseTypes = await AssetEnterpriseItemType.findAll({
+    include: [{
+      model: AssetEnterprise,
+      as: 'assets',
+      where: { state: { [Op.ne]: 'returned' } },
+      attributes: ['id', 'state'],
+      required: false,
+    }],
+    order: [['name', 'ASC']],
+  });
+
+  const enterpriseTotal = await AssetEnterprise.count({
+    where: { state: { [Op.ne]: 'returned' } },
+  });
+
+  const enterprise = {
+    total_count: enterpriseTotal,
+    by_item_type: enterpriseTypes.map((t) => ({
+      id:    t.id,
+      code:  t.code,
+      name:  t.name,
+      count: t.assets ? t.assets.length : 0,
+    })).filter(t => t.count > 0),
+  };
+
+  res.status(200).json({ sw: swTotal, enterprise });
+});
+
+
+// ─────────────────────────────────────────
+// SW 전체 조회 (admin 전용)
+// GET /assets/sw/list
+// query: name, manufacturer, user_id
+// ─────────────────────────────────────────
+exports.getSwList = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { name, manufacturer, user_id } = req.query;
+
+  const swWhere = { state: { [Op.ne]: 'returned' } };
+  if (name)         swWhere.name         = { [Op.like]: `%${name}%` };
+  if (manufacturer) swWhere.manufacturer = { [Op.like]: `%${manufacturer}%` };
+
+  const licenseWhere = {};
+  if (user_id) licenseWhere.user_id = Number(user_id);
+
+  const swList = await AssetSw.findAll({
+    where: swWhere,
+    include: [{
+      model: AssetSwLicense,
+      as: 'licenses',
+      where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
+      required: Object.keys(licenseWhere).length > 0,
+      include: [USER_INCLUDE],
+    }],
+    order: [['id', 'ASC']],
+  });
+
+  const result = swList.map((sw) => {
+    const inUseCount = sw.licenses.filter(l => l.state === 'in_use').length;
+    return {
+      id:              sw.id,
+      name:            sw.name,
+      version:         sw.version,
+      manufacturer:    sw.manufacturer,
+      quantity:        sw.quantity,
+      acquisition_date: sw.acquisition_date,
+      state:           sw.state,
+      remarks:         sw.remarks,
+      in_use_count:    inUseCount,
+      available_count: sw.quantity - inUseCount,
+      created_at:      sw.created_at,
+      updated_at:      sw.updated_at,
+      licenses: sw.licenses.map(l => ({
+        id:               l.id,
+        license_key:      l.license_key,
+        license_password: l.license_password,
+        key_type:         l.key_type,
+        related_link:     l.related_link,
+        state:            l.state,
+        issue_date:       l.issue_date,
+        remarks:          l.remarks,
+        user: l.User ? { id: l.User.id, email: l.User.email, role: l.User.role, name: l.User.profile?.name } : null,
+      })),
+    };
+  });
+
+  res.status(200).json({ total: result.length, list: result });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise(PC) 전체 조회 (admin 전용)
+// GET /assets/enterprise/list
+// query: category_id, item_type_id, manufacturer, location,
+//        state, user_id, department_id
+// ─────────────────────────────────────────
+exports.getEnterpriseList = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { category_id, item_type_id, manufacturer, location,
+          state, user_id, department_id, keyword } = req.query;
+
+  const where = { state: { [Op.ne]: 'returned' } };
+  if (state)         where.state         = state;
+  if (category_id)   where.category_id   = Number(category_id);
+  if (item_type_id)  where.item_type_id  = Number(item_type_id);
+  if (manufacturer)  where.manufacturer  = { [Op.like]: `%${manufacturer}%` };
+  if (location)      where.location      = { [Op.like]: `%${location}%` };
+  if (user_id)       where.user_id       = Number(user_id);
+  if (department_id) where.department_id = Number(department_id);
+  if (keyword) {
+    where[Op.or] = [
+      { asset_number:  { [Op.like]: `%${keyword}%` } },
+      { manufacturer:  { [Op.like]: `%${keyword}%` } },
+      { serial_number: { [Op.like]: `%${keyword}%` } },
+      { spec:          { [Op.like]: `%${keyword}%` } },
+      { location:      { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+
+  const list = await AssetEnterprise.findAll({
+    where,
+    include: [
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+      { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+      {
+        model: User,
+        attributes: ['id', 'email', 'role'],
+        include: [{
+          model: Profile,
+          as: 'profile',
+          attributes: ['name', 'department_id', 'company_rank'],
+          include: [{ model: Department, as: 'department', attributes: ['id', 'name'] }],
+        }],
+      },
+    ],
+    order: [['asset_number', 'ASC']],
+  });
+
+  res.status(200).json({ total: list.length, list });
 });
