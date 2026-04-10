@@ -4,27 +4,31 @@
   gap: 12px;
 }
 
+.tableWrapper {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
 .tableScroll {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  max-height: 396px;
   overflow-y: auto;
+  max-height: 396px;
+  /* scrollbar-gutter: stable; */
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 600px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.875rem;
   color: var(--color-text);
 }
 
 /* Header */
-.table thead tr {
-  border-bottom: 1px solid var(--color-border-light);
-}
-
 .th,
 .thCheckboxCell {
   padding: 10px 14px;
@@ -33,6 +37,7 @@
   color: var(--color-text);
   white-space: nowrap;
   background-color: var(--color-table-header-bg);
+  border-bottom: 1px solid var(--color-border-light);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -45,7 +50,6 @@
 
 /* Body */
 .tr {
-  border-bottom: 1px solid var(--color-border-light);
   transition: background-color var(--transition-fast);
 }
 
@@ -57,10 +61,21 @@
   background-color: var(--color-accent-bg);
 }
 
+/* td와 checkboxCell 공통 border */
+.td,
+.checkboxCell {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
 .td {
   padding: 10px 14px;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+/* 마지막 행 border-bottom 제거 */
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 /* Checkbox */
@@ -113,25 +128,49 @@
   color: var(--color-badge-sw-text);
 }
 
-/* status color variants */
 .status_yellow {
   background-color: var(--color-badge-yellow-bg);
   color: var(--color-badge-yellow);
 }
 
 .status_green {
-  background-color: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
+  background-color: var(--color-badge-green2-bg);
+  color: var(--color-badge-green2);
+}
+
+.status_blue {
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
+}
+
+.status_cyan {
+  background-color: var(--color-badge-cyan-bg);
+  color: var(--color-badge-cyan);
+}
+
+.status_purple {
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+}
+
+.status_purple_red {
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-red2);
+}
+
+.status_orange {
+  background-color: var(--color-badge-orange-bg);
+  color: var(--color-badge-orange);
+}
+
+.status_return {
+  background-color: var(--color-badge-return-bg);
+  color: var(--color-badge-red2);
 }
 
 .status_red {
   background-color: var(--color-badge-red-bg);
   color: var(--color-error);
-}
-
-.status_blue {
-  background-color: var(--color-accent-bg);
-  color: var(--color-accent);
 }
 
 .status_gray {

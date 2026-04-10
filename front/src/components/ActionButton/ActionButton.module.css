@@ -2,7 +2,7 @@
    공통 기본 스타일
    ===================== */
 .btn {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   border-radius: 8px;
@@ -20,6 +20,11 @@
 /* =====================
    사이즈
    ===================== */
+.xs {
+  height: 30px;
+  padding: 0 12px;
+}
+
 .sm {
   height: 36px;
   padding: 0 16px;

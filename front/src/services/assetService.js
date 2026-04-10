@@ -388,7 +388,7 @@ export const returnDfAssets = async (body) => {
 }
 
 /**
- * DF 자산 엑셀 Import
+ * DF 자산 엑셀 업로드
  * @param {File} file - .xlsx 파일
  * @returns {Promise<{ message: string, imported: number, failed: number, results: object[] }>}
  */
@@ -401,13 +401,13 @@ export const importDfAssets = async (file) => {
     })
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'Import에 실패했습니다.'
+    const message = error.response?.data?.message ?? '업로드에 실패했습니다.'
     throw new Error(message)
   }
 }
 
 /**
- * DF 자산 엑셀 Export (현재 필터 적용)
+ * DF 자산 엑셀 다운로드 (현재 필터 적용)
  * @param {object} params - 쿼리 파라미터 (project_id, item_type_id, manufacturer, state, keyword)
  * @returns {Promise<void>} - 브라우저 파일 다운로드 트리거
  */
@@ -426,7 +426,7 @@ export const exportDfAssets = async (params = {}) => {
   const match       = disposition.match(/filename="(.+)"/)
   const filename    = match
     ? match[1]
-    : `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`
+    : `TAMS_DF_DOWNLOAD_${new Date().toISOString().slice(0, 10)}.xlsx`
 
   const url  = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')

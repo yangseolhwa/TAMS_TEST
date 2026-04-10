@@ -1,0 +1,238 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 타이틀 바 ── */
+.titleBar {
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.titleText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.titleCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+  text-align: right;
+  padding-right: 4px;
+}
+
+.viewBtn {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.7);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+
+.viewBtn:hover {
+  color: var(--color-surface);
+}
+
+/* ── 컬럼 헤더 ── */
+.header {
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.headerName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.headerCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── 목록 ── */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+/* ── 프로젝트 행 ── */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.row:hover {
+  background-color: var(--color-primary-tint);
+}
+
+.rowOpen {
+  background-color: var(--color-accent-bg);
+}
+
+.rowOpen:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.projectLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.projectName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.projectCount {
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: right;
+  padding-right: 4px;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.projectViewBtn {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.projectViewBtn:hover {
+  color: var(--color-text);
+}
+
+.chevron {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.chevronOpen {
+  color: var(--color-accent);
+}
+
+/* ── 아코디언 패널 ── */
+.panel {
+  overflow: hidden;
+  background-color: var(--color-accent-bg);
+  transition: max-height 300ms ease-in-out;
+}
+
+.panelOpen {
+  border-top: 1px solid var(--color-accent-border);
+}
+
+/* ── 장비 헤더 ── */
+.itemHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--color-accent-border);
+  border-bottom: 1px solid var(--color-accent-border);
+}
+
+.itemHeaderName,
+.itemHeaderCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.itemHeaderCount {
+  text-align: right;
+  padding-right: 4px;
+}
+
+/* ── 장비 행 ── */
+.itemRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 32px;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-accent-border);
+  transition: background-color var(--transition-fast);
+}
+
+.itemRow:last-child {
+  border-bottom: none;
+}
+
+.itemRow:hover {
+  background-color: var(--color-accent-border);
+}
+
+.itemName {
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.itemCount {
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: right;
+  padding-right: 4px;
+}

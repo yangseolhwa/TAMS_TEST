@@ -26,7 +26,7 @@ html, body {
   --color-submit:          #4A7FC1;
   --color-submit-hover:    #3D6FAD;
 
-  /* Dark Button */
+    /* Dark Button */
   --color-dark:            #1E2D45;
   --color-dark-hover:      #16243A;
 
@@ -77,6 +77,20 @@ html, body {
   --color-badge-green:       #059669;
   --color-badge-red-bg:      rgba(192, 57, 43, 0.1);
   --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
+
+  /* Badge - Status (커스텀) */
+  --color-badge-green2-bg:       #AFFBC5;
+  --color-badge-green2:          #19A019;
+  --color-badge-blue2-bg:        #DBEAFE;
+  --color-badge-blue2:           #1D4EDA;
+  --color-badge-cyan-bg:         #8CE6F3;
+  --color-badge-cyan:            #2A53C8;
+  --color-badge-purple-bg:       #DDD7FB;
+  --color-badge-purple:          #6834D0;
+  --color-badge-red2:            #B91C1C;
+  --color-badge-orange-bg:       #FFC583;
+  --color-badge-orange:          #8C4C03;
+  --color-badge-return-bg:       #FEE2E2;
   /* Table */
   --color-table-header-bg: #f2f4f9;
 }

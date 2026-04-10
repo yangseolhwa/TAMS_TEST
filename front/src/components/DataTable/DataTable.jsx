@@ -29,8 +29,9 @@ const DataTable = ({
   columns,
   rows,
   statusMap,
-  selectedIds,
-  onSelectionChange,
+  selectable = true,
+  selectedIds = [],
+  onSelectionChange = () => {},
   totalCount,
   highlight,
 }) => {
@@ -97,18 +98,21 @@ const DataTable = ({
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tableScroll}>
-        <table className={styles.table}>
+      <div className={styles.tableWrapper}>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.thCheckboxCell}>
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={handleAllChange}
-                  className={styles.checkbox}
-                />
-              </th>
+              {selectable && (
+                <th className={styles.thCheckboxCell}>
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={handleAllChange}
+                    className={styles.checkbox}
+                  />
+                </th>
+              )}
               {columns.map((col) => (
                 <th key={col.key} className={styles.th}>
                   {col.label}
@@ -120,7 +124,7 @@ const DataTable = ({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + 1}
+                  colSpan={selectable ? columns.length + 1 : columns.length}
                   className={styles.emptyCell}
                 >
                   데이터가 없습니다.
@@ -134,14 +138,16 @@ const DataTable = ({
                     selectedIdSet.has(row.id) ? styles.selected : ""
                   }`}
                 >
-                  <td className={styles.checkboxCell}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIdSet.has(row.id)}
-                      onChange={() => handleRowChange(row.id)}
-                      className={styles.checkbox}
-                    />
-                  </td>
+                  {selectable && (
+                    <td className={styles.checkboxCell}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIdSet.has(row.id)}
+                        onChange={() => handleRowChange(row.id)}
+                        className={styles.checkbox}
+                      />
+                    </td>
+                  )}
                   {columns.map((col) => (
                     <td key={col.key} className={styles.td}>
                       {renderCell(col, row)}
@@ -151,7 +157,8 @@ const DataTable = ({
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
       {totalCount !== undefined && (
         <p className={styles.totalCount}>총 {totalCount}건</p>
@@ -179,8 +186,9 @@ DataTable.propTypes = {
       color: PropTypes.string.isRequired,
     })
   ),
-  selectedIds:       PropTypes.array.isRequired,
-  onSelectionChange: PropTypes.func.isRequired,
+  selectable:        PropTypes.bool,
+  selectedIds:       PropTypes.array,
+  onSelectionChange: PropTypes.func,
   totalCount:        PropTypes.number,
   highlight:         PropTypes.string,
 };

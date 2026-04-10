@@ -19,9 +19,10 @@ const PageHeader = ({ title, desc, actions }) => {
   );
 };
 
+
 PageHeader.propTypes = {
   title: PropTypes.string.isRequired,
-  desc: PropTypes.string,
+  desc: PropTypes.node,
   actions: PropTypes.node,
 };
 
