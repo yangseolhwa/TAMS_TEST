@@ -15,6 +15,11 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
+const USER_INCLUDE = {
+  model: User,
+  attributes: ['id', 'email', 'role'],
+  include: [{ model: Profile, as: 'profile', attributes: ['name']}]
+};
 
 
 // ─────────────────────────────────────────
@@ -63,7 +68,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
       include: [
         { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
         { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
-        { model: User,                                          attributes: ['id', 'email'] },
+        USER_INCLUDE,
       ],
       order: [['created_at', 'DESC']],
     });
@@ -90,7 +95,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
         as: 'licenses',
         where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
         required: role !== 'admin',
-        include: [{ model: User, attributes: ['id', 'email'] }],
+        include: [USER_INCLUDE],
       }],
       order: [['created_at', 'DESC']],
     });
@@ -138,7 +143,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
       required: true,
       include: [
         { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'parent_id'] },
-        { model: User,                 as: 'manager',   attributes: ['id', 'email'] },
+        { ...USER_INCLUDE, as: 'manager' },
       ],
     }],
     order: [['created_at', 'DESC']],
@@ -921,6 +926,51 @@ exports.moveDf = asyncWrapper(async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// DF 대시보드 (admin + user 공통)
+// GET /assets/dashboard/df
+// ─────────────────────────────────────────
+exports.getDfDashboard = asyncWrapper(async (req, res) => {
+  const items = await AssetProjectItem.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'project_id', 'asset_type_id'],
+    include: [
+      { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  });
+
+  // 프로젝트별 집계
+  const projectMap = {};
+  for (const item of items) {
+    const pid  = item.project_id;
+    const pname = item.project?.name ?? '미지정';
+    if (!projectMap[pid]) {
+      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {} };
+    }
+    projectMap[pid].total_count += 1;
+
+    const tid   = item.asset_type_id;
+    const tname = item.item_type?.name ?? '미분류';
+    if (!projectMap[pid].by_type[tid]) {
+      projectMap[pid].by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
+    }
+    projectMap[pid].by_type[tid].count += 1;
+  }
+
+  const projects = Object.values(projectMap).map((p) => ({
+    id:          p.id,
+    name:        p.name,
+    total_count: p.total_count,
+    by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.status(200).json({
+    total: items.length,
+    projects,
+  });
+});
+
+// ─────────────────────────────────────────
 // 대시보드 (admin 전용)
 // GET /assets/dashboard
 // ─────────────────────────────────────────
@@ -936,7 +986,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
       model: AssetSwLicense,
       as: 'licenses',
       attributes: ['id', 'state', 'user_id'],
-      include: [{ model: User, attributes: ['id', 'email'] }],
+      include: [USER_INCLUDE],
     }],
     order: [['name', 'ASC']],
   });
@@ -1017,7 +1067,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       as: 'licenses',
       where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
       required: Object.keys(licenseWhere).length > 0,
-      include: [{ model: User, attributes: ['id', 'email'] }],
+      include: [USER_INCLUDE],
     }],
     order: [['id', 'ASC']],
   });
@@ -1093,7 +1143,7 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
       { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
       {
         model: User,
-        attributes: ['id', 'email'],
+        attributes: ['id', 'email', 'role'],
         include: [{
           model: Profile,
           as: 'profile',

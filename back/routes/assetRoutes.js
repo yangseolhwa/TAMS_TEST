@@ -16,7 +16,8 @@ router.use(verifyAccessToken);
 
 // 조회
 router.get('/personal', assetController.getPersonalAssets);
-router.get('/dashboard', assetController.getSwList);
+router.get('/dashboard', assetController.getDashboard);
+router.get('/dashboard/df', assetController.getDfDashboard);
 router.get('/sw', assetController.getSwList);
 router.get('/enterprise', assetController.getEnterpriseList);
 router.get('/df', assetController.getDfAssets);
