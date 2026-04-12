@@ -6,7 +6,7 @@ const {
   AssetEnterpriseRequest, AssetEnterpriseHistory,
   AssetSw, AssetSwLicense, AssetSwRequest, AssetSwHistory,
   AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory,
-  User, Department, Profile
+  User, Department, Profile, AssetSwHistoryArchive, AssetEnterpriseHistoryArchive, AssetProjectHistoryArchive
 } = require('../models');
 
 // ─────────────────────────────────────────
@@ -1204,4 +1204,275 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
   });
 
   res.status(200).json({ total: list.length, list });
+});
+
+// ─────────────────────────────────────────
+// 내자산 히스토리 조회 (SW + Enterprise)
+// GET /assets/history/personal
+// query: type(sw|enterprise), asset_sw_id, item_type_id, from, to
+// ─────────────────────────────────────────
+exports.getPersonalHistory = asyncWrapper(async (req, res) => {
+  const { userId, role } = req.user;
+  const { type, asset_sw_id, item_type_id, from, to } = req.query;
+
+  const buildDateWhere = (field) => {
+    const cond = {};
+    if (from) cond[Op.gte] = new Date(from);
+    if (to)   cond[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
+    return Object.keys(cond).length > 0 ? { [field]: cond } : {};
+  };
+
+  let swHistory = [];
+  let enterpriseHistory = [];
+
+  // ── SW 히스토리 ──────────────────────────
+  if (!type || type === 'sw') {
+    const swWhere = { ...buildDateWhere('created_at') };
+    if (role !== 'admin') swWhere.user_id = userId;
+
+    const swInclude = [
+      {
+        model: AssetSw,
+        as: 'sw',
+        attributes: ['id', 'name', 'version', 'manufacturer'],
+        ...(asset_sw_id ? { where: { id: Number(asset_sw_id) } } : {}),
+        required: !!asset_sw_id,
+      },
+      { model: AssetSwLicense, as: 'license', attributes: ['id', 'license_key', 'key_type'] },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ];
+
+    swHistory = await AssetSwHistory.findAll({
+      where: swWhere,
+      include: swInclude,
+      order: [['created_at', 'DESC']],
+    });
+  }
+
+  // ── Enterprise 히스토리 ──────────────────
+  if (!type || type === 'enterprise') {
+    const entWhere = { ...buildDateWhere('created_at') };
+    if (role !== 'admin') entWhere.user_id = userId;
+
+    const entInclude = [
+      {
+        model: AssetEnterprise,
+        as: 'asset',
+        attributes: ['id', 'asset_number', 'manufacturer', 'state'],
+        ...(item_type_id ? { where: { item_type_id: Number(item_type_id) } } : {}),
+        required: !!item_type_id,
+        include: [
+          { model: AssetEnterpriseItemType, as: 'item_type', attributes: ['id', 'name', 'code'] },
+        ],
+      },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ];
+
+    enterpriseHistory = await AssetEnterpriseHistory.findAll({
+      where: entWhere,
+      include: entInclude,
+      order: [['created_at', 'DESC']],
+    });
+  }
+
+  res.status(200).json({
+    sw:         swHistory,
+    enterprise: enterpriseHistory,
+  });
+});
+
+
+// ─────────────────────────────────────────
+// DF 히스토리 조회
+// GET /assets/history/df
+// query: project_id, asset_type_id, from, to
+// ─────────────────────────────────────────
+exports.getDfHistory = asyncWrapper(async (req, res) => {
+  const { project_id, asset_type_id, from, to } = req.query;
+
+  const where = {};
+  if (project_id) where.project_id = Number(project_id);
+  if (from) where.created_at = { [Op.gte]: new Date(from) };
+  if (to) {
+    where.created_at = {
+      ...(where.created_at ?? {}),
+      [Op.lte]: new Date(new Date(to).setHours(23, 59, 59, 999)),
+    };
+  }
+
+  const itemInclude = {
+    model: AssetProjectItem,
+    as: 'item',
+    attributes: ['id', 'item_number', 'model_name', 'manufacturer', 'serial_number', 'state'],
+    ...(asset_type_id ? { where: { asset_type_id: Number(asset_type_id) } } : {}),
+    required: !!asset_type_id,
+    include: [
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  };
+
+  const history = await AssetProjectHistory.findAll({
+    where,
+    include: [
+      itemInclude,
+      { model: AssetProject, as: 'project', attributes: ['id', 'name'] },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ],
+    order: [['created_at', 'DESC']],
+  });
+
+  res.status(200).json({ total: history.length, list: history });
+});
+
+
+// ─────────────────────────────────────────
+// SW 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/sw/archive
+// body: { before: "2025-12-31" }
+// ─────────────────────────────────────────
+exports.archiveSwHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, asset_sw_ids } = req.body;
+  if (!before && !after && (!asset_sw_ids || asset_sw_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, asset_sw_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {};
+  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
+  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
+  if (asset_sw_ids?.length > 0) where.asset_sw_id = { [Op.in]: asset_sw_ids };
+
+  const targets = await AssetSwHistory.findAll({ where });
+  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+
+  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
+  const now = new Date();
+
+  await sequelize.transaction(async (t) => {
+    await AssetSwHistoryArchive.bulkCreate(
+      targets.map((h) => ({
+        history_id:    h.id,
+        asset_sw_id:   h.asset_sw_id,
+        license_id:    h.license_id,
+        user_id:       h.user_id,
+        change_type:   h.change_type,
+        before_value:  h.before_value,
+        after_value:   h.after_value,
+        created_at:    h.created_at,
+        archived_at:   now,
+        archived_by:   userId,
+        archive_range: archiveRange,
+      })),
+      { transaction: t }
+    );
+    await AssetSwHistory.destroy({
+      where: { id: { [Op.in]: targets.map((h) => h.id) } },
+      transaction: t,
+    });
+  });
+
+  res.status(200).json({ message: `SW 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/enterprise/archive
+// ─────────────────────────────────────────
+exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, asset_enterprise_ids } = req.body;
+  if (!before && !after && (!asset_enterprise_ids || asset_enterprise_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, asset_enterprise_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {};
+  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
+  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
+  if (asset_enterprise_ids?.length > 0) where.asset_enterprise_id = { [Op.in]: asset_enterprise_ids };
+
+  const targets = await AssetEnterpriseHistory.findAll({ where });
+  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+
+  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
+  const now = new Date();
+
+  await sequelize.transaction(async (t) => {
+    await AssetEnterpriseHistoryArchive.bulkCreate(
+      targets.map((h) => ({
+        history_id:          h.id,
+        asset_enterprise_id: h.asset_enterprise_id,
+        user_id:             h.user_id,
+        change_type:         h.change_type,
+        before_value:        h.before_value,
+        after_value:         h.after_value,
+        created_at:          h.created_at,
+        archived_at:         now,
+        archived_by:         userId,
+        archive_range:       archiveRange,
+      })),
+      { transaction: t }
+    );
+    await AssetEnterpriseHistory.destroy({
+      where: { id: { [Op.in]: targets.map((h) => h.id) } },
+      transaction: t,
+    });
+  });
+
+  res.status(200).json({ message: `Enterprise 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
+});
+
+
+// ─────────────────────────────────────────
+// DF 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/df/archive
+// ─────────────────────────────────────────
+exports.archiveDfHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, project_item_ids } = req.body;
+  if (!before && !after && (!project_item_ids || project_item_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, project_item_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {};
+  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
+  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
+  if (project_item_ids?.length > 0) where.asset_project_item_id = { [Op.in]: project_item_ids };
+
+  const targets = await AssetProjectHistory.findAll({ where });
+  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+
+  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
+  const now = new Date();
+
+  await sequelize.transaction(async (t) => {
+    await AssetProjectHistoryArchive.bulkCreate(
+      targets.map((h) => ({
+        history_id:            h.id,
+        asset_project_item_id: h.asset_project_item_id,
+        project_id:            h.project_id,
+        user_id:               h.user_id,
+        change_type:           h.change_type,
+        before_value:          h.before_value,
+        after_value:           h.after_value,
+        created_at:            h.created_at,
+        archived_at:           now,
+        archived_by:           userId,
+        archive_range:         archiveRange,
+      })),
+      { transaction: t }
+    );
+    await AssetProjectHistory.destroy({
+      where: { id: { [Op.in]: targets.map((h) => h.id) } },
+      transaction: t,
+    });
+  });
+
+  res.status(200).json({ message: `DF 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
 });
