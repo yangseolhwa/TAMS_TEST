@@ -47,22 +47,21 @@ function toDateStr(val) {
 const ARCHIVE_BATCH_SIZE = 1000;
 
 async function archiveHistory({ HistoryModel, ArchiveModel, where, mapFn, userId, archiveRange, t }) {
-  let offset = 0;
   let totalArchived = 0;
 
   while (true) {
     const batch = await HistoryModel.findAll({
       where,
       limit: ARCHIVE_BATCH_SIZE,
-      offset,
       transaction: t,
     });
     if (batch.length === 0) break;
 
+    const now = new Date();
     await ArchiveModel.bulkCreate(
       batch.map((h) => ({
         ...mapFn(h),
-        archived_at:   new Date(),
+        archived_at:   now,
         archived_by:   userId,
         archive_range: archiveRange,
       })),
