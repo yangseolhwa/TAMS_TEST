@@ -6,7 +6,7 @@ const {
   AssetEnterpriseRequest, AssetEnterpriseHistory,
   AssetSw, AssetSwLicense, AssetSwRequest, AssetSwHistory,
   AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory,
-  User,
+  User, Department, Profile, AssetSwHistoryArchive, AssetEnterpriseHistoryArchive, AssetProjectHistoryArchive
 } = require('../models');
 
 // ─────────────────────────────────────────
@@ -15,6 +15,70 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
+const USER_INCLUDE = {
+  model: User,
+  attributes: ['id', 'email', 'role'],
+  include: [{ model: Profile, as: 'profile', attributes: ['name']}]
+};
+
+// ─────────────────────────────────────────
+// 공통 유틸
+// ─────────────────────────────────────────
+
+// 날짜 범위 WHERE 조건 생성 (Invalid Date 방어 포함)
+function buildDateWhere(field, from, to) {
+  const cond = {};
+  const fromDate = from ? new Date(from) : null;
+  const toDate   = to   ? new Date(to)   : null;
+  if (fromDate && !isNaN(fromDate.getTime())) cond[Op.gte] = fromDate;
+  if (toDate   && !isNaN(toDate.getTime()))   cond[Op.lte] = new Date(toDate.setHours(23, 59, 59, 999));
+  return Object.keys(cond).length > 0 ? { [field]: cond } : {};
+}
+
+// YYYY-MM-DD 포맷 변환
+function toDateStr(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+// 공통 아카이빙 헬퍼 (배치 처리)
+const ARCHIVE_BATCH_SIZE = 1000;
+
+async function archiveHistory({ HistoryModel, ArchiveModel, where, mapFn, userId, archiveRange, t }) {
+  let totalArchived = 0;
+
+  while (true) {
+    const batch = await HistoryModel.findAll({
+      where,
+      limit: ARCHIVE_BATCH_SIZE,
+      transaction: t,
+    });
+    if (batch.length === 0) break;
+
+    const now = new Date();
+    await ArchiveModel.bulkCreate(
+      batch.map((h) => ({
+        ...mapFn(h),
+        archived_at:   now,
+        archived_by:   userId,
+        archive_range: archiveRange,
+      })),
+      { transaction: t }
+    );
+
+    await HistoryModel.destroy({
+      where: { id: { [Op.in]: batch.map((h) => h.id) } },
+      transaction: t,
+    });
+
+    totalArchived += batch.length;
+    if (batch.length < ARCHIVE_BATCH_SIZE) break;
+  }
+
+  return totalArchived;
+}
 
 
 // ─────────────────────────────────────────
@@ -63,7 +127,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
       include: [
         { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
         { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
-        { model: User,                                          attributes: ['id', 'email'] },
+        USER_INCLUDE,
       ],
       order: [['created_at', 'DESC']],
     });
@@ -90,7 +154,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
         as: 'licenses',
         where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
         required: role !== 'admin',
-        include: [{ model: User, attributes: ['id', 'email'] }],
+        include: [USER_INCLUDE],
       }],
       order: [['created_at', 'DESC']],
     });
@@ -138,7 +202,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
       required: true,
       include: [
         { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'parent_id'] },
-        { model: User,                 as: 'manager',   attributes: ['id', 'email'] },
+        { ...USER_INCLUDE, as: 'manager' },
       ],
     }],
     order: [['created_at', 'DESC']],
@@ -204,8 +268,9 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
       const asset = await AssetEnterprise.create({
         ...assetData,
         responsible_type: 'personal',
-        user_id: userId,
-        state: 'in_use',
+        user_id:          userId,
+        department_id:    assetData.department_id ?? null,
+        state:            'in_use',
       }, { transaction: t });
 
       await AssetEnterpriseHistory.create({
@@ -307,6 +372,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           manufacturer:     lic.manufacturer,
           quantity:         lic.quantity         ?? 1,
           acquisition_date: lic.acquisition_date ?? null,
+          remarks:          lic.remarks          ?? null,
           state:            'available',
         }, { transaction: t });
         swId = newSw.id;
@@ -319,6 +385,8 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_password: lic.license_password  ?? null,
         key_type:         lic.key_type,
         related_link:     lic.related_link       ?? null,
+        issue_date:       lic.issue_date         ?? null,
+        remarks:          lic.remarks            ?? null,
         state:            'in_use',
       }, { transaction: t });
 
@@ -347,7 +415,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       request_date:      new Date(),
       required_quantity: 1,
       request_reason:    lic.request_reason ?? null,
-      new_asset_data:    is_existing ? null : JSON.stringify({
+      new_asset_data: is_existing ? null : JSON.stringify({
         name:             lic.name,
         version:          lic.version          ?? null,
         manufacturer:     lic.manufacturer,
@@ -356,7 +424,9 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_key:      lic.license_key,
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
-        related_link:     lic.related_link      ?? null,
+        related_link:     lic.related_link     ?? null,
+        issue_date:       lic.issue_date       ?? null,
+        remarks:          lic.remarks          ?? null,
       }),
     }))
   );
@@ -534,6 +604,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       ...assetData,
       responsible_type: 'personal',
       user_id:          request.requester_id,
+      department_id:    assetData.department_id ?? null,
       state:            'in_use',
     }, { transaction: t });
 
@@ -608,6 +679,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         manufacturer:     swData.manufacturer,
         quantity:         swData.quantity         ?? 1,
         acquisition_date: swData.acquisition_date ?? null,
+        remarks:          swData.remarks          ?? null,
         state:            'available',
       }, { transaction: t });
       swId = newSw.id;
@@ -620,6 +692,8 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       license_password: licData.license_password  ?? null,
       key_type:         licData.key_type           ?? null,
       related_link:     licData.related_link       ?? null,
+      issue_date:       licData.issue_date         ?? null,
+      remarks:          licData.remarks            ?? null,
       state:            'in_use',
     }, { transaction: t });
 
@@ -912,4 +986,609 @@ exports.moveDf = asyncWrapper(async (req, res) => {
   });
 
   res.status(200).json({ message: `${items.length}개의 자산 위치가 변경되었습니다.` });
+});
+
+// ─────────────────────────────────────────
+// DF 대시보드 (admin + user 공통)
+// GET /assets/dashboard/df
+// ─────────────────────────────────────────
+exports.getDfDashboard = asyncWrapper(async (req, res) => {
+  const items = await AssetProjectItem.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'project_id', 'asset_type_id'],
+    include: [
+      { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  });
+
+  // 프로젝트별 집계
+  const projectMap = {};
+  for (const item of items) {
+    const pid  = item.project_id;
+    const pname = item.project?.name ?? '미지정';
+    if (!projectMap[pid]) {
+      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {} };
+    }
+    projectMap[pid].total_count += 1;
+
+    const tid   = item.asset_type_id;
+    const tname = item.item_type?.name ?? '미분류';
+    if (!projectMap[pid].by_type[tid]) {
+      projectMap[pid].by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
+    }
+    projectMap[pid].by_type[tid].count += 1;
+  }
+
+  const projects = Object.values(projectMap).map((p) => ({
+    id:          p.id,
+    name:        p.name,
+    total_count: p.total_count,
+    by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.status(200).json({
+    total: items.length,
+    projects,
+  });
+});
+
+// ─────────────────────────────────────────
+// 대시보드 (admin 전용)
+// GET /assets/dashboard
+// ─────────────────────────────────────────
+exports.getDashboard = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  // ── SW 집계 ──────────────────────────────
+  const swList = await AssetSw.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    include: [{
+      model: AssetSwLicense,
+      as: 'licenses',
+      attributes: ['id', 'state', 'user_id'],
+      include: [USER_INCLUDE],
+    }],
+    order: [['name', 'ASC']],
+  });
+
+  const sw = swList.map((s) => {
+    const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
+    return {
+      id:           s.id,
+      name:         s.name,
+      version:      s.version,
+      manufacturer: s.manufacturer,
+      quantity:     s.quantity,
+      state:        s.state,
+      in_use_count: inUseCount,
+      available_count: s.quantity - inUseCount,
+    };
+  });
+
+  const swTotal = {
+    total_sw_count:      sw.length,
+    total_license_count: sw.reduce((acc, s) => acc + s.quantity, 0),
+    total_in_use:        sw.reduce((acc, s) => acc + s.in_use_count, 0),
+    list: sw,
+  };
+
+  // ── Enterprise(PC) 집계 ──────────────────
+  const enterpriseTypes = await AssetEnterpriseItemType.findAll({
+    include: [{
+      model: AssetEnterprise,
+      as: 'assets',
+      where: { state: { [Op.ne]: 'returned' } },
+      attributes: ['id', 'state'],
+      required: false,
+    }],
+    order: [['name', 'ASC']],
+  });
+
+  const enterpriseTotal = await AssetEnterprise.count({
+    where: { state: { [Op.ne]: 'returned' } },
+  });
+
+  const enterprise = {
+    total_count: enterpriseTotal,
+    by_item_type: enterpriseTypes.map((t) => ({
+      id:    t.id,
+      code:  t.code,
+      name:  t.name,
+      count: t.assets ? t.assets.length : 0,
+    })).filter(t => t.count > 0),
+  };
+
+  res.status(200).json({ sw: swTotal, enterprise });
+});
+
+
+// ─────────────────────────────────────────
+// SW 전체 조회 (admin 전용)
+// GET /assets/sw/list
+// query: name, manufacturer, user_id
+// ─────────────────────────────────────────
+exports.getSwList = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { name, manufacturer, user_id } = req.query;
+
+  const swWhere = { state: { [Op.ne]: 'returned' } };
+  if (name)         swWhere.name         = { [Op.like]: `%${name}%` };
+  if (manufacturer) swWhere.manufacturer = { [Op.like]: `%${manufacturer}%` };
+
+  const licenseWhere = {};
+  if (user_id) licenseWhere.user_id = Number(user_id);
+
+  const swList = await AssetSw.findAll({
+    where: swWhere,
+    include: [{
+      model: AssetSwLicense,
+      as: 'licenses',
+      where: Object.keys(licenseWhere).length > 0 ? licenseWhere : undefined,
+      required: Object.keys(licenseWhere).length > 0,
+      include: [USER_INCLUDE],
+    }],
+    order: [['id', 'ASC']],
+  });
+
+  const result = swList.map((sw) => {
+    const inUseCount = sw.licenses.filter(l => l.state === 'in_use').length;
+    return {
+      id:              sw.id,
+      name:            sw.name,
+      version:         sw.version,
+      manufacturer:    sw.manufacturer,
+      quantity:        sw.quantity,
+      acquisition_date: sw.acquisition_date,
+      state:           sw.state,
+      remarks:         sw.remarks,
+      in_use_count:    inUseCount,
+      available_count: sw.quantity - inUseCount,
+      created_at:      sw.created_at,
+      updated_at:      sw.updated_at,
+      licenses: sw.licenses.map(l => ({
+        id:               l.id,
+        license_key:      l.license_key,
+        license_password: l.license_password,
+        key_type:         l.key_type,
+        related_link:     l.related_link,
+        state:            l.state,
+        issue_date:       l.issue_date,
+        remarks:          l.remarks,
+        user: l.User ? { id: l.User.id, email: l.User.email, role: l.User.role, name: l.User.profile?.name } : null,
+      })),
+    };
+  });
+
+  res.status(200).json({ total: result.length, list: result });
+});
+
+// ─────────────────────────────────────────
+// SW 라이선스 할당 (admin 전용)
+// PATCH /assets/sw/assign
+// body: { license_id, user_id }
+// ─────────────────────────────────────────
+exports.assignSwLicense = asyncWrapper(async (req, res) => {
+  const { role, userId: adminId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { license_id, user_id } = req.body;
+
+  if (!license_id) return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
+  if (!user_id)    return res.status(400).json({ message: '할당할 사용자 ID를 입력해주세요.' });
+
+  const targetUser = await User.findByPk(user_id);
+  if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+  await sequelize.transaction(async (t) => {
+    const license = await AssetSwLicense.findByPk(license_id, { lock: t.LOCK.UPDATE, transaction: t });
+    if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
+    if (license.state !== 'available') {
+      return res.status(400).json({ message: '사용 가능한 상태의 라이선스만 할당할 수 있습니다.' });
+    }
+
+    const targetUser = await User.findByPk(user_id, { transaction: t });
+    if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+    await AssetSwHistory.create({
+      asset_sw_id:  license.asset_sw_id,
+      license_id:   license.id,
+      user_id:      adminId,
+      change_type:  'assign',
+      before_value: 'available',
+      after_value:  'in_use',
+    }, { transaction: t });
+
+    license.state   = 'in_use';
+    license.user_id = user_id;
+    await license.save({ transaction: t });
+
+    res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
+  });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise(PC) 전체 조회 (admin 전용)
+// GET /assets/enterprise/list
+// query: category_id, item_type_id, manufacturer, location,
+//        state, user_id, department_id
+// ─────────────────────────────────────────
+exports.getEnterpriseList = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { category_id, item_type_id, manufacturer, location,
+          state, user_id, department_id, keyword } = req.query;
+
+  const where = { state: { [Op.ne]: 'returned' } };
+  if (state)         where.state         = state;
+  if (category_id)   where.category_id   = Number(category_id);
+  if (item_type_id)  where.item_type_id  = Number(item_type_id);
+  if (manufacturer)  where.manufacturer  = { [Op.like]: `%${manufacturer}%` };
+  if (location)      where.location      = { [Op.like]: `%${location}%` };
+  if (user_id)       where.user_id       = Number(user_id);
+  if (department_id) where.department_id = Number(department_id);
+  if (keyword) {
+    where[Op.or] = [
+      { asset_number:  { [Op.like]: `%${keyword}%` } },
+      { manufacturer:  { [Op.like]: `%${keyword}%` } },
+      { serial_number: { [Op.like]: `%${keyword}%` } },
+      { spec:          { [Op.like]: `%${keyword}%` } },
+      { location:      { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+
+  const list = await AssetEnterprise.findAll({
+    where,
+    include: [
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+      { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+      {
+        model: User,
+        attributes: ['id', 'email', 'role'],
+        include: [{
+          model: Profile,
+          as: 'profile',
+          attributes: ['name', 'department_id', 'company_rank'],
+          include: [{ model: Department, as: 'department', attributes: ['id', 'name'] }],
+        }],
+      },
+    ],
+    order: [['asset_number', 'ASC']],
+  });
+
+  res.status(200).json({ total: list.length, list });
+});
+
+// ─────────────────────────────────────────
+// 내자산 히스토리 조회 (SW + Enterprise)
+// GET /assets/history/personal
+// query: type(sw|enterprise), asset_sw_id, item_type_id, from, to
+// ─────────────────────────────────────────
+exports.getPersonalHistory = asyncWrapper(async (req, res) => {
+  const { userId, role } = req.user;
+  const { type, asset_sw_id, item_type_id, from, to } = req.query;
+
+  let swHistory = [];
+  let enterpriseHistory = [];
+
+  // ── SW 히스토리 ──────────────────────────
+  if (!type || type === 'sw') {
+    const swWhere = { ...buildDateWhere('created_at', from, to)};
+    if (role !== 'admin') swWhere.user_id = userId;
+
+    const swInclude = [
+      {
+        model: AssetSw,
+        as: 'sw',
+        attributes: ['id', 'name', 'version', 'manufacturer'],
+        ...(asset_sw_id ? { where: { id: Number(asset_sw_id) } } : {}),
+        required: !!asset_sw_id,
+      },
+      { model: AssetSwLicense, as: 'license', attributes: ['id', 'license_key', 'key_type'] },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ];
+
+    swHistory = await AssetSwHistory.findAll({
+      where: swWhere,
+      include: swInclude,
+      order: [['created_at', 'DESC']],
+    });
+  }
+
+  // ── Enterprise 히스토리 ──────────────────
+  if (!type || type === 'enterprise') {
+    const entWhere = { ...buildDateWhere('created_at', from, to) };
+    if (role !== 'admin') entWhere.user_id = userId;
+
+    const entInclude = [
+      {
+        model: AssetEnterprise,
+        as: 'asset',
+        attributes: ['id', 'asset_number', 'manufacturer', 'state'],
+        ...(item_type_id ? { where: { item_type_id: Number(item_type_id) } } : {}),
+        required: !!item_type_id,
+        include: [
+          { model: AssetEnterpriseItemType, as: 'item_type', attributes: ['id', 'name', 'code'] },
+        ],
+      },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ];
+
+    enterpriseHistory = await AssetEnterpriseHistory.findAll({
+      where: entWhere,
+      include: entInclude,
+      order: [['created_at', 'DESC']],
+    });
+  }
+
+  res.status(200).json({
+    sw:         swHistory,
+    enterprise: enterpriseHistory,
+  });
+});
+
+
+// ─────────────────────────────────────────
+// DF 히스토리 조회
+// GET /assets/history/df
+// query: project_id, asset_type_id, from, to
+// ─────────────────────────────────────────
+exports.getDfHistory = asyncWrapper(async (req, res) => {
+  const { project_id, asset_type_id, from, to } = req.query;
+
+  const where = {};
+  if (project_id) where.project_id = Number(project_id);
+  Object.assign(where, buildDateWhere('created_at', from, to));
+
+  const itemInclude = {
+    model: AssetProjectItem,
+    as: 'item',
+    attributes: ['id', 'item_number', 'model_name', 'manufacturer', 'serial_number', 'state'],
+    ...(asset_type_id ? { where: { asset_type_id: Number(asset_type_id) } } : {}),
+    required: !!asset_type_id,
+    include: [
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  };
+
+  const history = await AssetProjectHistory.findAll({
+    where,
+    include: [
+      itemInclude,
+      { model: AssetProject, as: 'project', attributes: ['id', 'name'] },
+      { ...USER_INCLUDE, as: 'changedBy' },
+    ],
+    order: [['created_at', 'DESC']],
+  });
+
+  res.status(200).json({ total: history.length, list: history });
+});
+
+
+// ─────────────────────────────────────────
+// SW 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/sw/archive
+// body: { before?, after?, asset_sw_ids? }
+// ─────────────────────────────────────────
+exports.archiveSwHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, asset_sw_ids } = req.body;
+  if (!before && !after && (!asset_sw_ids || asset_sw_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, asset_sw_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(asset_sw_ids?.length > 0 ? { asset_sw_id: { [Op.in]: asset_sw_ids } } : {}),
+  };
+
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
+
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetSwHistory,
+      ArchiveModel: AssetSwHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
+        history_id:   h.id,
+        asset_sw_id:  h.asset_sw_id,
+        license_id:   h.license_id,
+        user_id:      h.user_id,
+        change_type:  h.change_type,
+        before_value: h.before_value,
+        after_value:  h.after_value,
+        created_at:   h.created_at,
+      }),
+    });
+  });
+
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `SW 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/enterprise/archive
+// ─────────────────────────────────────────
+exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, asset_enterprise_ids } = req.body;
+  if (!before && !after && (!asset_enterprise_ids || asset_enterprise_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, asset_enterprise_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(asset_enterprise_ids?.length > 0 ? { asset_enterprise_id: { [Op.in]: asset_enterprise_ids } } : {}),
+  };
+
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
+
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetEnterpriseHistory,
+      ArchiveModel: AssetEnterpriseHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
+        history_id:          h.id,
+        asset_enterprise_id: h.asset_enterprise_id,
+        user_id:             h.user_id,
+        change_type:         h.change_type,
+        before_value:        h.before_value,
+        after_value:         h.after_value,
+        created_at:          h.created_at,
+      }),
+    });
+  });
+
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `Enterprise 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
+});
+
+
+// ─────────────────────────────────────────
+// DF 히스토리 아카이빙 (admin 전용)
+// POST /assets/history/df/archive
+// ─────────────────────────────────────────
+exports.archiveDfHistory = asyncWrapper(async (req, res) => {
+  const { role, userId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { before, after, project_item_ids } = req.body;
+  if (!before && !after && (!project_item_ids || project_item_ids.length === 0)) {
+    return res.status(400).json({ message: 'before, after, project_item_ids 중 하나 이상 입력해주세요.' });
+  }
+
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(project_item_ids?.length > 0 ? { asset_project_item_id: { [Op.in]: project_item_ids } } : {}),
+  };
+
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
+
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetProjectHistory,
+      ArchiveModel: AssetProjectHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
+        history_id:            h.id,
+        asset_project_item_id: h.asset_project_item_id,
+        project_id:            h.project_id,
+        user_id:               h.user_id,
+        change_type:           h.change_type,
+        before_value:          h.before_value,
+        after_value:           h.after_value,
+        created_at:            h.created_at,
+      }),
+    });
+  });
+
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `DF 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
+});
+
+// ─────────────────────────────────────────
+// SW 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/sw/archive
+// query: asset_sw_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getSwHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { asset_sw_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (asset_sw_id)   where.asset_sw_id   = Number(asset_sw_id);
+  if (archive_range) where.archive_range = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetSwHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/enterprise/archive
+// query: asset_enterprise_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getEnterpriseHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { asset_enterprise_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (asset_enterprise_id) where.asset_enterprise_id = Number(asset_enterprise_id);
+  if (archive_range)       where.archive_range       = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetEnterpriseHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
+});
+
+// ─────────────────────────────────────────
+// DF 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/df/archive
+// query: project_id, asset_project_item_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getDfHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { project_id, asset_project_item_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (project_id)            where.project_id            = Number(project_id);
+  if (asset_project_item_id) where.asset_project_item_id = Number(asset_project_item_id);
+  if (archive_range)         where.archive_range         = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetProjectHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
 });
