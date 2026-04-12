@@ -1504,3 +1504,91 @@ exports.archiveDfHistory = asyncWrapper(async (req, res) => {
   if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
   res.status(200).json({ message: `DF 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
 });
+
+// ─────────────────────────────────────────
+// SW 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/sw/archive
+// query: asset_sw_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getSwHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { asset_sw_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (asset_sw_id)   where.asset_sw_id   = Number(asset_sw_id);
+  if (archive_range) where.archive_range = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetSwHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/enterprise/archive
+// query: asset_enterprise_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getEnterpriseHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { asset_enterprise_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (asset_enterprise_id) where.asset_enterprise_id = Number(asset_enterprise_id);
+  if (archive_range)       where.archive_range       = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetEnterpriseHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
+});
+
+// ─────────────────────────────────────────
+// DF 히스토리 아카이브 조회 (admin 전용)
+// GET /api/assets/history/df/archive
+// query: project_id, asset_project_item_id, archive_range, from, to
+// ─────────────────────────────────────────
+exports.getDfHistoryArchive = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { project_id, asset_project_item_id, archive_range, from, to } = req.query;
+
+  const where = { ...buildDateWhere('archived_at', from, to) };
+  if (project_id)            where.project_id            = Number(project_id);
+  if (asset_project_item_id) where.asset_project_item_id = Number(asset_project_item_id);
+  if (archive_range)         where.archive_range         = archive_range;
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetProjectHistoryArchive.findAndCountAll({
+    where,
+    order: [['archived_at', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.status(200).json({ total: count, list });
+});
