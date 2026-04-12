@@ -1520,12 +1520,18 @@ exports.getSwHistoryArchive = asyncWrapper(async (req, res) => {
   if (asset_sw_id)   where.asset_sw_id   = Number(asset_sw_id);
   if (archive_range) where.archive_range = archive_range;
 
-  const list = await AssetSwHistoryArchive.findAll({
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetSwHistoryArchive.findAndCountAll({
     where,
     order: [['archived_at', 'DESC']],
+    limit,
+    offset,
   });
 
-  res.status(200).json({ total: list.length, list });
+  res.status(200).json({ total: count, list });
 });
 
 // ─────────────────────────────────────────
@@ -1543,12 +1549,18 @@ exports.getEnterpriseHistoryArchive = asyncWrapper(async (req, res) => {
   if (asset_enterprise_id) where.asset_enterprise_id = Number(asset_enterprise_id);
   if (archive_range)       where.archive_range       = archive_range;
 
-  const list = await AssetEnterpriseHistoryArchive.findAll({
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetEnterpriseHistoryArchive.findAndCountAll({
     where,
     order: [['archived_at', 'DESC']],
+    limit,
+    offset,
   });
 
-  res.status(200).json({ total: list.length, list });
+  res.status(200).json({ total: count, list });
 });
 
 // ─────────────────────────────────────────
@@ -1567,10 +1579,16 @@ exports.getDfHistoryArchive = asyncWrapper(async (req, res) => {
   if (asset_project_item_id) where.asset_project_item_id = Number(asset_project_item_id);
   if (archive_range)         where.archive_range         = archive_range;
 
-  const list = await AssetProjectHistoryArchive.findAll({
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows: list } = await AssetProjectHistoryArchive.findAndCountAll({
     where,
     order: [['archived_at', 'DESC']],
+    limit,
+    offset,
   });
 
-  res.status(200).json({ total: list.length, list });
+  res.status(200).json({ total: count, list });
 });
