@@ -1150,6 +1150,7 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
 
     res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
   });
+});
 
 
 // ─────────────────────────────────────────
