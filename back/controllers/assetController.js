@@ -21,6 +21,65 @@ const USER_INCLUDE = {
   include: [{ model: Profile, as: 'profile', attributes: ['name']}]
 };
 
+// ─────────────────────────────────────────
+// 공통 유틸
+// ─────────────────────────────────────────
+
+// 날짜 범위 WHERE 조건 생성 (Invalid Date 방어 포함)
+function buildDateWhere(field, from, to) {
+  const cond = {};
+  const fromDate = from ? new Date(from) : null;
+  const toDate   = to   ? new Date(to)   : null;
+  if (fromDate && !isNaN(fromDate.getTime())) cond[Op.gte] = fromDate;
+  if (toDate   && !isNaN(toDate.getTime()))   cond[Op.lte] = new Date(toDate.setHours(23, 59, 59, 999));
+  return Object.keys(cond).length > 0 ? { [field]: cond } : {};
+}
+
+// YYYY-MM-DD 포맷 변환
+function toDateStr(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+// 공통 아카이빙 헬퍼 (배치 처리)
+const ARCHIVE_BATCH_SIZE = 1000;
+
+async function archiveHistory({ HistoryModel, ArchiveModel, where, mapFn, userId, archiveRange, t }) {
+  let totalArchived = 0;
+
+  while (true) {
+    const batch = await HistoryModel.findAll({
+      where,
+      limit: ARCHIVE_BATCH_SIZE,
+      transaction: t,
+    });
+    if (batch.length === 0) break;
+
+    const now = new Date();
+    await ArchiveModel.bulkCreate(
+      batch.map((h) => ({
+        ...mapFn(h),
+        archived_at:   now,
+        archived_by:   userId,
+        archive_range: archiveRange,
+      })),
+      { transaction: t }
+    );
+
+    await HistoryModel.destroy({
+      where: { id: { [Op.in]: batch.map((h) => h.id) } },
+      transaction: t,
+    });
+
+    totalArchived += batch.length;
+    if (batch.length < ARCHIVE_BATCH_SIZE) break;
+  }
+
+  return totalArchived;
+}
+
 
 // ─────────────────────────────────────────
 // 개인 자산 조회 (enterprise + sw)
@@ -1215,19 +1274,12 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   const { type, asset_sw_id, item_type_id, from, to } = req.query;
 
-  const buildDateWhere = (field) => {
-    const cond = {};
-    if (from) cond[Op.gte] = new Date(from);
-    if (to)   cond[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
-    return Object.keys(cond).length > 0 ? { [field]: cond } : {};
-  };
-
   let swHistory = [];
   let enterpriseHistory = [];
 
   // ── SW 히스토리 ──────────────────────────
   if (!type || type === 'sw') {
-    const swWhere = { ...buildDateWhere('created_at') };
+    const swWhere = { ...buildDateWhere('created_at', from, to)};
     if (role !== 'admin') swWhere.user_id = userId;
 
     const swInclude = [
@@ -1251,7 +1303,7 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
 
   // ── Enterprise 히스토리 ──────────────────
   if (!type || type === 'enterprise') {
-    const entWhere = { ...buildDateWhere('created_at') };
+    const entWhere = { ...buildDateWhere('created_at', from, to) };
     if (role !== 'admin') entWhere.user_id = userId;
 
     const entInclude = [
@@ -1292,13 +1344,7 @@ exports.getDfHistory = asyncWrapper(async (req, res) => {
 
   const where = {};
   if (project_id) where.project_id = Number(project_id);
-  if (from) where.created_at = { [Op.gte]: new Date(from) };
-  if (to) {
-    where.created_at = {
-      ...(where.created_at ?? {}),
-      [Op.lte]: new Date(new Date(to).setHours(23, 59, 59, 999)),
-    };
-  }
+  Object.assign(where, buildDateWhere('created_at', from, to));
 
   const itemInclude = {
     model: AssetProjectItem,
@@ -1328,7 +1374,7 @@ exports.getDfHistory = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 // SW 히스토리 아카이빙 (admin 전용)
 // POST /assets/history/sw/archive
-// body: { before: "2025-12-31" }
+// body: { before?, after?, asset_sw_ids? }
 // ─────────────────────────────────────────
 exports.archiveSwHistory = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
@@ -1339,41 +1385,35 @@ exports.archiveSwHistory = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: 'before, after, asset_sw_ids 중 하나 이상 입력해주세요.' });
   }
 
-  const where = {};
-  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
-  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
-  if (asset_sw_ids?.length > 0) where.asset_sw_id = { [Op.in]: asset_sw_ids };
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(asset_sw_ids?.length > 0 ? { asset_sw_id: { [Op.in]: asset_sw_ids } } : {}),
+  };
 
-  const targets = await AssetSwHistory.findAll({ where });
-  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
 
-  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
-  const now = new Date();
-
-  await sequelize.transaction(async (t) => {
-    await AssetSwHistoryArchive.bulkCreate(
-      targets.map((h) => ({
-        history_id:    h.id,
-        asset_sw_id:   h.asset_sw_id,
-        license_id:    h.license_id,
-        user_id:       h.user_id,
-        change_type:   h.change_type,
-        before_value:  h.before_value,
-        after_value:   h.after_value,
-        created_at:    h.created_at,
-        archived_at:   now,
-        archived_by:   userId,
-        archive_range: archiveRange,
-      })),
-      { transaction: t }
-    );
-    await AssetSwHistory.destroy({
-      where: { id: { [Op.in]: targets.map((h) => h.id) } },
-      transaction: t,
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetSwHistory,
+      ArchiveModel: AssetSwHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
+        history_id:   h.id,
+        asset_sw_id:  h.asset_sw_id,
+        license_id:   h.license_id,
+        user_id:      h.user_id,
+        change_type:  h.change_type,
+        before_value: h.before_value,
+        after_value:  h.after_value,
+        created_at:   h.created_at,
+      }),
     });
   });
 
-  res.status(200).json({ message: `SW 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `SW 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
 });
 
 
@@ -1390,20 +1430,21 @@ exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: 'before, after, asset_enterprise_ids 중 하나 이상 입력해주세요.' });
   }
 
-  const where = {};
-  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
-  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
-  if (asset_enterprise_ids?.length > 0) where.asset_enterprise_id = { [Op.in]: asset_enterprise_ids };
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(asset_enterprise_ids?.length > 0 ? { asset_enterprise_id: { [Op.in]: asset_enterprise_ids } } : {}),
+  };
 
-  const targets = await AssetEnterpriseHistory.findAll({ where });
-  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
 
-  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
-  const now = new Date();
-
-  await sequelize.transaction(async (t) => {
-    await AssetEnterpriseHistoryArchive.bulkCreate(
-      targets.map((h) => ({
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetEnterpriseHistory,
+      ArchiveModel: AssetEnterpriseHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
         history_id:          h.id,
         asset_enterprise_id: h.asset_enterprise_id,
         user_id:             h.user_id,
@@ -1411,19 +1452,12 @@ exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
         before_value:        h.before_value,
         after_value:         h.after_value,
         created_at:          h.created_at,
-        archived_at:         now,
-        archived_by:         userId,
-        archive_range:       archiveRange,
-      })),
-      { transaction: t }
-    );
-    await AssetEnterpriseHistory.destroy({
-      where: { id: { [Op.in]: targets.map((h) => h.id) } },
-      transaction: t,
+      }),
     });
   });
 
-  res.status(200).json({ message: `Enterprise 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `Enterprise 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
 });
 
 
@@ -1440,20 +1474,21 @@ exports.archiveDfHistory = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: 'before, after, project_item_ids 중 하나 이상 입력해주세요.' });
   }
 
-  const where = {};
-  if (after)  where.created_at = { ...(where.created_at ?? {}), [Op.gte]: new Date(after) };
-  if (before) where.created_at = { ...(where.created_at ?? {}), [Op.lte]: new Date(new Date(before).setHours(23, 59, 59, 999)) };
-  if (project_item_ids?.length > 0) where.asset_project_item_id = { [Op.in]: project_item_ids };
+  const where = {
+    ...buildDateWhere('created_at', after, before),
+    ...(project_item_ids?.length > 0 ? { asset_project_item_id: { [Op.in]: project_item_ids } } : {}),
+  };
 
-  const targets = await AssetProjectHistory.findAll({ where });
-  if (targets.length === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  const afterStr  = toDateStr(after);
+  const beforeStr = toDateStr(before);
+  const archiveRange = [afterStr, beforeStr].filter(Boolean).join('~') || '전체';
 
-  const archiveRange = [after, before].filter(Boolean).join('~') || '전체';
-  const now = new Date();
-
-  await sequelize.transaction(async (t) => {
-    await AssetProjectHistoryArchive.bulkCreate(
-      targets.map((h) => ({
+  const archived = await sequelize.transaction(async (t) => {
+    return archiveHistory({
+      HistoryModel: AssetProjectHistory,
+      ArchiveModel: AssetProjectHistoryArchive,
+      where, userId, archiveRange, t,
+      mapFn: (h) => ({
         history_id:            h.id,
         asset_project_item_id: h.asset_project_item_id,
         project_id:            h.project_id,
@@ -1462,17 +1497,10 @@ exports.archiveDfHistory = asyncWrapper(async (req, res) => {
         before_value:          h.before_value,
         after_value:           h.after_value,
         created_at:            h.created_at,
-        archived_at:           now,
-        archived_by:           userId,
-        archive_range:         archiveRange,
-      })),
-      { transaction: t }
-    );
-    await AssetProjectHistory.destroy({
-      where: { id: { [Op.in]: targets.map((h) => h.id) } },
-      transaction: t,
+      }),
     });
   });
 
-  res.status(200).json({ message: `DF 히스토리 ${targets.length}건이 아카이빙되었습니다.`, archived: targets.length, archive_range: archiveRange });
+  if (archived === 0) return res.status(200).json({ message: '아카이빙할 데이터가 없습니다.', archived: 0 });
+  res.status(200).json({ message: `DF 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
 });
