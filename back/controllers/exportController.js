@@ -1,5 +1,6 @@
 'use strict';
 
+const logger = require('../config/logger');
 const ExcelJS = require('exceljs');
 const { AssetProjectItem, AssetProjectItemType, AssetProject } = require('../models');
 const { Op } = require('sequelize');
