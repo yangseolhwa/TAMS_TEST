@@ -66,4 +66,9 @@ router.post('/history/sw/archive', assetController.archiveSwHistory);
 router.post('/history/enterprise/archive', assetController.archiveEnterpriseHistory);
 router.post('/history/df/archive', assetController.archiveDfHistory);
 
+// 히스토리 아카이브 조회 (admin)
+router.get('/history/sw/archive',         assetController.getSwHistoryArchive);
+router.get('/history/enterprise/archive', assetController.getEnterpriseHistoryArchive);
+router.get('/history/df/archive',         assetController.getDfHistoryArchive);
+
 module.exports = router;
