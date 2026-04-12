@@ -57,4 +57,13 @@ router.get('/df/template', downloadDfTemplate);
 router.post('/sw/import/original', upload.single('file'), importSwOriginal);
 router.post('/enterprise/import/original', upload.single('file'), importEnterpriseOriginal);
 
+// 히스토리 조회
+router.get('/history/personal', assetController.getPersonalHistory);
+router.get('/history/df', assetController.getDfHistory);
+
+// 히스토리 아카이빙 (admin)
+router.post('/history/sw/archive', assetController.archiveSwHistory);
+router.post('/history/enterprise/archive', assetController.archiveEnterpriseHistory);
+router.post('/history/df/archive', assetController.archiveDfHistory);
+
 module.exports = router;
