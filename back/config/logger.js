@@ -4,7 +4,7 @@ const { createLogger, format, transports } = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 
-const LOG_DIR = path.join(__dirname, '../../logs');
+const LOG_DIR = path.join(__dirname, '../logs');
 
 const { combine, timestamp, printf, colorize, errors } = format;
 
