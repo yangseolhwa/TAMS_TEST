@@ -45,6 +45,9 @@ router.patch('/df/return', assetController.returnDf);
 router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/df/move', assetController.moveDf);
 
+// 할당
+router.patch('/sw/assign', assetController.assignSwLicense);
+
 // DF 엑셀 import / export / 양식 다운로드
 router.post('/df/import', upload.single('file'), importDf);
 router.get('/df/export', exportDf);

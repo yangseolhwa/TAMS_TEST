@@ -1108,6 +1108,47 @@ exports.getSwList = asyncWrapper(async (req, res) => {
   res.status(200).json({ total: result.length, list: result });
 });
 
+// ─────────────────────────────────────────
+// SW 라이선스 할당 (admin 전용)
+// PATCH /assets/sw/assign
+// body: { license_id, user_id }
+// ─────────────────────────────────────────
+exports.assignSwLicense = asyncWrapper(async (req, res) => {
+  const { role, userId: adminId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { license_id, user_id } = req.body;
+
+  if (!license_id) return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
+  if (!user_id)    return res.status(400).json({ message: '할당할 사용자 ID를 입력해주세요.' });
+
+  const license = await AssetSwLicense.findByPk(license_id);
+  if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
+  if (license.state !== 'available') {
+    return res.status(400).json({ message: '사용 가능한 상태의 라이선스만 할당할 수 있습니다.' });
+  }
+
+  const targetUser = await User.findByPk(user_id);
+  if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+  await sequelize.transaction(async (t) => {
+    await AssetSwHistory.create({
+      asset_sw_id:  license.asset_sw_id,
+      license_id:   license.id,
+      user_id:      adminId,
+      change_type:  'assign',
+      before_value: 'available',
+      after_value:  'in_use',
+    }, { transaction: t });
+
+    license.state   = 'in_use';
+    license.user_id = user_id;
+    await license.save({ transaction: t });
+  });
+
+  res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
+});
+
 
 // ─────────────────────────────────────────
 // Enterprise(PC) 전체 조회 (admin 전용)
