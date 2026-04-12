@@ -1122,16 +1122,19 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
   if (!license_id) return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
   if (!user_id)    return res.status(400).json({ message: '할당할 사용자 ID를 입력해주세요.' });
 
-  const license = await AssetSwLicense.findByPk(license_id);
-  if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
-  if (license.state !== 'available') {
-    return res.status(400).json({ message: '사용 가능한 상태의 라이선스만 할당할 수 있습니다.' });
-  }
-
   const targetUser = await User.findByPk(user_id);
   if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
 
   await sequelize.transaction(async (t) => {
+    const license = await AssetSwLicense.findByPk(license_id, { lock: t.LOCK.UPDATE, transaction: t });
+    if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
+    if (license.state !== 'available') {
+      return res.status(400).json({ message: '사용 가능한 상태의 라이선스만 할당할 수 있습니다.' });
+    }
+
+    const targetUser = await User.findByPk(user_id, { transaction: t });
+    if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
     await AssetSwHistory.create({
       asset_sw_id:  license.asset_sw_id,
       license_id:   license.id,
@@ -1144,10 +1147,9 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
     license.state   = 'in_use';
     license.user_id = user_id;
     await license.save({ transaction: t });
-  });
 
-  res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
-});
+    res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
+  });
 
 
 // ─────────────────────────────────────────
