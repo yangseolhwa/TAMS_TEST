@@ -94,6 +94,7 @@ const UserMyAssetsPage = () => {
 
   const handleReturnConfirm = () => {
     if (returnTarget.type === "pc") {
+      if (!returnTarget) return;
       setPcRows((prev) => prev.filter((row) => row.id !== returnTarget.id));
     } else {
       setSwRows((prev) => prev.filter((row) => row.id !== returnTarget.id));
