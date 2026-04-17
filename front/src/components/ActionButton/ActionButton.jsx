@@ -18,8 +18,8 @@ const ActionButton = ({ label, onClick, variant = 'blue', size = 'sm', disabled 
 ActionButton.propTypes = {
   label:    PropTypes.string.isRequired,
   onClick:  PropTypes.func.isRequired,
-  variant:  PropTypes.oneOf(['blue', 'red', 'white', 'black']),
-  size:     PropTypes.oneOf(['xs', 'sm', 'md']),
+  variant:  PropTypes.oneOf(['blue', 'red', 'white', 'black', 'outline']),
+  size:     PropTypes.oneOf(['xxs', 'xs', 'sm', 'md']),
   disabled: PropTypes.bool,
 };
 
