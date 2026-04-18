@@ -18,8 +18,14 @@ router.use(verifyAccessToken);
 router.get('/personal', assetController.getPersonalAssets);
 router.get('/dashboard', assetController.getDashboard);
 router.get('/dashboard/df', assetController.getDfDashboard);
+
+router.get('/sw/form-meta', assetController.getSwFormMeta);
 router.get('/sw', assetController.getSwList);
+
+router.get('/enterprise/form-meta', assetController.getEnterpriseFormMeta);
 router.get('/enterprise', assetController.getEnterpriseList);
+
+router.get('/df/form-meta',         assetController.getDfFormMeta);
 router.get('/df', assetController.getDfAssets);
 
 // 등록 요청 목록 조회
@@ -32,7 +38,7 @@ router.post('/df', assetController.registerDf);
 
 // 관리자 승인 / 반려
 router.patch('/enterprise/approve/:requestId', assetController.approveEnterprise);
-router.patch('/enterprise/reject/:requestId',  assetController.rejectEnterprise);
+router.patch('/enterprise/reject/:requestId', assetController.rejectEnterprise);
 router.patch('/sw/approve/:requestId', assetController.approveSw);
 router.patch('/sw/reject/:requestId', assetController.rejectSw);
 
@@ -44,6 +50,11 @@ router.patch('/df/return', assetController.returnDf);
 // 이동
 router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/df/move', assetController.moveDf);
+
+// 상태 변경
+router.patch('/enterprise/state', assetController.changeEnterpriseState);
+router.patch('/sw/state', assetController.changeSwState);
+router.patch('/df/state', assetController.changeDfState);
 
 // 할당
 router.patch('/sw/assign', assetController.assignSwLicense);

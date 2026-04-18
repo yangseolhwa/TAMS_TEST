@@ -1076,29 +1076,34 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
   };
 
   // ── Enterprise(PC) 집계 ──────────────────
-  const enterpriseTypes = await AssetEnterpriseItemType.findAll({
-    include: [{
-      model: AssetEnterprise,
-      as: 'assets',
+  const [enterpriseTotal, countRows, itemTypes] = await Promise.all([
+    AssetEnterprise.count({
       where: { state: { [Op.ne]: 'returned' } },
-      attributes: ['id', 'state'],
-      required: false,
-    }],
-    order: [['name', 'ASC']],
-  });
+    }),
+    AssetEnterprise.findAll({
+      where: { state: { [Op.ne]: 'returned' } },
+      attributes: [
+        'item_type_id',
+        [sequelize.fn('COUNT', sequelize.col('AssetEnterprise.id')), 'count'],
+      ],
+      group: ['item_type_id'],
+      raw: true,
+    }),
+    AssetEnterpriseItemType.findAll({
+      attributes: ['id', 'code', 'name'],
+      order: [['name', 'ASC']],
+    }),
+  ]);
 
-  const enterpriseTotal = await AssetEnterprise.count({
-    where: { state: { [Op.ne]: 'returned' } },
-  });
+  const countMap = Object.fromEntries(
+    countRows.map((r) => [r.item_type_id, parseInt(r.count, 10)])
+  );
 
   const enterprise = {
     total_count: enterpriseTotal,
-    by_item_type: enterpriseTypes.map((t) => ({
-      id:    t.id,
-      code:  t.code,
-      name:  t.name,
-      count: t.assets ? t.assets.length : 0,
-    })).filter(t => t.count > 0),
+    by_item_type: itemTypes
+      .map((t) => ({ id: t.id, code: t.code, name: t.name, count: countMap[t.id] || 0 }))
+      .filter((t) => t.count > 0),
   };
 
   res.status(200).json({ sw: swTotal, enterprise });
@@ -1591,4 +1596,316 @@ exports.getDfHistoryArchive = asyncWrapper(async (req, res) => {
   });
 
   res.status(200).json({ total: count, list });
+});
+
+// ═════════════════════════════════════════════════════════════
+// 자산 상태 변경 (DF / Enterprise / SW)
+// ═════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────
+// DF 자산 상태 변경
+// PATCH /api/assets/df/state
+// body: { item_ids: [1, 2], state: "stored" }
+// 변경 가능 상태: in_use / stored / rented  (returned 제외 — 반납은 /df/return)
+// ─────────────────────────────────────────
+exports.changeDfState = asyncWrapper(async (req, res) => {
+  const { userId } = req.user;
+  const { item_ids, state } = req.body;
+
+  if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) {
+    return res.status(400).json({ message: '상태를 변경할 자산을 선택해주세요.' });
+  }
+  if (!state || !VALID_DF_STATES.includes(state)) {
+    return res.status(400).json({ message: '유효하지 않은 상태값입니다. (in_use / stored / rented)' });
+  }
+
+  const items = await AssetProjectItem.findAll({
+    where: {
+      id:    { [Op.in]: item_ids },
+      state: { [Op.ne]: 'returned' },
+    },
+  });
+
+  if (items.length === 0) {
+    return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
+  }
+  if (items.length !== item_ids.length) {
+    return res.status(400).json({ message: '변경할 수 없는 자산이 포함되어 있습니다. (이미 반납됨)' });
+  }
+
+  let changedCount = 0;
+
+  await sequelize.transaction(async (t) => {
+    for (const item of items) {
+      if (item.state === state) continue;
+
+      await AssetProjectHistory.create({
+        asset_project_item_id: item.id,
+        project_id:            item.project_id,
+        user_id:               userId,
+        change_type:           'change',
+        before_value:          item.state,
+        after_value:           state,
+      }, { transaction: t });
+
+      item.state = state;
+      await item.save({ transaction: t });
+      changedCount++;
+    }
+  });
+
+  if (changedCount === 0) {
+    return res.status(200).json({ message: '이미 해당 상태인 자산만 선택되었습니다.', changed: 0 });
+  }
+  res.status(200).json({
+    message: `${changedCount}개의 자산 상태가 변경되었습니다.`,
+    changed: changedCount,
+  });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise 자산 상태 변경
+// PATCH /api/assets/enterprise/state
+// body: { asset_ids: [1, 2], state: "stored" }
+// 변경 가능 상태: in_use / stored  (returned 제외 — 반납은 /enterprise/return)
+// admin: 전체 자산 / user: 본인 자산만
+// ─────────────────────────────────────────
+exports.changeEnterpriseState = asyncWrapper(async (req, res) => {
+  const { userId, role } = req.user;
+  const { asset_ids, state } = req.body;
+
+  const CHANGEABLE_ENTERPRISE_STATES = ['in_use', 'stored'];
+
+  if (!asset_ids || !Array.isArray(asset_ids) || asset_ids.length === 0) {
+    return res.status(400).json({ message: '상태를 변경할 자산을 선택해주세요.' });
+  }
+  if (!state || !CHANGEABLE_ENTERPRISE_STATES.includes(state)) {
+    return res.status(400).json({ message: '유효하지 않은 상태값입니다. (in_use / stored)' });
+  }
+
+  const where = {
+    id:    { [Op.in]: asset_ids },
+    state: { [Op.ne]: 'returned' },
+  };
+  if (role !== 'admin') where.user_id = userId;
+
+  const assets = await AssetEnterprise.findAll({ where });
+
+  if (assets.length === 0) {
+    return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
+  }
+  if (assets.length !== asset_ids.length) {
+    return res.status(400).json({ message: '변경할 수 없는 자산이 포함되어 있습니다. (권한 없음 또는 이미 반납됨)' });
+  }
+
+  let changedCount = 0;
+
+  await sequelize.transaction(async (t) => {
+    for (const asset of assets) {
+      if (asset.state === state) continue;
+
+      await AssetEnterpriseHistory.create({
+        asset_enterprise_id: asset.id,
+        user_id:             userId,
+        change_type:         'change',
+        before_value:        asset.state,
+        after_value:         state,
+      }, { transaction: t });
+
+      asset.state = state;
+      await asset.save({ transaction: t });
+      changedCount++;
+    }
+  });
+
+  if (changedCount === 0) {
+    return res.status(200).json({ message: '이미 해당 상태인 자산만 선택되었습니다.', changed: 0 });
+  }
+  res.status(200).json({
+    message: `${changedCount}개의 자산 상태가 변경되었습니다.`,
+    changed: changedCount,
+  });
+});
+
+
+// ─────────────────────────────────────────
+// SW 라이선스 상태 변경 (admin 전용)
+// PATCH /api/assets/sw/state
+// body: { license_ids: [1, 2], state: "available" }
+// 변경 가능 상태: in_use / available
+// assign/return과 달리 user_id 유지, 히스토리 change_type: 'change'
+// 변경 후 영향받은 asset_sw 마스터 state 자동 재계산
+// ─────────────────────────────────────────
+exports.changeSwState = asyncWrapper(async (req, res) => {
+  const { userId, role } = req.user;
+  const { license_ids, state } = req.body;
+
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const CHANGEABLE_SW_LICENSE_STATES = ['in_use', 'available'];
+
+  if (!license_ids || !Array.isArray(license_ids) || license_ids.length === 0) {
+    return res.status(400).json({ message: '상태를 변경할 라이선스를 선택해주세요.' });
+  }
+  if (!state || !CHANGEABLE_SW_LICENSE_STATES.includes(state)) {
+    return res.status(400).json({ message: '유효하지 않은 상태값입니다. (in_use / available)' });
+  }
+
+  const licenses = await AssetSwLicense.findAll({
+    where: { id: { [Op.in]: license_ids } },
+  });
+
+  if (licenses.length === 0) {
+    return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
+  }
+  if (licenses.length !== license_ids.length) {
+    return res.status(400).json({ message: '존재하지 않는 라이선스가 포함되어 있습니다.' });
+  }
+
+  let changedCount = 0;
+
+  await sequelize.transaction(async (t) => {
+    const affectedSwIds = new Set();
+
+    for (const license of licenses) {
+      if (license.state === state) continue;
+
+      await AssetSwHistory.create({
+        asset_sw_id:  license.asset_sw_id,
+        license_id:   license.id,
+        user_id:      userId,
+        change_type:  'change',
+        before_value: license.state,
+        after_value:  state,
+      }, { transaction: t });
+
+      license.state = state;
+      await license.save({ transaction: t });
+      affectedSwIds.add(license.asset_sw_id);
+      changedCount++;
+    }
+
+    // 영향받은 SW 마스터 state 재계산
+    for (const swId of affectedSwIds) {
+      const inUseCount = await AssetSwLicense.count({
+        where: { asset_sw_id: swId, state: 'in_use' },
+        transaction: t,
+      });
+      await AssetSw.update(
+        { state: inUseCount > 0 ? 'in_use' : 'available' },
+        { where: { id: swId }, transaction: t }
+      );
+    }
+  });
+
+  if (changedCount === 0) {
+    return res.status(200).json({ message: '이미 해당 상태인 라이선스만 선택되었습니다.', changed: 0 });
+  }
+  res.status(200).json({
+    message: `${changedCount}개의 라이선스 상태가 변경되었습니다.`,
+    changed: changedCount,
+  });
+});
+
+
+// ═════════════════════════════════════════════════════════════
+// 등록 폼 메타데이터 조회 (DF / Enterprise / SW)
+// ═════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────
+// DF 등록 폼 메타데이터
+// GET /api/assets/df/form-meta
+// 반환: 프로젝트 목록, 자산 유형 계층(parent/child), 기존값(소유기관/장비번호/제조사/규격)
+// ─────────────────────────────────────────
+exports.getDfFormMeta = asyncWrapper(async (req, res) => {
+  const [projects, itemTypes, items] = await Promise.all([
+    AssetProject.findAll({
+      attributes: ['id', 'name'],
+      order: [['name', 'ASC']],
+    }),
+    // parent_id 기준 계층 구성 — 프론트에서 parent_id null = 대분류, 있으면 중분류
+    AssetProjectItemType.findAll({
+      attributes: ['id', 'name', 'parent_id'],
+      order: [['parent_id', 'ASC'], ['name', 'ASC']],
+    }),
+    AssetProjectItem.findAll({
+      where: { state: { [Op.ne]: 'returned' } },
+      attributes: ['owner_organization', 'equipment_number', 'manufacturer', 'spec'],
+    }),
+  ]);
+
+  const toUnique = (arr) =>
+    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+
+  res.status(200).json({
+    projects,
+    itemTypes,
+    ownerOrgs:         toUnique(items.map((i) => i.owner_organization)),
+    equipmentNumbers:  toUnique(items.map((i) => i.equipment_number)),
+    manufacturers:     toUnique(items.map((i) => i.manufacturer)),
+    specs:             toUnique(items.map((i) => i.spec)),
+  });
+});
+
+
+// ─────────────────────────────────────────
+// Enterprise 등록 폼 메타데이터
+// GET /api/assets/enterprise/form-meta
+// 반환: 카테고리+자산유형(중첩), 부서 목록, 기존값(제조사/위치/규격)
+// ─────────────────────────────────────────
+exports.getEnterpriseFormMeta = asyncWrapper(async (req, res) => {
+  const [categories, departments, assets] = await Promise.all([
+    AssetEnterpriseCategory.findAll({
+      attributes: ['id', 'name'],
+      include: [{
+        model: AssetEnterpriseItemType,
+        as: 'itemTypes',
+        attributes: ['id', 'name', 'code'],
+        order: [['name', 'ASC']],
+      }],
+      order: [['name', 'ASC']],
+    }),
+    Department.findAll({
+      attributes: ['id', 'name'],
+      order: [['name', 'ASC']],
+    }),
+    AssetEnterprise.findAll({
+      where: { state: { [Op.ne]: 'returned' } },
+      attributes: ['manufacturer', 'location', 'spec'],
+    }),
+  ]);
+
+  const toUnique = (arr) =>
+    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+
+  res.status(200).json({
+    categories,    // [{ id, name, itemTypes: [{ id, name, code }] }]
+    departments,   // [{ id, name }]
+    manufacturers: toUnique(assets.map((a) => a.manufacturer)),
+    locations:     toUnique(assets.map((a) => a.location)),
+    specs:         toUnique(assets.map((a) => a.spec)),
+  });
+});
+
+
+// ─────────────────────────────────────────
+// SW 등록 폼 메타데이터
+// GET /api/assets/sw/form-meta
+// 반환: 기존 SW 목록(이름/버전/제조사), 제조사 기존값
+// ─────────────────────────────────────────
+exports.getSwFormMeta = asyncWrapper(async (req, res) => {
+  const swList = await AssetSw.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    order: [['name', 'ASC'], ['version', 'ASC']],
+  });
+
+  const toUnique = (arr) =>
+    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+
+  res.status(200).json({
+    swList,        // [{ id, name, version, manufacturer, quantity, state }]
+    manufacturers: toUnique(swList.map((s) => s.manufacturer)),
+  });
 });
