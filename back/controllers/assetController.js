@@ -1229,6 +1229,51 @@ exports.moveDf = asyncWrapper(async (req, res) => {
 // DF 대시보드 (admin + user 공통)
 // GET /assets/dashboard/df
 // ─────────────────────────────────────────
+exports.getDfDashboard = asyncWrapper(async (req, res) => {
+  const items = await AssetProjectItem.findAll({
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['id', 'project_id', 'asset_type_id'],
+    include: [
+      { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
+      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
+    ],
+  });
+
+  // 프로젝트별 집계
+  const projectMap = {};
+  for (const item of items) {
+    const pid  = item.project_id;
+    const pname = item.project?.name ?? '미지정';
+    if (!projectMap[pid]) {
+      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {} };
+    }
+    projectMap[pid].total_count += 1;
+
+    const tid   = item.asset_type_id;
+    const tname = item.item_type?.name ?? '미분류';
+    if (!projectMap[pid].by_type[tid]) {
+      projectMap[pid].by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
+    }
+    projectMap[pid].by_type[tid].count += 1;
+  }
+
+  const projects = Object.values(projectMap).map((p) => ({
+    id:          p.id,
+    name:        p.name,
+    total_count: p.total_count,
+    by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
+  })).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.status(200).json({
+    total: items.length,
+    projects,
+  });
+});
+
+// ─────────────────────────────────────────
+// 내자산 대시보드 (admin 전용)
+// GET /assets/dashboard
+// ─────────────────────────────────────────
 exports.getDashboard = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
@@ -1298,82 +1343,6 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
       .filter((t) => t.count > 0),
   };
  
-  res.status(200).json({ sw: swTotal, enterprise });
-});
-
-// ─────────────────────────────────────────
-// 대시보드 (admin 전용)
-// GET /assets/dashboard
-// ─────────────────────────────────────────
-exports.getDashboard = asyncWrapper(async (req, res) => {
-  const { role } = req.user;
-  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
-
-  // ── SW 집계 ──────────────────────────────
-  const swList = await AssetSw.findAll({
-    where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
-    include: [{
-      model: AssetSwLicense,
-      as: 'licenses',
-      attributes: ['id', 'state', 'user_id'],
-      include: [USER_INCLUDE],
-    }],
-    order: [['name', 'ASC']],
-  });
-
-  const sw = swList.map((s) => {
-    const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
-    return {
-      id:           s.id,
-      name:         s.name,
-      version:      s.version,
-      manufacturer: s.manufacturer,
-      quantity:     s.quantity,
-      state:        s.state,
-      in_use_count: inUseCount,
-      available_count: s.quantity - inUseCount,
-    };
-  });
-
-  const swTotal = {
-    total_sw_count:      sw.length,
-    total_license_count: sw.reduce((acc, s) => acc + s.quantity, 0),
-    total_in_use:        sw.reduce((acc, s) => acc + s.in_use_count, 0),
-    list: sw,
-  };
-
-  // ── Enterprise(PC) 집계 ──────────────────
-  const [enterpriseTotal, countRows, itemTypes] = await Promise.all([
-    AssetEnterprise.count({
-      where: { state: { [Op.ne]: 'returned' } },
-    }),
-    AssetEnterprise.findAll({
-      where: { state: { [Op.ne]: 'returned' } },
-      attributes: [
-        'item_type_id',
-        [sequelize.fn('COUNT', sequelize.col('AssetEnterprise.id')), 'count'],
-      ],
-      group: ['item_type_id'],
-      raw: true,
-    }),
-    AssetEnterpriseItemType.findAll({
-      attributes: ['id', 'code', 'name'],
-      order: [['name', 'ASC']],
-    }),
-  ]);
-
-  const countMap = Object.fromEntries(
-    countRows.map((r) => [r.item_type_id, parseInt(r.count, 10)])
-  );
-
-  const enterprise = {
-    total_count: enterpriseTotal,
-    by_item_type: itemTypes
-      .map((t) => ({ id: t.id, code: t.code, name: t.name, count: countMap[t.id] || 0 }))
-      .filter((t) => t.count > 0),
-  };
-
   res.status(200).json({ sw: swTotal, enterprise });
 });
 
