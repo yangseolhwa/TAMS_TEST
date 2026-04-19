@@ -15,6 +15,55 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
+
+/**
+ * item_type 해결 헬퍼
+ *  - item_type_id 있음 → 카테고리 일치 검증 후 id 반환
+ *  - item_type_name만 있음 → 동일 카테고리 내 이름 검색:
+ *      존재하면 id 반환 / 없으면 코드 자동배정 후 신규 생성
+ */
+async function resolveEnterpriseItemType(category_id, item_type_id, item_type_name, t) {
+  const opts  = t ? { transaction: t } : {};
+  const catId = Number(category_id);
+ 
+  if (item_type_id) {
+    const found = await AssetEnterpriseItemType.findOne({
+      where: { id: Number(item_type_id), category_id: catId }, ...opts,
+    });
+    if (!found) {
+      const err = new Error('선택한 카테고리에 존재하지 않는 자산 종류입니다.');
+      err.statusCode = 400;
+      throw err;
+    }
+    return found.id;
+  }
+ 
+  const trimmed = (item_type_name ?? '').trim();
+  if (!trimmed) {
+    const err = new Error('자산 종류를 선택하거나 직접 입력해주세요.');
+    err.statusCode = 400;
+    throw err;
+  }
+ 
+  // 동일 카테고리 + 동일 이름 우선 검색
+  const existing = await AssetEnterpriseItemType.findOne({
+    where: { category_id: catId, name: trimmed }, ...opts,
+  });
+  if (existing) return existing.id;
+ 
+  // 신규 생성 — 다음 알파벳 코드 자동배정
+  const allInCat = await AssetEnterpriseItemType.findAll({
+    where: { category_id: catId }, attributes: ['code'], ...opts,
+  });
+  const used     = new Set(allInCat.map(r => (r.code ?? '').toUpperCase()));
+  const nextCode = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(c => !used.has(c)) ?? `X${allInCat.length}`;
+ 
+  const created = await AssetEnterpriseItemType.create(
+    { category_id: catId, name: trimmed, code: nextCode }, opts,
+  );
+  return created.id;
+}
+
 const USER_INCLUDE = {
   model: User,
   attributes: ['id', 'email', 'role'],
@@ -218,61 +267,84 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
 exports.registerEnterprise = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   let { is_existing, assets } = req.body;
-
+ 
   if (assets && !Array.isArray(assets)) assets = [assets];
   if (!assets || assets.length === 0) {
     return res.status(400).json({ message: '등록할 자산 정보를 입력해주세요.' });
   }
-
+ 
   const maxCount = role === 'admin' ? 1 : 5;
   if (assets.length > maxCount) {
     return res.status(400).json({ message: `최대 ${maxCount}개까지 등록할 수 있습니다.` });
   }
-
+ 
+  // ── 입력 유효성 검사 ────────────────────────────────────────────
   for (const asset of assets) {
     if (is_existing) {
       if (!asset.asset_id) return res.status(400).json({ message: '기존 자산 ID를 선택해주세요.' });
-      const existing = await AssetEnterprise.findByPk(asset.asset_id);
-      if (!existing) return res.status(404).json({ message: `ID ${asset.asset_id}에 해당하는 자산이 없습니다.` });
+      const orig = await AssetEnterprise.findByPk(asset.asset_id);
+      if (!orig) return res.status(404).json({ message: `ID ${asset.asset_id}에 해당하는 자산이 없습니다.` });
     } else {
-      if (!asset.asset_number || !asset.category_id || !asset.item_type_id || !asset.manufacturer) {
-        return res.status(400).json({ message: '자산번호, 카테고리, 자산 종류, 제조사는 필수 입력 항목입니다.' });
+      if (!asset.category_id) {
+        return res.status(400).json({ message: '카테고리는 필수 입력 항목입니다.' });
+      }
+      if (!asset.item_type_id && !asset.item_type_name) {
+        return res.status(400).json({ message: '자산 종류를 선택하거나 직접 입력해주세요.' });
+      }
+      if (!asset.manufacturer) {
+        return res.status(400).json({ message: '제조사는 필수 입력 항목입니다.' });
       }
     }
     if (!asset.acquisition_date) {
       return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
     }
   }
-
-  // 관리자 → 즉시 in_use 등록
+ 
+  // ── 관리자 → 즉시 in_use 등록 ──────────────────────────────────
   if (role === 'admin') {
-    let assetData;
-    if (is_existing) {
-      const original = await AssetEnterprise.findByPk(assets[0].asset_id);
-      assetData = {
-        category_id:       original.category_id,
-        item_type_id:      original.item_type_id,
-        asset_number:      assets[0].asset_number      ?? original.asset_number,
-        manufacturer:      assets[0].manufacturer      ?? original.manufacturer,
-        spec:              assets[0].spec              ?? null,
-        serial_number:     assets[0].serial_number     ?? null,
-        location:          assets[0].location          ?? original.location,
-        remarks:           assets[0].remarks           ?? original.remarks,
-        acquisition_date:  assets[0].acquisition_date,
-      };
-    } else {
-      assetData = assets[0];
-    }
-
+    const a = assets[0];
+ 
     const created = await sequelize.transaction(async (t) => {
+      let finalCategoryId, finalItemTypeId, baseData;
+ 
+      if (is_existing) {
+        const original   = await AssetEnterprise.findByPk(a.asset_id, { transaction: t });
+        finalCategoryId  = original.category_id;
+        finalItemTypeId  = original.item_type_id;
+        baseData = {
+          manufacturer:     a.manufacturer     ?? original.manufacturer,
+          spec:             a.spec             ?? null,
+          serial_number:    a.serial_number    ?? null,
+          location:         a.location         ?? original.location,
+          remarks:          a.remarks          ?? original.remarks,
+          acquisition_date: a.acquisition_date,
+          department_id:    a.department_id    ?? null,
+        };
+      } else {
+        finalCategoryId = Number(a.category_id);
+        finalItemTypeId = await resolveEnterpriseItemType(
+          finalCategoryId, a.item_type_id ?? null, a.item_type_name ?? null, t,
+        );
+        baseData = {
+          manufacturer:     a.manufacturer,
+          spec:             a.spec          ?? null,
+          serial_number:    a.serial_number ?? null,
+          location:         a.location      ?? null,
+          remarks:          a.remarks       ?? null,
+          acquisition_date: a.acquisition_date,
+          department_id:    a.department_id ?? null,
+        };
+      }
+ 
       const asset = await AssetEnterprise.create({
-        ...assetData,
+        ...baseData,
+        category_id:      finalCategoryId,
+        item_type_id:     finalItemTypeId,
         responsible_type: 'personal',
         user_id:          userId,
-        department_id:    assetData.department_id ?? null,
         state:            'in_use',
       }, { transaction: t });
-
+ 
       await AssetEnterpriseHistory.create({
         asset_enterprise_id: asset.id,
         user_id:             userId,
@@ -280,16 +352,33 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         before_value:        null,
         after_value:         'in_use',
       }, { transaction: t });
-
+ 
       return asset;
     });
-
+ 
     return res.status(201).json({ message: '자산이 등록되었습니다.', asset: created });
   }
-
-  // 일반 회원 → pending 요청 생성
-  const requests = await AssetEnterpriseRequest.bulkCreate(
-    assets.map((asset) => ({
+ 
+  // ── 일반 회원 → pending 요청 생성 ──────────────────────────────
+  // item_type_name → 요청 시점에 resolve (신규면 즉시 생성, id로 저장)
+  const requestRows = [];
+  for (const asset of assets) {
+    let resolvedItemTypeId = null;
+ 
+    if (!is_existing) {
+      try {
+        resolvedItemTypeId = await resolveEnterpriseItemType(
+          Number(asset.category_id),
+          asset.item_type_id  ?? null,
+          asset.item_type_name ?? null,
+          null,
+        );
+      } catch (e) {
+        return res.status(e.statusCode ?? 400).json({ message: e.message });
+      }
+    }
+ 
+    requestRows.push({
       asset_id:          is_existing ? asset.asset_id : null,
       requester_id:      userId,
       status:            'pending',
@@ -297,32 +386,34 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
       request_date:      new Date(),
       required_quantity: 1,
       request_reason:    asset.request_reason ?? null,
-      new_asset_data:    JSON.stringify(is_existing
-        ? {
-            asset_number:      asset.asset_number      ?? null,
-            manufacturer:      asset.manufacturer      ?? null,
-            spec:              asset.spec              ?? null,
-            serial_number:     asset.serial_number     ?? null,
-            acquisition_date:  asset.acquisition_date,
-            location:          asset.location          ?? null,
-          }
-        : {
-            asset_number:      asset.asset_number,
-            category_id:       asset.category_id,
-            item_type_id:      asset.item_type_id,
-            manufacturer:      asset.manufacturer,
-            spec:              asset.spec              ?? null,
-            serial_number:     asset.serial_number     ?? null,
-            acquisition_date:  asset.acquisition_date,
-            location:          asset.location          ?? null,
-          }
+      new_asset_data: JSON.stringify(
+        is_existing
+          ? {
+              manufacturer:     asset.manufacturer  ?? null,
+              spec:             asset.spec          ?? null,
+              serial_number:    asset.serial_number ?? null,
+              acquisition_date: asset.acquisition_date,
+              location:         asset.location      ?? null,
+              department_id:    asset.department_id ?? null,
+            }
+          : {
+              category_id:      Number(asset.category_id),
+              item_type_id:     resolvedItemTypeId,  // 항상 id로 저장
+              manufacturer:     asset.manufacturer,
+              spec:             asset.spec            ?? null,
+              serial_number:    asset.serial_number   ?? null,
+              acquisition_date: asset.acquisition_date,
+              location:         asset.location        ?? null,
+              department_id:    asset.department_id   ?? null,
+            }
       ),
-    }))
-  );
-
+    });
+  }
+ 
+  const createdRequests = await AssetEnterpriseRequest.bulkCreate(requestRows);
   res.status(201).json({
     message: '자산 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
-    requests,
+    requests: createdRequests,
   });
 });
 
@@ -567,38 +658,45 @@ exports.getRequests = asyncWrapper(async (req, res) => {
 exports.approveEnterprise = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
   const { requestId } = req.params;
-
+ 
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 승인할 수 있습니다.' });
-
+ 
   const request = await AssetEnterpriseRequest.findByPk(requestId);
-  if (!request)                      return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
-  if (request.status !== 'pending')  return res.status(400).json({ message: '이미 처리된 요청입니다.' });
-
+  if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
+  if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
+ 
   let assetData = {};
+ 
   if (request.asset_id) {
+    // is_existing 요청 — 원본 자산 + override 병합
     const original = await AssetEnterprise.findByPk(request.asset_id);
     if (!original) return res.status(404).json({ message: '원본 자산을 찾을 수 없습니다.' });
+ 
     let overrides = {};
     try { overrides = JSON.parse(request.new_asset_data) ?? {}; } catch {}
+ 
     assetData = {
-      category_id:       original.category_id,
-      item_type_id:      original.item_type_id,
-      asset_number:      overrides.asset_number      ?? original.asset_number,
-      manufacturer:      overrides.manufacturer      ?? original.manufacturer,
-      spec:              overrides.spec              ?? null,
-      serial_number:     overrides.serial_number     ?? null,
-      acquisition_date:  overrides.acquisition_date,
-      location:          overrides.location          ?? null,
+      category_id:      original.category_id,
+      item_type_id:     original.item_type_id,
+      manufacturer:     overrides.manufacturer     ?? original.manufacturer,
+      spec:             overrides.spec             ?? null,
+      serial_number:    overrides.serial_number    ?? null,
+      acquisition_date: overrides.acquisition_date,
+      location:         overrides.location         ?? null,
+      department_id:    overrides.department_id    ?? null,
     };
   } else {
-    if (!request.new_asset_data) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    // 신규 등록 요청 — new_asset_data 사용 (item_type_id는 요청 시 이미 resolve됨)
+    if (!request.new_asset_data) {
+      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    }
     try {
       assetData = JSON.parse(request.new_asset_data);
     } catch {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
   }
-
+ 
   const created = await sequelize.transaction(async (t) => {
     const asset = await AssetEnterprise.create({
       ...assetData,
@@ -607,7 +705,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       department_id:    assetData.department_id ?? null,
       state:            'in_use',
     }, { transaction: t });
-
+ 
     await AssetEnterpriseHistory.create({
       asset_enterprise_id: asset.id,
       user_id:             userId,
@@ -615,14 +713,14 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       before_value:        null,
       after_value:         'in_use',
     }, { transaction: t });
-
+ 
     request.status       = 'approved';
     request.processed_at = new Date();
     await request.save({ transaction: t });
-
+ 
     return asset;
   });
-
+ 
   res.status(200).json({ message: '자산 등록 요청이 승인되었습니다.', asset: created });
 });
 
@@ -1240,7 +1338,6 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
   if (department_id) where.department_id = Number(department_id);
   if (keyword) {
     where[Op.or] = [
-      { asset_number:  { [Op.like]: `%${keyword}%` } },
       { manufacturer:  { [Op.like]: `%${keyword}%` } },
       { serial_number: { [Op.like]: `%${keyword}%` } },
       { spec:          { [Op.like]: `%${keyword}%` } },
@@ -1264,7 +1361,7 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
         }],
       },
     ],
-    order: [['asset_number', 'ASC']],
+    order: [['created_at', 'DESC']],
   });
 
   res.status(200).json({ total: list.length, list });
@@ -1805,107 +1902,5 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
   res.status(200).json({
     message: `${changedCount}개의 라이선스 상태가 변경되었습니다.`,
     changed: changedCount,
-  });
-});
-
-
-// ═════════════════════════════════════════════════════════════
-// 등록 폼 메타데이터 조회 (DF / Enterprise / SW)
-// ═════════════════════════════════════════════════════════════
-
-// ─────────────────────────────────────────
-// DF 등록 폼 메타데이터
-// GET /api/assets/df/form-meta
-// 반환: 프로젝트 목록, 자산 유형 계층(parent/child), 기존값(소유기관/장비번호/제조사/규격)
-// ─────────────────────────────────────────
-exports.getDfFormMeta = asyncWrapper(async (req, res) => {
-  const [projects, itemTypes, items] = await Promise.all([
-    AssetProject.findAll({
-      attributes: ['id', 'name'],
-      order: [['name', 'ASC']],
-    }),
-    // parent_id 기준 계층 구성 — 프론트에서 parent_id null = 대분류, 있으면 중분류
-    AssetProjectItemType.findAll({
-      attributes: ['id', 'name', 'parent_id'],
-      order: [['parent_id', 'ASC'], ['name', 'ASC']],
-    }),
-    AssetProjectItem.findAll({
-      where: { state: { [Op.ne]: 'returned' } },
-      attributes: ['owner_organization', 'equipment_number', 'manufacturer', 'spec'],
-    }),
-  ]);
-
-  const toUnique = (arr) =>
-    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
-
-  res.status(200).json({
-    projects,
-    itemTypes,
-    ownerOrgs:         toUnique(items.map((i) => i.owner_organization)),
-    equipmentNumbers:  toUnique(items.map((i) => i.equipment_number)),
-    manufacturers:     toUnique(items.map((i) => i.manufacturer)),
-    specs:             toUnique(items.map((i) => i.spec)),
-  });
-});
-
-
-// ─────────────────────────────────────────
-// Enterprise 등록 폼 메타데이터
-// GET /api/assets/enterprise/form-meta
-// 반환: 카테고리+자산유형(중첩), 부서 목록, 기존값(제조사/위치/규격)
-// ─────────────────────────────────────────
-exports.getEnterpriseFormMeta = asyncWrapper(async (req, res) => {
-  const [categories, departments, assets] = await Promise.all([
-    AssetEnterpriseCategory.findAll({
-      attributes: ['id', 'name'],
-      include: [{
-        model: AssetEnterpriseItemType,
-        as: 'itemTypes',
-        attributes: ['id', 'name', 'code'],
-        order: [['name', 'ASC']],
-      }],
-      order: [['name', 'ASC']],
-    }),
-    Department.findAll({
-      attributes: ['id', 'name'],
-      order: [['name', 'ASC']],
-    }),
-    AssetEnterprise.findAll({
-      where: { state: { [Op.ne]: 'returned' } },
-      attributes: ['manufacturer', 'location', 'spec'],
-    }),
-  ]);
-
-  const toUnique = (arr) =>
-    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
-
-  res.status(200).json({
-    categories,    // [{ id, name, itemTypes: [{ id, name, code }] }]
-    departments,   // [{ id, name }]
-    manufacturers: toUnique(assets.map((a) => a.manufacturer)),
-    locations:     toUnique(assets.map((a) => a.location)),
-    specs:         toUnique(assets.map((a) => a.spec)),
-  });
-});
-
-
-// ─────────────────────────────────────────
-// SW 등록 폼 메타데이터
-// GET /api/assets/sw/form-meta
-// 반환: 기존 SW 목록(이름/버전/제조사), 제조사 기존값
-// ─────────────────────────────────────────
-exports.getSwFormMeta = asyncWrapper(async (req, res) => {
-  const swList = await AssetSw.findAll({
-    where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
-    order: [['name', 'ASC'], ['version', 'ASC']],
-  });
-
-  const toUnique = (arr) =>
-    [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
-
-  res.status(200).json({
-    swList,        // [{ id, name, version, manufacturer, quantity, state }]
-    manufacturers: toUnique(swList.map((s) => s.manufacturer)),
   });
 });

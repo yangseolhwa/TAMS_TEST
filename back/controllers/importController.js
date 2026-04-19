@@ -598,7 +598,6 @@ const importEnterpriseOriginal = async (req, res) => {
       }
 
       const asset = await AssetEnterprise.create({
-        asset_number:      assetNumber,
         category_id,
         item_type_id:      typeCache[typeKey],
         department_id,
@@ -619,10 +618,10 @@ const importEnterpriseOriginal = async (req, res) => {
         change_type: 'register', before_value: null, after_value: 'in_use',
       });
 
-      results.push({ row: r, status: 'success', asset_id: asset.id, asset_number: assetNumber });
+      results.push({ row: r, status: 'success', asset_id: asset.id });
       imported++;
     } catch (err) {
-      results.push({ row: r, status: 'failed', reason: err.message, asset_number: assetNumber });
+      results.push({ row: r, status: 'failed', reason: err.message });
       failed++;
     }
   }

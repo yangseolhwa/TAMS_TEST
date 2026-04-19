@@ -3,7 +3,6 @@ const sequelize = require('../../config/db');
 
 const AssetEnterprise = sequelize.define('AssetEnterprise', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  asset_number: { type: DataTypes.STRING(100) },
   category_id: { type: DataTypes.INTEGER },
   item_type_id: { type: DataTypes.INTEGER },
   department_id: { type: DataTypes.INTEGER },
