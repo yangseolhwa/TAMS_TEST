@@ -906,53 +906,163 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.returnSw = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
-  const { license_ids } = req.body;
-
-  if (!license_ids || !Array.isArray(license_ids) || license_ids.length === 0) {
-    return res.status(400).json({ message: '반납할 라이선스를 선택해주세요.' });
+  const { license_ids, sw_ids } = req.body;
+ 
+  const hasLicenses = Array.isArray(license_ids) && license_ids.length > 0;
+  const hasSw       = Array.isArray(sw_ids)      && sw_ids.length > 0;
+ 
+  if (!hasLicenses && !hasSw) {
+    return res.status(400).json({ message: '반납할 라이선스 또는 SW를 선택해주세요.' });
   }
-
-  const where = {
-    id:    { [Op.in]: license_ids },
-    state: 'in_use',
-  };
-  if (role !== 'admin') where.user_id = userId;
-
-  const licenses = await AssetSwLicense.findAll({ where });
-  if (licenses.length === 0)                    return res.status(404).json({ message: '반납할 수 있는 라이선스가 없습니다.' });
-  if (licenses.length !== license_ids.length)   return res.status(400).json({ message: '반납할 수 없는 라이선스가 포함되어 있습니다. (권한 없음 또는 이미 미사용 상태)' });
-
-  await sequelize.transaction(async (t) => {
-    for (const license of licenses) {
-      await AssetSwHistory.create({
-        asset_sw_id:  license.asset_sw_id,
-        license_id:   license.id,
-        user_id:      userId,
-        change_type:  'returned',
-        before_value: 'in_use',
-        after_value:  'available',
-      }, { transaction: t });
-
-      license.state   = 'available';
-      license.user_id = null;
-      await license.save({ transaction: t });
+ 
+  // sw_ids는 admin 전용
+  if (hasSw && role !== 'admin') {
+    return res.status(403).json({ message: 'SW 직접 반납은 관리자만 할 수 있습니다.' });
+  }
+ 
+  // ── 사전 유효성 검증 (트랜잭션 외부) ────────────────────────────
+  let licenses = [];
+  let sws      = [];
+ 
+  if (hasLicenses) {
+    const licenseWhere = {
+      id:    { [Op.in]: license_ids },
+      state: 'in_use',
+    };
+    if (role !== 'admin') licenseWhere.user_id = userId;
+ 
+    licenses = await AssetSwLicense.findAll({ where: licenseWhere });
+ 
+    if (licenses.length === 0) {
+      return res.status(404).json({ message: '반납할 수 있는 라이선스가 없습니다.' });
     }
-
-    await AssetSwRequest.bulkCreate(
-      licenses.map((license) => ({
-        asset_sw_id:       license.asset_sw_id,
-        requester_id:      userId,
-        status:            'approved',
-        request_type:      'return',
-        request_date:      new Date(),
-        required_quantity: 1,
-        processed_at:      new Date(),
-      })),
-      { transaction: t }
-    );
+    if (licenses.length !== license_ids.length) {
+      return res.status(400).json({
+        message: '반납할 수 없는 라이선스가 포함되어 있습니다. (권한 없음 또는 이미 미사용 상태)',
+      });
+    }
+  }
+ 
+  if (hasSw) {
+    sws = await AssetSw.findAll({
+      where: { id: { [Op.in]: sw_ids }, state: { [Op.ne]: 'returned' } },
+    });
+ 
+    if (sws.length === 0) {
+      return res.status(404).json({ message: '반납할 수 있는 SW가 없습니다.' });
+    }
+    if (sws.length !== sw_ids.length) {
+      return res.status(400).json({
+        message: '반납할 수 없는 SW가 포함되어 있습니다. (이미 반납됨)',
+      });
+    }
+ 
+    // 활성 라이선스 확인
+    // — 동일 요청의 license_ids에 포함된 라이선스는 "반납 예정"으로 간주하여 제외
+    for (const sw of sws) {
+      const activeLicenseWhere = {
+        asset_sw_id: sw.id,
+        state:       'in_use',
+      };
+      if (hasLicenses) {
+        activeLicenseWhere.id = { [Op.notIn]: license_ids };
+      }
+ 
+      const activeLicenseCount = await AssetSwLicense.count({ where: activeLicenseWhere });
+      if (activeLicenseCount > 0) {
+        return res.status(400).json({
+          message: `'${sw.name}'에 사용 중인 라이선스가 있습니다. 라이선스를 먼저 반납하거나 동일 요청에 포함해주세요.`,
+        });
+      }
+    }
+  }
+ 
+  // ── 트랜잭션 처리 ─────────────────────────────────────────────────
+  let returnedLicenseCount = 0;
+  let returnedSwCount      = 0;
+ 
+  await sequelize.transaction(async (t) => {
+ 
+    // ─ 라이선스 반납 ──────────────────────────────────────────────
+    if (hasLicenses) {
+      const affectedSwIds = new Set();
+ 
+      for (const license of licenses) {
+        await AssetSwHistory.create({
+          asset_sw_id:  license.asset_sw_id,
+          license_id:   license.id,
+          user_id:      userId,
+          change_type:  'returned',
+          before_value: 'in_use',
+          after_value:  'available',
+        }, { transaction: t });
+ 
+        license.state   = 'available';
+        license.user_id = null;
+        await license.save({ transaction: t });
+        affectedSwIds.add(license.asset_sw_id);
+      }
+      returnedLicenseCount = licenses.length;
+ 
+      // 영향받은 SW 마스터 state 재계산
+      // — sw_ids에도 포함된 SW는 어차피 returned로 처리되므로 건너뜀
+      for (const swId of affectedSwIds) {
+        if (hasSw && sw_ids.includes(swId)) continue;
+ 
+        const inUseCount = await AssetSwLicense.count({
+          where:       { asset_sw_id: swId, state: 'in_use' },
+          transaction: t,
+        });
+        await AssetSw.update(
+          { state: inUseCount > 0 ? 'in_use' : 'available' },
+          { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
+        );
+      }
+ 
+      // 반납 요청 기록
+      await AssetSwRequest.bulkCreate(
+        licenses.map((license) => ({
+          asset_sw_id:       license.asset_sw_id,
+          requester_id:      userId,
+          status:            'approved',
+          request_type:      'return',
+          request_date:      new Date(),
+          required_quantity: 1,
+          processed_at:      new Date(),
+        })),
+        { transaction: t }
+      );
+    }
+ 
+    // ─ SW 직접 반납 (admin 전용) ──────────────────────────────────
+    if (hasSw) {
+      for (const sw of sws) {
+        await AssetSwHistory.create({
+          asset_sw_id:  sw.id,
+          license_id:   null,           // SW 레벨 이벤트이므로 license 없음
+          user_id:      userId,
+          change_type:  'returned',
+          before_value: sw.state,
+          after_value:  'returned',
+        }, { transaction: t });
+ 
+        sw.state = 'returned';
+        await sw.save({ transaction: t });
+      }
+      returnedSwCount = sws.length;
+    }
   });
-
-  res.status(200).json({ message: `${licenses.length}개의 라이선스가 반납되었습니다.` });
+ 
+  // ── 응답 ──────────────────────────────────────────────────────────
+  const parts = [];
+  if (returnedLicenseCount > 0) parts.push(`라이선스 ${returnedLicenseCount}개`);
+  if (returnedSwCount > 0)      parts.push(`SW ${returnedSwCount}개`);
+ 
+  res.status(200).json({
+    message:           `${parts.join(', ')}가 반납되었습니다.`,
+    returned_licenses: returnedLicenseCount,
+    returned_sw:       returnedSwCount,
+  });
 });
 
 
