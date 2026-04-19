@@ -23,11 +23,10 @@ createRoot(document.getElementById('root')).render(
         containerStyle={{ top: 55 }}
         toastOptions={{
           error: {
-            icon: false,
             style: {
               fontSize: '14px',
               fontFamily: 'inherit',
-              minWidth: '400px',
+              // minWidth: '400px',
             },
           },
         }}

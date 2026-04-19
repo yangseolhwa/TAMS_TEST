@@ -26,6 +26,10 @@ html, body {
   --color-submit:          #4A7FC1;
   --color-submit-hover:    #3D6FAD;
 
+    /* Dark Button */
+  --color-dark:            #1E2D45;
+  --color-dark-hover:      #16243A;
+
   /* Layout Colors */
   --color-bg:              #F0F2F5;
   --color-surface:         #ffffff;
@@ -55,6 +59,7 @@ html, body {
   --transition-med:  300ms ease;
 
   /* Border Radius */
+  --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
@@ -65,6 +70,10 @@ html, body {
   --color-badge-sw-bg:       rgba(16, 185, 129, 0.12);
   --color-badge-sw-text:     #059669;
 
+  /* 내 자산 현황 - SW/PC 라벨 */
+  --color-label-sw:          #6834D0;
+  --color-label-pc:          #C2660A;
+
   /* Badge - Status */
   --color-badge-yellow-bg:   rgba(245, 158, 11, 0.12);
   --color-badge-yellow:      #d97706;
@@ -72,6 +81,20 @@ html, body {
   --color-badge-green:       #059669;
   --color-badge-red-bg:      rgba(192, 57, 43, 0.1);
   --color-badge-gray-bg:     rgba(160, 174, 192, 0.15);
+
+  /* Badge - Status (커스텀) */
+  --color-badge-green2-bg:       #AFFBC5;
+  --color-badge-green2:          #19A019;
+  --color-badge-blue2-bg:        #DBEAFE;
+  --color-badge-blue2:           #1D4EDA;
+  --color-badge-cyan-bg:         #8CE6F3;
+  --color-badge-cyan:            #2A53C8;
+  --color-badge-purple-bg:       #DDD7FB;
+  --color-badge-purple:          #6834D0;
+  --color-badge-red2:            #B91C1C;
+  --color-badge-orange-bg:       #FFC583;
+  --color-badge-orange:          #8C4C03;
+  --color-badge-return-bg:       #FEE2E2;
   /* Table */
   --color-table-header-bg: #f2f4f9;
 }

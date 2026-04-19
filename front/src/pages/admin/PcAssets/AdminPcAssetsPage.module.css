@@ -1,0 +1,12 @@
+/* 공통 스타일은 AssetPage.common.module.css 참고 */
+
+/* =====================
+   액션 버튼 영역
+   ===================== */
+.tableActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
