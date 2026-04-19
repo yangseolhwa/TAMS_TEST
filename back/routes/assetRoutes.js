@@ -14,13 +14,17 @@ const { verifyAccessToken } = require('../middleware/authMiddleware');
 // 모든 자산 라우트는 AT 검증 필수
 router.use(verifyAccessToken);
 
-// 조회
+// 내 자산 조회 + 내 자산 대시보드
 router.get('/personal', assetController.getPersonalAssets);
 router.get('/dashboard', assetController.getDashboard);
-router.get('/dashboard/df', assetController.getDfDashboard);
+
+// admin 내 자산(sw, enterprise) 조회
 router.get('/sw', assetController.getSwList);
 router.get('/enterprise', assetController.getEnterpriseList);
+
+// df 조회 및 대시보드
 router.get('/df', assetController.getDfAssets);
+router.get('/dashboard/df', assetController.getDfDashboard);
 
 // 등록 요청 목록 조회
 router.get('/requests', assetController.getRequests);
@@ -32,7 +36,7 @@ router.post('/df', assetController.registerDf);
 
 // 관리자 승인 / 반려
 router.patch('/enterprise/approve/:requestId', assetController.approveEnterprise);
-router.patch('/enterprise/reject/:requestId',  assetController.rejectEnterprise);
+router.patch('/enterprise/reject/:requestId', assetController.rejectEnterprise);
 router.patch('/sw/approve/:requestId', assetController.approveSw);
 router.patch('/sw/reject/:requestId', assetController.rejectSw);
 
@@ -44,6 +48,11 @@ router.patch('/df/return', assetController.returnDf);
 // 이동
 router.patch('/enterprise/move', assetController.moveEnterprise);
 router.patch('/df/move', assetController.moveDf);
+
+// 상태 변경
+router.patch('/enterprise/state', assetController.changeEnterpriseState);
+router.patch('/sw/state', assetController.changeSwState);
+router.patch('/df/state', assetController.changeDfState);
 
 // 할당
 router.patch('/sw/assign', assetController.assignSwLicense);
