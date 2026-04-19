@@ -423,119 +423,165 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.registerSw = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
-  let { is_existing, licenses } = req.body;
+  const {
+    is_existing,
+    asset_sw_id,
+    name, manufacturer, version, quantity, acquisition_date, remarks,
+  } = req.body;
  
-  if (licenses && !Array.isArray(licenses)) licenses = [licenses];
-  if (!licenses || licenses.length === 0) {
-    return res.status(400).json({ message: '등록할 SW 정보를 입력해주세요.' });
+  let licenses = req.body.licenses ?? [];
+  if (!Array.isArray(licenses)) licenses = [licenses];
+ 
+  // ── 입력 유효성 검사 ───────────────────────────────────────────────
+  if (is_existing) {
+    if (!asset_sw_id) {
+      return res.status(400).json({ message: '기존 SW ID를 입력해주세요.' });
+    }
+    const existingSw = await AssetSw.findByPk(asset_sw_id);
+    if (!existingSw) {
+      return res.status(404).json({ message: `ID ${asset_sw_id}에 해당하는 SW가 없습니다.` });
+    }
+    if (licenses.length === 0) {
+      return res.status(400).json({ message: '기존 SW에 추가할 라이선스를 입력해주세요.' });
+    }
+  } else {
+    if (!name || !manufacturer) {
+      return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
+    }
+  }
+ 
+  // 라이선스 개별 유효성 검사
+  for (const lic of licenses) {
+    if (!lic.license_key) {
+      return res.status(400).json({ message: '라이선스 키를 입력해주세요.' });
+    }
+    if (!lic.key_type) {
+      return res.status(400).json({ message: '라이선스 키 유형을 선택해주세요. (serial / credential)' });
+    }
+    if (lic.license_type && !['per_seat', 'shared'].includes(lic.license_type)) {
+      return res.status(400).json({ message: '유효하지 않은 라이선스 타입입니다. (per_seat / shared)' });
+    }
   }
  
   const maxCount = role === 'admin' ? 1 : 5;
   if (licenses.length > maxCount) {
-    return res.status(400).json({ message: `최대 ${maxCount}개까지 등록할 수 있습니다.` });
+    return res.status(400).json({ message: `라이선스는 최대 ${maxCount}개까지 등록할 수 있습니다.` });
   }
  
-  for (const lic of licenses) {
-    if (is_existing) {
-      if (!lic.asset_sw_id) return res.status(400).json({ message: '기존 SW ID를 선택해주세요.' });
-      const existingSw = await AssetSw.findByPk(lic.asset_sw_id);
-      if (!existingSw) return res.status(404).json({ message: `ID ${lic.asset_sw_id}에 해당하는 SW가 없습니다.` });
-    } else {
-      if (!lic.name || !lic.manufacturer) {
-        return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
-      }
-    }
-    if (!lic.license_key || !lic.key_type) {
-      return res.status(400).json({ message: '라이선스 키와 키 유형은 필수 입력 항목입니다.' });
-    }
-  }
- 
-  // 관리자 → 즉시 등록
+  // ── 관리자 → 즉시 등록 ────────────────────────────────────────────
   if (role === 'admin') {
-    const lic = licenses[0];
-    let swId = lic.asset_sw_id;
+    const result = await sequelize.transaction(async (t) => {
+      let swId = is_existing ? Number(asset_sw_id) : null;
  
-    const created = await sequelize.transaction(async (t) => {
+      // 신규 SW 생성
       if (!is_existing) {
         const newSw = await AssetSw.create({
-          name:             lic.name,
-          version:          lic.version          ?? null,
-          manufacturer:     lic.manufacturer,
-          quantity:         lic.quantity         ?? 1,
-          acquisition_date: lic.acquisition_date ?? null,
-          remarks:          lic.remarks          ?? null,
+          name,
+          manufacturer,
+          version:          version          ?? null,
+          quantity:         quantity         ?? 0,
+          acquisition_date: acquisition_date ?? null,
+          remarks:          remarks          ?? null,
           state:            'available',
         }, { transaction: t });
         swId = newSw.id;
       }
  
-      const license = await AssetSwLicense.create({
-        asset_sw_id:      swId,
-        user_id:          userId,
-        license_key:      lic.license_key,
-        license_password: lic.license_password  ?? null,
-        key_type:         lic.key_type,
-        related_link:     lic.related_link       ?? null,
-        issue_date:       lic.issue_date         ?? null,
-        remarks:          lic.remarks            ?? null,
-        state:            'in_use',
-      }, { transaction: t });
+      // 라이선스 등록 (없으면 SW만 등록)
+      const createdLicenses = [];
+      for (const lic of licenses) {
+        const license = await AssetSwLicense.create({
+          asset_sw_id:      swId,
+          user_id:          userId,
+          license_key:      lic.license_key,
+          license_password: lic.license_password ?? null,
+          key_type:         lic.key_type,
+          license_type:     lic.license_type    ?? 'per_seat',
+          related_link:     lic.related_link    ?? null,
+          issue_date:       lic.issue_date      ?? null,
+          remarks:          lic.remarks         ?? null,
+          state:            'in_use',
+        }, { transaction: t });
  
-      await AssetSwHistory.create({
-        asset_sw_id:  swId,
-        license_id:   license.id,
-        user_id:      userId,
-        change_type:  'register',
-        before_value: null,
-        after_value:  'in_use',
-      }, { transaction: t });
+        await AssetSwHistory.create({
+          asset_sw_id:  swId,
+          license_id:   license.id,
+          user_id:      userId,
+          change_type:  'register',
+          before_value: null,
+          after_value:  'in_use',
+        }, { transaction: t });
  
-      // [FIX-3] 라이선스 등록 후 SW state 재계산
-      const inUseCount = await AssetSwLicense.count({
-        where: { asset_sw_id: swId, state: 'in_use' },
-        transaction: t,
-      });
-      await AssetSw.update(
-        { state: inUseCount > 0 ? 'in_use' : 'available' },
-        { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
-      );
+        createdLicenses.push(license);
+      }
  
-      return license;
+      // SW state 재계산
+      if (licenses.length > 0) {
+        const inUseCount = await AssetSwLicense.count({
+          where: { asset_sw_id: swId, state: 'in_use' },
+          transaction: t,
+        });
+        await AssetSw.update(
+          { state: inUseCount > 0 ? 'in_use' : 'available' },
+          { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
+        );
+      }
+ 
+      const sw = await AssetSw.findByPk(swId, { transaction: t });
+      return { sw, licenses: createdLicenses };
     });
  
-    return res.status(201).json({ message: 'SW 자산이 등록되었습니다.', license: created });
+    const message = licenses.length === 0
+      ? 'SW가 등록되었습니다.'
+      : `SW 자산이 등록되었습니다. (라이선스 ${licenses.length}개)`;
+ 
+    return res.status(201).json({ message, sw: result.sw, licenses: result.licenses });
   }
  
-  // 일반 회원 → pending 요청 생성
-  // [FIX-5] is_existing=true 일 때도 라이선스 데이터를 new_asset_data에 저장
-  const createdRequests = await AssetSwRequest.bulkCreate(
-    licenses.map((lic) => ({
-      asset_sw_id:       is_existing ? lic.asset_sw_id : null,
-      requester_id:      userId,
-      status:            'pending',
-      request_type:      'register',
-      request_date:      new Date(),
-      required_quantity: 1,
-      request_reason:    lic.request_reason ?? null,
-      new_asset_data: JSON.stringify({
-        // 라이선스 데이터는 항상 저장 (is_existing 여부 무관)
-        license_key:      lic.license_key,
-        license_password: lic.license_password ?? null,
-        key_type:         lic.key_type,
-        related_link:     lic.related_link     ?? null,
-        issue_date:       lic.issue_date       ?? null,
-        remarks:          lic.remarks          ?? null,
-        // 신규 SW일 때만 SW 메타데이터 포함
-        ...(is_existing ? {} : {
-          name:             lic.name,
-          version:          lic.version          ?? null,
-          manufacturer:     lic.manufacturer,
-          quantity:         lic.quantity         ?? 1,
-          acquisition_date: lic.acquisition_date ?? null,
+  // ── 일반 회원 → pending 요청 생성 ──────────────────────────────────
+  const requestRows = licenses.length > 0
+    ? licenses.map((lic) => ({
+        asset_sw_id:       is_existing ? Number(asset_sw_id) : null,
+        requester_id:      userId,
+        status:            'pending',
+        request_type:      'register',
+        request_date:      new Date(),
+        required_quantity: 1,
+        request_reason:    lic.request_reason ?? null,
+        new_asset_data: JSON.stringify({
+          // SW 메타데이터 (신규 SW일 때만)
+          ...(is_existing ? {} : { name, manufacturer, version: version ?? null,
+                                   quantity: quantity ?? 0, acquisition_date: acquisition_date ?? null }),
+          // 라이선스 데이터 (항상 포함)
+          license_key:      lic.license_key,
+          license_password: lic.license_password ?? null,
+          key_type:         lic.key_type,
+          license_type:     lic.license_type    ?? 'per_seat',
+          related_link:     lic.related_link    ?? null,
+          issue_date:       lic.issue_date      ?? null,
+          remarks:          lic.remarks         ?? null,
         }),
-      }),
-    }))
-  );
+      }))
+    : [{
+        // 라이선스 없는 신규 SW 요청
+        asset_sw_id:       null,
+        requester_id:      userId,
+        status:            'pending',
+        request_type:      'register',
+        request_date:      new Date(),
+        required_quantity: 1,
+        request_reason:    req.body.request_reason ?? null,
+        new_asset_data: JSON.stringify({
+          name, manufacturer,
+          version:          version          ?? null,
+          quantity:         quantity         ?? 0,
+          acquisition_date: acquisition_date ?? null,
+          remarks:          remarks          ?? null,
+          license_key:      null,   // 라이선스 없음 표시
+        }),
+      }];
+ 
+  const createdRequests = await AssetSwRequest.bulkCreate(requestRows);
  
   res.status(201).json({
     message: 'SW 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
@@ -774,8 +820,6 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
  
-  let swId = request.asset_sw_id;
- 
   if (!request.new_asset_data) {
     return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
   }
@@ -788,13 +832,15 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   }
  
   const { sw, license } = await sequelize.transaction(async (t) => {
-    // 신규 SW 생성 (is_existing=false인 경우)
+    let swId = request.asset_sw_id ?? null;
+ 
+    // 신규 SW 생성 (asset_sw_id 없으면 신규)
     if (!swId) {
       const newSw = await AssetSw.create({
         name:             parsedData.name,
-        version:          parsedData.version          ?? null,
         manufacturer:     parsedData.manufacturer,
-        quantity:         parsedData.quantity         ?? 1,
+        version:          parsedData.version          ?? null,
+        quantity:         parsedData.quantity         ?? 0,
         acquisition_date: parsedData.acquisition_date ?? null,
         remarks:          parsedData.remarks          ?? null,
         state:            'available',
@@ -802,16 +848,27 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       swId = newSw.id;
     }
  
-    // 라이선스 생성 — parsedData에 항상 라이선스 정보가 있음 (FIX-5 덕분에)
+    // 라이선스 없는 SW 요청 (license_key: null)
+    if (!parsedData.license_key) {
+      request.status       = 'approved';
+      request.processed_at = new Date();
+      await request.save({ transaction: t });
+ 
+      const createdSw = await AssetSw.findByPk(swId, { transaction: t });
+      return { sw: createdSw, license: null };
+    }
+ 
+    // 라이선스 생성
     const createdLicense = await AssetSwLicense.create({
       asset_sw_id:      swId,
       user_id:          request.requester_id,
-      license_key:      parsedData.license_key       ?? null,
-      license_password: parsedData.license_password  ?? null,
-      key_type:         parsedData.key_type           ?? null,
-      related_link:     parsedData.related_link       ?? null,
-      issue_date:       parsedData.issue_date         ?? null,
-      remarks:          parsedData.remarks            ?? null,
+      license_key:      parsedData.license_key,
+      license_password: parsedData.license_password ?? null,
+      key_type:         parsedData.key_type,
+      license_type:     parsedData.license_type    ?? 'per_seat',
+      related_link:     parsedData.related_link    ?? null,
+      issue_date:       parsedData.issue_date      ?? null,
+      remarks:          parsedData.remarks         ?? null,
       state:            'in_use',
     }, { transaction: t });
  
@@ -824,7 +881,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       after_value:  'in_use',
     }, { transaction: t });
  
-    // [FIX-4] 라이선스 승인 후 SW state 재계산
+    // SW state 재계산
     const inUseCount = await AssetSwLicense.count({
       where: { asset_sw_id: swId, state: 'in_use' },
       transaction: t,
@@ -843,9 +900,11 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   });
  
   res.status(200).json({
-    message: 'SW 등록 요청이 승인되었습니다.',
+    message: '등록 요청이 승인되었습니다.',
     sw:      { id: sw.id, name: sw.name, manufacturer: sw.manufacturer, state: sw.state },
-    license: { id: license.id, license_key: license.license_key, key_type: license.key_type },
+    license: license
+      ? { id: license.id, license_key: license.license_key, key_type: license.key_type, license_type: license.license_type }
+      : null,
     request: { id: request.id, status: request.status, processed_at: request.processed_at },
   });
 });
@@ -1285,25 +1344,39 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
-      attributes: ['id', 'state', 'user_id'],
+      attributes: ['id', 'license_key', 'license_password', 'key_type', 'related_link', 'state', 'user_id'],
       include: [USER_INCLUDE],
     }],
     order: [['name', 'ASC']],
   });
  
   const sw = swList.map((s) => {
-    const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
-    return {
-      id:              s.id,
-      name:            s.name,
-      version:         s.version,
-      manufacturer:    s.manufacturer,
-      quantity:        s.quantity,
-      state:           s.state,
-      in_use_count:    inUseCount,
-      available_count: s.quantity - inUseCount,
-    };
-  });
+  const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
+  return {
+    id:              s.id,
+    name:            s.name,
+    version:         s.version,
+    manufacturer:    s.manufacturer,
+    quantity:        s.quantity,
+    state:           s.state,
+    in_use_count:    inUseCount,
+    available_count: s.quantity - inUseCount,
+    licenses: s.licenses.map((l) => ({
+      id:               l.id,
+      license_key:      l.license_key,
+      license_password: l.license_password,
+      key_type:         l.key_type,
+      related_link:     l.related_link,
+      state:            l.state,
+      user: l.User ? {
+        id:    l.User.id,
+        email: l.User.email,
+        role:  l.User.role,
+        name:  l.User.profile?.name ?? null,
+      } : null,
+    })),
+  };
+});
  
   const swTotal = {
     total_sw_count:      sw.length,
