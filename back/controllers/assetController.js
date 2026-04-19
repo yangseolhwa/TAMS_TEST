@@ -56,7 +56,20 @@ async function resolveEnterpriseItemType(category_id, item_type_id, item_type_na
     where: { category_id: catId }, attributes: ['code'], ...opts,
   });
   const used     = new Set(allInCat.map(r => (r.code ?? '').toUpperCase()));
-  const nextCode = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(c => !used.has(c)) ?? `X${allInCat.length}`;
+  const nextAlpha = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(c => !used.has(c));
+ 
+  let nextCode;
+  if (nextAlpha) {
+    nextCode = nextAlpha;
+  } else {
+    // 26개 초과 시: 기존 X{n} 코드 중 최댓값 + 1
+    const existingXNums = allInCat
+      .map(r => r.code)
+      .filter(c => /^X\d+$/.test(c ?? ''))
+      .map(c => parseInt(c.slice(1), 10));
+    const maxX = existingXNums.length > 0 ? Math.max(...existingXNums) : -1;
+    nextCode = `X${maxX + 1}`;
+  }
  
   const created = await AssetEnterpriseItemType.create(
     { category_id: catId, name: trimmed, code: nextCode }, opts,
@@ -367,12 +380,14 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
  
     if (!is_existing) {
       try {
-        resolvedItemTypeId = await resolveEnterpriseItemType(
-          Number(asset.category_id),
-          asset.item_type_id  ?? null,
-          asset.item_type_name ?? null,
-          null,
-        );
+          resolvedItemTypeId = await sequelize.transaction(async (t) => {
+          return await resolveEnterpriseItemType(
+            Number(asset.category_id),
+            asset.item_type_id  ?? null,
+            asset.item_type_name ?? null,
+            t,
+          );
+        });
       } catch (e) {
         return res.status(e.statusCode ?? 400).json({ message: e.message });
       }
@@ -1094,17 +1109,46 @@ exports.returnSw = asyncWrapper(async (req, res) => {
  
       // 영향받은 SW 마스터 state 재계산
       // — sw_ids에도 포함된 SW는 어차피 returned로 처리되므로 건너뜀
-      for (const swId of affectedSwIds) {
-        if (hasSw && sw_ids.includes(swId)) continue;
+      const recalcIds = [...affectedSwIds].filter(
+        id => !(hasSw && sw_ids.includes(id))
+      );
  
-        const inUseCount = await AssetSwLicense.count({
-          where:       { asset_sw_id: swId, state: 'in_use' },
+      if (recalcIds.length > 0) {
+        // GROUP BY 단일 쿼리로 모든 SW의 in_use 라이선스 수 한 번에 조회
+        const countsRaw = await AssetSwLicense.findAll({
+          where: {
+            asset_sw_id: { [Op.in]: recalcIds },
+            state:       'in_use',
+          },
+          attributes: [
+            'asset_sw_id',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'cnt'],
+          ],
+          group: ['asset_sw_id'],
+          raw: true,
           transaction: t,
         });
-        await AssetSw.update(
-          { state: inUseCount > 0 ? 'in_use' : 'available' },
-          { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
+ 
+        const inUseCountMap = Object.fromEntries(
+          countsRaw.map(r => [Number(r.asset_sw_id), parseInt(r.cnt, 10)])
         );
+ 
+        // in_use 남은 SW와 available로 바꿀 SW 분리 → 벌크 업데이트 2회
+        const toInUse    = recalcIds.filter(id => (inUseCountMap[id] ?? 0) > 0);
+        const toAvailable = recalcIds.filter(id => (inUseCountMap[id] ?? 0) === 0);
+ 
+        if (toInUse.length > 0) {
+          await AssetSw.update(
+            { state: 'in_use' },
+            { where: { id: { [Op.in]: toInUse }, state: { [Op.ne]: 'returned' } }, transaction: t }
+          );
+        }
+        if (toAvailable.length > 0) {
+          await AssetSw.update(
+            { state: 'available' },
+            { where: { id: { [Op.in]: toAvailable }, state: { [Op.ne]: 'returned' } }, transaction: t }
+          );
+        }
       }
  
       // 반납 요청 기록
@@ -2117,14 +2161,37 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
     }
 
     // 영향받은 SW 마스터 state 재계산
-    for (const swId of affectedSwIds) {
-      const inUseCount = await AssetSwLicense.count({
-        where: { asset_sw_id: swId, state: 'in_use' },
-        transaction: t,
-      });
+    const countsRaw = await AssetSwLicense.findAll({
+      where: {
+        asset_sw_id: { [Op.in]: [...affectedSwIds] },
+        state:       'in_use',
+      },
+      attributes: [
+        'asset_sw_id',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'cnt'],
+      ],
+      group: ['asset_sw_id'],
+      raw: true,
+      transaction: t,
+    });
+ 
+    const inUseCountMap = Object.fromEntries(
+      countsRaw.map(r => [Number(r.asset_sw_id), parseInt(r.cnt, 10)])
+    );
+ 
+    const toInUse    = [...affectedSwIds].filter(id => (inUseCountMap[id] ?? 0) > 0);
+    const toAvailable = [...affectedSwIds].filter(id => (inUseCountMap[id] ?? 0) === 0);
+ 
+    if (toInUse.length > 0) {
       await AssetSw.update(
-        { state: inUseCount > 0 ? 'in_use' : 'available' },
-        { where: { id: swId }, transaction: t }
+        { state: 'in_use' },
+        { where: { id: { [Op.in]: toInUse } }, transaction: t }
+      );
+    }
+    if (toAvailable.length > 0) {
+      await AssetSw.update(
+        { state: 'available' },
+        { where: { id: { [Op.in]: toAvailable } }, transaction: t }
       );
     }
   });
