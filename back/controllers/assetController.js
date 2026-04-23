@@ -177,7 +177,6 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
     if (state)       where.state       = state;
     if (keyword) {
       where[Op.or] = [
-        { asset_number:      { [Op.like]: `%${keyword}%` } },
         { manufacturer:      { [Op.like]: `%${keyword}%` } },
         { serial_number:     { [Op.like]: `%${keyword}%` } },
         { spec:              { [Op.like]: `%${keyword}%` } },
@@ -1689,7 +1688,7 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
       {
         model: AssetEnterprise,
         as: 'asset',
-        attributes: ['id', 'asset_number', 'manufacturer', 'state'],
+        attributes: ['id', 'manufacturer', 'state'],
         ...(item_type_id ? { where: { item_type_id: Number(item_type_id) } } : {}),
         required: !!item_type_id,
         include: [
