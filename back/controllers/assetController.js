@@ -1688,7 +1688,7 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
       {
         model: AssetEnterprise,
         as: 'asset',
-        attributes: ['id', 'manufacturer', 'state'],
+        attributes: ['id', 'manufacturer', 'serial_number', 'state'],
         ...(item_type_id ? { where: { item_type_id: Number(item_type_id) } } : {}),
         required: !!item_type_id,
         include: [
