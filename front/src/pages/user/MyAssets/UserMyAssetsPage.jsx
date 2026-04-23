@@ -1,141 +1,191 @@
-import { useState, useMemo } from "react";
-import ActionButton from "../../../components/ActionButton/ActionButton";
-import PageHeader from "../../../components/PageHeader/PageHeader";
-import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
-import Card from "../../../components/Card/Card";
-import styles from "./UserMyAssetsPage.module.css";
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import ActionButton from '../../../components/ActionButton/ActionButton'
+import PageHeader from '../../../components/PageHeader/PageHeader'
+import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
+import Card from '../../../components/Card/Card'
+import {
+  fetchMyAssets,
+  returnEnterpriseAssets,
+  returnSwAssets,
+  moveEnterpriseAssets,
+} from '../../../services/assetService'
+import styles from './UserMyAssetsPage.module.css'
 
-// PC 테이블 컬럼
+// ── 컬럼 정의 ─────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
-  { key: "no",               label: "No" },
-  { key: "asset_number",     label: "자산 번호",   type: "dash" },
-  { key: "department_id",    label: "소관 부서",   type: "dash" },
-  { key: "acquisition_date", label: "취득 일자",   type: "dash" },
-  { key: "item_type_name",   label: "분류",         type: "dash" },
-  { key: "spec",             label: "규격",         type: "dash" },
-  { key: "manufacturer",     label: "제조사",       type: "dash" },
-  { key: "serial_number",    label: "시리얼 번호", type: "dash" },
-  { key: "location",         label: "위치",         type: "dash" },
-  { key: "remarks",          label: "비고",         type: "dash" },
-];
+  { key: 'no',               label: 'No' },
+  { key: 'acquisition_date', label: '취득 일자' },
+  { key: 'item_type_name',   label: '분류' },
+  { key: 'spec',             label: '규격' },
+  { key: 'manufacturer',     label: '제조사' },
+  { key: 'serial_number',    label: '시리얼 번호' },
+  { key: 'location',         label: '위치' },
+  { key: 'remarks',          label: '비고' },
+]
 
-// SW 테이블 컬럼
 const SW_COLUMNS = [
-  { key: "no",               label: "No" },
-  { key: "asset_name",       label: "소프트웨어명", type: "dash" },
-  { key: "version",          label: "버전",          type: "dash" },
-  { key: "manufacturer",     label: "제조사",        type: "dash" },
-  { key: "license_key",      label: "라이선스 키",  type: "dash" },
-  { key: "license_password", label: "라이선스 PW", type: "dash" },
-  { key: "related_link",     label: "관련 링크",    type: "link" },
-  { key: "remarks",          label: "비고",          type: "dash" },
-];
-
-// 목업 데이터
-const MOCK_PC_ROWS = [
-  { id: "ent-1", no: 1, asset_number: "OFF-NB-001", department_id: 1, acquisition_date: "2024-01-10", item_type_name: "노트북", spec: "MacBook Pro M3 / 32GB", manufacturer: "Apple",    serial_number: "SN-MBP-001", location: "서울 본사 3층", remarks: null },
-  { id: "ent-2", no: 2, asset_number: "OFF-MN-001", department_id: 1, acquisition_date: "2024-01-10", item_type_name: "모니터", spec: "27\" 4K UHD",           manufacturer: "LG",       serial_number: "SN-LGM-002", location: "서울 본사 3층", remarks: null },
-  { id: "ent-3", no: 3, asset_number: "OFF-KB-001", department_id: 1, acquisition_date: "2024-01-10", item_type_name: "키보드", spec: "MX Keys for Mac",       manufacturer: "Logitech", serial_number: "SN-LOG-003", location: "서울 본사 3층", remarks: null },
-];
-
-const MOCK_SW_ROWS = [
-  { id: "sw-1-1", no: 1, asset_name: "Figma",             version: "v124.0", manufacturer: "Figma Inc.",  license_key: "FIG-01-0001", license_password: null, related_link: "https://figma.com",  remarks: null },
-  { id: "sw-2-1", no: 2, asset_name: "GitHub Enterprise", version: "v3.12",  manufacturer: "GitHub Inc.", license_key: "GIT-02-0001", license_password: null, related_link: "https://github.com", remarks: null },
-  { id: "sw-3-1", no: 3, asset_name: "Slack Business+",   version: "v4.35",  manufacturer: "Salesforce",  license_key: "SLA-03-0001", license_password: null, related_link: "https://slack.com",  remarks: null },
-];
+  { key: 'no',               label: 'No' },
+  { key: 'asset_name',       label: '소프트웨어명' },
+  { key: 'version',          label: '버전' },
+  { key: 'manufacturer',     label: '제조사' },
+  { key: 'license_key',      label: '라이선스 키' },
+  { key: 'license_password', label: '라이선스 PW' },
+  { key: 'related_link',     label: '관련 링크' },
+  { key: 'remarks',          label: '비고' },
+]
+// ─────────────────────────────────────────────────────────────────────────────
 
 const UserMyAssetsPage = () => {
-  // --- [State] ---
-  const [pcRows, setPcRows] = useState(MOCK_PC_ROWS);
-  const [swRows, setSwRows] = useState(MOCK_SW_ROWS);
+  const queryClient = useQueryClient()
 
-  const [isMoveMode,    setIsMoveMode]    = useState(false);
-  const [locationEdits, setLocationEdits] = useState({}); // { [rowId]: string }
+  // ── 데이터 조회 ───────────────────────────────────────────────────────────
+  const { data, isLoading } = useQuery({
+    queryKey: ['myAssets'],
+    queryFn:  fetchMyAssets,
+    refetchOnWindowFocus: false,
+  })
 
-  // 모달 상태
-  const [showReturnConfirm,    setShowReturnConfirm]    = useState(false);
-  const [showMoveConfirm,      setShowMoveConfirm]      = useState(false);
-  const [returnTarget,         setReturnTarget]         = useState(null); // { type: "pc"|"sw", id }
+  const pcRows = useMemo(
+    () => (data?.pcRows ?? []).map((r, i) => ({ ...r, no: i + 1 })),
+    [data]
+  )
+  const swRows = useMemo(
+    () => (data?.swRows ?? []).map((r, i) => ({ ...r, no: i + 1 })),
+    [data]
+  )
 
-  // --- [Handlers: PC 이동] ---
-  const handleMoveClick = () => {
-    // 현재 위치값으로 편집 초기화
-    const initEdits = {};
-    pcRows.forEach((row) => { initEdits[row.id] = row.location ?? ""; });
-    setLocationEdits(initEdits);
-    setIsMoveMode(true);
-  };
+  // ── PC 이동 모드 ──────────────────────────────────────────────────────────
+  const [isMoveMode,    setIsMoveMode]    = useState(false)
+  const [locationEdits, setLocationEdits] = useState({})
+  const [showMoveConfirm, setShowMoveConfirm] = useState(false)
 
-  const handleMoveSaveClick = () => setShowMoveConfirm(true);
+  // ── 반납 모달 ─────────────────────────────────────────────────────────────
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false)
+  const [returnTarget,      setReturnTarget]      = useState(null) // { type: 'pc'|'sw', rawId, swId? }
 
-  const handleMoveConfirm = () => {
-    // 모든 행의 위치를 편집된 값으로 업데이트
-    setPcRows((prev) =>
-      prev.map((row) =>
-        locationEdits[row.id] !== undefined
-          ? { ...row, location: locationEdits[row.id] }
-          : row
-      )
-    );
-    cancelMoveMode();
-  };
+  // ── Mutations ─────────────────────────────────────────────────────────────
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['myAssets'] })
 
-  const cancelMoveMode = () => {
-    setIsMoveMode(false);
-    setLocationEdits({});
-    setShowMoveConfirm(false);
-  };
+  const returnPcMutation = useMutation({
+    mutationFn: (rawId) => returnEnterpriseAssets({ asset_ids: [rawId] }),
+    onSuccess:  (res) => { toast.success(res?.message ?? '반납되었습니다.'); invalidate(); closeReturn() },
+    onError:    (err) => toast.error(err.message),
+  })
 
-  // --- [Handlers: 반납] ---
-  const handleReturnClick = (type, id) => {
-    setReturnTarget({ type, id });
-    setShowReturnConfirm(true);
-  };
+  const returnSwMutation = useMutation({
+    mutationFn: (rawId) => returnSwAssets({ license_ids: [rawId] }),
+    onSuccess:  (res) => { toast.success(res?.message ?? '반납되었습니다.'); invalidate(); closeReturn() },
+    onError:    (err) => toast.error(err.message),
+  })
+
+  const moveMutation = useMutation({
+    mutationFn: ({ ids, location }) => moveEnterpriseAssets({ asset_ids: ids, location }),
+    onSuccess:  (res) => { toast.success(res?.message ?? '위치가 변경되었습니다.'); invalidate(); cancelMoveMode() },
+    onError:    (err) => toast.error(err.message),
+  })
+
+  const isMutating = returnPcMutation.isPending || returnSwMutation.isPending || moveMutation.isPending
+
+  // ── 반납 핸들러 ───────────────────────────────────────────────────────────
+  const handleReturnClick = (type, rawId, swId) => {
+    setReturnTarget({ type, rawId, swId })
+    setShowReturnConfirm(true)
+  }
+
+  const closeReturn = () => {
+    setShowReturnConfirm(false)
+    setReturnTarget(null)
+  }
 
   const handleReturnConfirm = () => {
-    if (returnTarget.type === "pc") {
-      if (!returnTarget) return;
-      setPcRows((prev) => prev.filter((row) => row.id !== returnTarget.id));
-    } else {
-      setSwRows((prev) => prev.filter((row) => row.id !== returnTarget.id));
-    }
-    setShowReturnConfirm(false);
-    setReturnTarget(null);
-  };
+    if (!returnTarget) return
+    if (returnTarget.type === 'pc') returnPcMutation.mutate(returnTarget.rawId)
+    else                            returnSwMutation.mutate(returnTarget.rawId)
+  }
 
-  // --- [PC 컬럼: 이동 모드에서 위치 셀 전체를 input으로 교체] ---
+  // ── 이동 핸들러 ───────────────────────────────────────────────────────────
+  const handleMoveClick = () => {
+    const initEdits = {}
+    pcRows.forEach((row) => { initEdits[row.id] = row.location ?? '' })
+    setLocationEdits(initEdits)
+    setIsMoveMode(true)
+  }
+
+  const handleMoveSaveClick = () => setShowMoveConfirm(true)
+
+  const handleMoveConfirm = () => {
+    // 변경된 항목만 그룹화 (같은 위치끼리 묶어서 한 번에 요청)
+    const locationGroups = {}
+    pcRows.forEach((row) => {
+      const newLoc = locationEdits[row.id] ?? row.location ?? ''
+      if (newLoc !== (row.location ?? '') && newLoc.trim()) {
+        if (!locationGroups[newLoc]) locationGroups[newLoc] = []
+        locationGroups[newLoc].push(row.rawId)
+      }
+    })
+
+    const entries = Object.entries(locationGroups)
+    if (entries.length === 0) {
+      toast('변경된 위치가 없습니다.')
+      cancelMoveMode()
+      return
+    }
+
+    // 위치별로 순차 호출 (일반적으로 1건)
+    Promise.allSettled(
+      entries.map(([location, ids]) => moveEnterpriseAssets({ asset_ids: ids, location }))
+    ).then((results) => {
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length === 0) {
+        toast.success('위치가 변경되었습니다.')
+      } else {
+        toast.error('일부 위치 변경에 실패했습니다.')
+      }
+      invalidate()
+      cancelMoveMode()
+    })
+  }
+
+  const cancelMoveMode = () => {
+    setIsMoveMode(false)
+    setLocationEdits({})
+    setShowMoveConfirm(false)
+  }
+
+  // ── PC 컬럼: 이동 모드에서 위치 셀 input으로 교체 ─────────────────────────
   const pcColumns = useMemo(() => {
-    if (!isMoveMode) return PC_COLUMNS;
+    if (!isMoveMode) return PC_COLUMNS
     return PC_COLUMNS.map((col) => {
-      if (col.key !== "location") return col;
+      if (col.key !== 'location') return col
       return {
         ...col,
         renderCell: (row) => (
           <input
             className={styles.locationInput}
-            value={locationEdits[row.id] ?? ""}
+            value={locationEdits[row.id] ?? ''}
             onChange={(e) =>
               setLocationEdits((prev) => ({ ...prev, [row.id]: e.target.value }))
             }
             placeholder="위치 입력"
           />
         ),
-      };
-    });
-  }, [isMoveMode, locationEdits]);
+      }
+    })
+  }, [isMoveMode, locationEdits])
 
-  // --- [셀 렌더링] ---
+  // ── 셀 렌더링 ─────────────────────────────────────────────────────────────
   const renderCell = (col, row) => {
-    if (col.renderCell) return col.renderCell(row);
-    const value = row[col.key];
-    if (col.type === "dash") return value ?? "—";
-    if (col.type === "link") {
+    if (col.renderCell) return col.renderCell(row)
+    const value = row[col.key]
+    if (col.key === 'related_link') {
       return value
         ? <a className={styles.link} href={value} target="_blank" rel="noreferrer">{value}</a>
-        : "—";
+        : '—'
     }
-    return value ?? "—";
-  };
+    return value ?? '—'
+  }
 
   return (
     <div className={styles.page}>
@@ -159,22 +209,24 @@ const UserMyAssetsPage = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  {SW_COLUMNS.map((col) => (
-                    <th key={col.key}>{col.label}</th>
-                  ))}
+                  {SW_COLUMNS.map((col) => <th key={col.key}>{col.label}</th>)}
                   <th className={styles.colAction}>반납</th>
                 </tr>
               </thead>
               <tbody>
-                {swRows.length === 0 ? (
+                {isLoading ? (
+                  <tr><td colSpan={SW_COLUMNS.length + 1} className={styles.empty}>불러오는 중...</td></tr>
+                ) : swRows.length === 0 ? (
                   <tr><td colSpan={SW_COLUMNS.length + 1} className={styles.empty}>보유한 SW 자산이 없습니다.</td></tr>
                 ) : swRows.map((row) => (
                   <tr key={row.id}>
-                    {SW_COLUMNS.map((col) => (
-                      <td key={col.key}>{renderCell(col, row)}</td>
-                    ))}
+                    {SW_COLUMNS.map((col) => <td key={col.key}>{renderCell(col, row)}</td>)}
                     <td className={styles.colAction}>
-                      <ActionButton variant="red" size="xxs" label="반납" onClick={() => handleReturnClick("sw", row.id)} />
+                      <ActionButton
+                        variant="red" size="xxs" label="반납"
+                        onClick={() => handleReturnClick('sw', row.rawId, row.swId)}
+                        disabled={isMutating}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -198,11 +250,11 @@ const UserMyAssetsPage = () => {
           <div className={styles.tableActions}>
             {isMoveMode ? (
               <>
-                <ActionButton variant="white"   size="sm"  label="취소" onClick={cancelMoveMode} />
-                <ActionButton variant="black"   size="sm"  label="저장" onClick={handleMoveSaveClick} />
+                <ActionButton variant="white" size="sm" label="취소" onClick={cancelMoveMode} disabled={isMutating} />
+                <ActionButton variant="black" size="sm" label="저장" onClick={handleMoveSaveClick} disabled={isMutating} />
               </>
             ) : (
-              <ActionButton variant="outline" size="sm"  label="수정" onClick={handleMoveClick} />
+              <ActionButton variant="outline" size="sm" label="수정" onClick={handleMoveClick} disabled={isMutating} />
             )}
           </div>
 
@@ -210,22 +262,24 @@ const UserMyAssetsPage = () => {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  {pcColumns.map((col) => (
-                    <th key={col.key}>{col.label}</th>
-                  ))}
+                  {pcColumns.map((col) => <th key={col.key}>{col.label}</th>)}
                   <th className={styles.colAction}>반납</th>
                 </tr>
               </thead>
               <tbody>
-                {pcRows.length === 0 ? (
-                  <tr><td colSpan={PC_COLUMNS.length + 1} className={styles.empty}>보유한 PC 자산이 없습니다.</td></tr>
+                {isLoading ? (
+                  <tr><td colSpan={pcColumns.length + 1} className={styles.empty}>불러오는 중...</td></tr>
+                ) : pcRows.length === 0 ? (
+                  <tr><td colSpan={pcColumns.length + 1} className={styles.empty}>보유한 PC 자산이 없습니다.</td></tr>
                 ) : pcRows.map((row) => (
                   <tr key={row.id}>
-                    {pcColumns.map((col) => (
-                      <td key={col.key}>{renderCell(col, row)}</td>
-                    ))}
+                    {pcColumns.map((col) => <td key={col.key}>{renderCell(col, row)}</td>)}
                     <td className={styles.colAction}>
-                      <ActionButton variant="red" size="xxs" label="반납" onClick={() => handleReturnClick("pc", row.id)} />
+                      <ActionButton
+                        variant="red" size="xxs" label="반납"
+                        onClick={() => handleReturnClick('pc', row.rawId)}
+                        disabled={isMutating}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -235,7 +289,7 @@ const UserMyAssetsPage = () => {
         </Card>
       </section>
 
-      {/* 모달 모음 */}
+      {/* 모달 */}
       <ConfirmModal
         isOpen={showReturnConfirm}
         title="자산을 반납할까요?"
@@ -243,7 +297,7 @@ const UserMyAssetsPage = () => {
         confirmLabel="반납"
         confirmVariant="danger"
         onConfirm={handleReturnConfirm}
-        onCancel={() => { setShowReturnConfirm(false); setReturnTarget(null); }}
+        onCancel={closeReturn}
       />
       <ConfirmModal
         isOpen={showMoveConfirm}
@@ -255,7 +309,7 @@ const UserMyAssetsPage = () => {
         onCancel={() => setShowMoveConfirm(false)}
       />
     </div>
-  );
-};
+  )
+}
 
-export default UserMyAssetsPage;
+export default UserMyAssetsPage

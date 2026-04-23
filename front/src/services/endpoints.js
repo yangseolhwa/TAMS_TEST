@@ -1,23 +1,35 @@
 export const ENDPOINTS = {
   AUTH: {
-    LOGIN:    '/auth/login',
-    LOGOUT:   '/auth/logout',
-    REFRESH:  '/auth/refresh',
+    LOGIN:   '/auth/login',
+    LOGOUT:  '/auth/logout',
+    REFRESH: '/auth/refresh',
   },
   ASSETS: {
+    // 개인 자산
     PERSONAL:           '/assets/personal',
+    // Enterprise(PC)
     ENTERPRISE:         '/assets/enterprise',
-    SW:                 '/assets/sw',
+    ENTERPRISE_LIST:    '/assets/enterprise',
     ENTERPRISE_RETURN:  '/assets/enterprise/return',
-    SW_RETURN:          '/assets/sw/return',
     ENTERPRISE_MOVE:    '/assets/enterprise/move',
-    SW_MOVE:            '/assets/sw/move',
-    REQUESTS:           '/assets/requests',
+    ENTERPRISE_STATE:   '/assets/enterprise/state',
     ENTERPRISE_APPROVE: '/assets/enterprise/approve',
     ENTERPRISE_REJECT:  '/assets/enterprise/reject',
-    SW_APPROVE:         '/assets/sw/approve',
-    SW_REJECT:          '/assets/sw/reject',
-    // ── DF ──────────────────────────────────────────────────
+    // SW
+    SW:         '/assets/sw',
+    SW_LIST:    '/assets/sw',
+    SW_RETURN:  '/assets/sw/return',
+    SW_MOVE:    '/assets/sw/move',
+    SW_STATE:   '/assets/sw/state',
+    SW_APPROVE: '/assets/sw/approve',
+    SW_REJECT:  '/assets/sw/reject',
+    SW_ASSIGN:  '/assets/sw/assign',
+    // 요청
+    REQUESTS: '/assets/requests',
+    // 대시보드
+    DASHBOARD:    '/assets/dashboard',
+    DASHBOARD_DF: '/assets/dashboard/df',
+    // DF
     DF:          '/assets/df',
     DF_RETURN:   '/assets/df/return',
     DF_MOVE:     '/assets/df/move',
@@ -25,10 +37,8 @@ export const ENDPOINTS = {
     DF_IMPORT:   '/assets/df/import',
     DF_EXPORT:   '/assets/df/export',
     DF_TEMPLATE: '/assets/df/template',
-    // ── 대시보드 ────────────────────────────────────────────
-    DASHBOARD:    '/assets/dashboard',
-    DASHBOARD_DF: '/assets/dashboard/df',
-    // ── 히스토리 ────────────────────────────────────────────
-    HISTORY_DF:   '/assets/history/df',
+    // 히스토리
+    HISTORY_PERSONAL: '/assets/history/personal',
+    HISTORY_DF:       '/assets/history/df',
   },
 }
