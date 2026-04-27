@@ -18,7 +18,7 @@ const DfDashboardPage = ({ role }) => {
   const totalProjects  = projects.length
   const totalEquipment = projects.reduce((sum, p) => sum + (p.total ?? 0), 0)
 
-  // 모든 프로젝트의 장비 종류별 수량 합산
+  // 모든 프로젝트의 장비 종류별 수량 합산 후 이름 오름차순 정렬
   const allItemTypes = (() => {
     const map = new Map()
     projects.forEach((proj) => {
@@ -27,7 +27,9 @@ const DfDashboardPage = ({ role }) => {
         map.set(item.itemType, prev + item.quantity)
       })
     })
-    return [...map.entries()].map(([itemType, quantity]) => ({ itemType, quantity }))
+    return [...map.entries()]
+      .map(([itemType, quantity]) => ({ itemType, quantity }))
+      .sort((a, b) => a.itemType.localeCompare(b.itemType, 'ko'))
   })()
   const totalItemTypes = allItemTypes.length
 
@@ -92,7 +94,11 @@ const DfDashboardPage = ({ role }) => {
 
         {/* 프로젝트별 카드 */}
         {projects.map((project) => {
-          const itemTypeCount = project.items?.length ?? 0
+          // 장비 리스트 이름 오름차순 정렬
+          const sortedItems = [...(project.items ?? [])].sort(
+            (a, b) => a.itemType.localeCompare(b.itemType, 'ko')
+          )
+          const itemTypeCount = sortedItems.length
 
           return (
             <Card key={project.id} className={styles.projectCard}>
@@ -118,14 +124,14 @@ const DfDashboardPage = ({ role }) => {
               </div>
 
               <div className={styles.tableBody}>
-                {(project.items ?? []).length === 0 ? (
+                {sortedItems.length === 0 ? (
                   <div className={styles.tableRow}>
                     <span className={styles.tableCell} style={{ color: 'var(--color-text-secondary)' }}>
                       데이터가 없습니다.
                     </span>
                   </div>
                 ) : (
-                  (project.items ?? []).map((item) => (
+                  sortedItems.map((item) => (
                     <div key={item.itemType} className={styles.tableRow}>
                       <span className={styles.tableCell}>{item.itemType}</span>
                       <span className={styles.tableCellRight}>{item.quantity}</span>
