@@ -4,22 +4,10 @@
   gap: 20px;
 }
 
-/* =====================
-   섹션 래퍼
-   ===================== */
 .section {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
 }
 
 /* =====================
@@ -123,7 +111,7 @@
 }
 
 /* =====================
-   총 건수 + 삭제 버튼 영역
+   테이블 헤더
    ===================== */
 .tableHeader {
   display: flex;
@@ -133,20 +121,30 @@
   margin-bottom: 12px;
 }
 
-
-
 /* =====================
-   뱃지 — 요청 유형
+   뱃지 공통
    ===================== */
 .badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
 }
 
+/* 자산 유형 뱃지 */
+.badgePc {
+  background-color: var(--color-badge-pc-bg);
+  color: var(--color-badge-pc-text);
+}
+
+.badgeSw {
+  background-color: var(--color-badge-sw-bg);
+  color: var(--color-badge-sw-text);
+}
+
+/* 변경 유형 뱃지 */
 .badgeRegister {
   background-color: var(--color-badge-green-bg);
   color: var(--color-badge-green);
@@ -165,29 +163,6 @@
 .badgeMove {
   background-color: var(--color-badge-blue2-bg);
   color: var(--color-badge-blue2);
-}
-
-/* =====================
-   뱃지 — 상태
-   ===================== */
-.stateActive {
-  background-color: var(--color-badge-green2-bg);
-  color: var(--color-badge-green2);
-}
-
-.stateStored {
-  background-color: var(--color-badge-blue2-bg);
-  color: var(--color-badge-blue2);
-}
-
-.stateInactive {
-  background-color: var(--color-badge-gray-bg);
-  color: var(--color-text-secondary);
-}
-
-.stateExpiring {
-  background-color: var(--color-badge-yellow-bg);
-  color: var(--color-badge-yellow);
 }
 
 /* =====================

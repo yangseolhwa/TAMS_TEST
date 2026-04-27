@@ -1,71 +1,34 @@
-import { useState, useRef, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp } from 'react-bootstrap-icons'
+import { useQuery } from '@tanstack/react-query'
 import PageHeader from '../../components/PageHeader/PageHeader'
 import Card from '../../components/Card/Card'
+import { fetchDfDashboard } from '../../services/assetService'
 import styles from './DfDashboardPage.module.css'
-
-// ── 임시 목업 데이터 (API 연동 전) ───────────────────────────────────────────
-const MOCK_PROJECTS = [
-  {
-    id: 1,
-    name: 'A 프로젝트',
-    items: [
-      { itemType: '노트북', quantity: 5 },
-      { itemType: '모니터', quantity: 10 },
-      { itemType: '마우스', quantity: 8 },
-    ],
-  },
-  {
-    id: 2,
-    name: 'B 프로젝트',
-    items: [
-      { itemType: '서버',   quantity: 3 },
-      { itemType: '스위치', quantity: 2 },
-    ],
-  },
-  {
-    id: 3,
-    name: 'C 프로젝트',
-    items: [
-      { itemType: '태블릿', quantity: 7 },
-      { itemType: '키보드', quantity: 6 },
-      { itemType: '헤드셋', quantity: 4 },
-    ],
-  },
-]
-// ─────────────────────────────────────────────────────────────────────────────
 
 const DfDashboardPage = ({ role }) => {
   const navigate = useNavigate()
 
-  // 현재 열린 프로젝트 id
-  const [openId, setOpenId] = useState(new Set())
+  const { data, isLoading } = useQuery({
+    queryKey: ['dfDashboard'],
+    queryFn:  fetchDfDashboard,
+    refetchOnWindowFocus: false,
+  })
 
-  // 아코디언 패널 높이 측정용
-  const panelRefs     = useRef({})
-  const [panelHeights, setPanelHeights] = useState({})
+  const projects       = data?.projects       ?? []
+  const totalProjects  = projects.length
+  const totalEquipment = projects.reduce((sum, p) => sum + (p.total ?? 0), 0)
 
-  useLayoutEffect(() => {
-    const heights = {}
-    MOCK_PROJECTS.forEach((p) => {
-      if (panelRefs.current[p.id]) {
-        heights[p.id] = panelRefs.current[p.id].scrollHeight
-      }
-    })
-    setPanelHeights(heights)
-  }, [])
-
-  const totalEquipment = MOCK_PROJECTS.reduce(
-    (sum, p) => sum + p.items.reduce((s, i) => s + i.quantity, 0),
-    0,
-  )
-
-  const handleToggle      = (id) => setOpenId((prev) => { const next = new Set(prev); prev.has(id) ? next.delete(id) : next.add(id); return next; })
   const handleAllView     = () => navigate(`/${role}/df-assets/list`)
-  const handleProjectView = (projectId, e) => {
-    e.stopPropagation()
+  const handleProjectView = (projectId) =>
     navigate(`/${role}/df-assets/by-project`, { state: { projectId } })
+
+  if (isLoading) {
+    return (
+      <div className={styles.page}>
+        <PageHeader title="DF 자산 현황" desc="DF 자산의 프로젝트별 현황을 조회합니다." />
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>불러오는 중...</p>
+      </div>
+    )
   }
 
   return (
@@ -75,85 +38,69 @@ const DfDashboardPage = ({ role }) => {
         desc="DF 자산의 프로젝트별 현황을 조회합니다."
       />
 
-      <section className={styles.section}>
-        {/* 타이틀 바 */}
-        <div className={styles.titleBar}>
-          <div className={styles.titleLeft}>
-            <span className={styles.titleText}>전체 프로젝트 현황</span>
-            <button type="button" className={styles.viewBtn} onClick={handleAllView}>
-              조회 &gt;
-            </button>
+      <div className={styles.grid}>
+
+        {/* 전체 프로젝트 요약 카드 */}
+        <Card className={styles.overviewCard}>
+          <div className={styles.overviewTitleRow}>
+            <span className={styles.overviewTitle}>전체 프로젝트</span>
+            <span className={styles.overviewCount}>
+              프로젝트 {totalProjects}개 · 총 {totalEquipment}대
+            </span>
           </div>
-          <span className={styles.titleCount}>총 {totalEquipment}건</span>
-          <span />
-        </div>
-
-        <Card>
-          {/* 컬럼 헤더 */}
-          <div className={styles.header}>
-            <span className={styles.headerName}>프로젝트명</span>
-            <span className={styles.headerCount}>총 장비 수</span>
-            <span />
-          </div>
-
-          {/* 프로젝트 아코디언 목록 */}
-          <ul className={styles.list}>
-            {MOCK_PROJECTS.map((project) => {
-              const isOpen    = openId.has(project.id)
-              const projTotal = project.items.reduce((s, i) => s + i.quantity, 0)
-
-              return (
-                <li key={project.id} className={styles.item}>
-                  {/* 프로젝트 행 */}
-                  <div
-                    className={`${styles.row} ${isOpen ? styles.rowOpen : ''}`}
-                    onClick={() => handleToggle(project.id)}
-                  >
-                    <span className={styles.projectLeft}>
-                      <span className={styles.projectName}>{project.name}</span>
-                      <button
-                        type="button"
-                        className={styles.projectViewBtn}
-                        onClick={(e) => handleProjectView(project.id, e)}
-                      >
-                        조회 &gt;
-                      </button>
-                    </span>
-                    <span className={styles.projectCount}>{projTotal}</span>
-                    <span className={styles.rowRight}>
-                      <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>
-                        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                    </span>
-                  </div>
-
-                  {/* 장비 목록 패널 (아코디언) */}
-                  <div
-                    ref={(el) => (panelRefs.current[project.id] = el)}
-                    className={`${styles.panel} ${isOpen ? styles.panelOpen : ''}`}
-                    style={{ maxHeight: isOpen ? (panelHeights[project.id] ?? 0) + 'px' : '0px' }}
-                  >
-                    {/* 장비 헤더 */}
-                    <div className={styles.itemHeader}>
-                      <span className={styles.itemHeaderName}>장비 종류</span>
-                      <span className={styles.itemHeaderCount}>수량 (EA)</span>
-                      <span />
-                    </div>
-                    {/* 장비 행 */}
-                    {project.items.map((item) => (
-                      <div key={item.itemType} className={styles.itemRow}>
-                        <span className={styles.itemName}>{item.itemType}</span>
-                        <span className={styles.itemCount}>{item.quantity}</span>
-                        <span />
-                      </div>
-                    ))}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <button type="button" className={styles.overviewMoreBtn} onClick={handleAllView}>
+            더보기 &gt;
+          </button>
         </Card>
-      </section>
+
+        {/* 프로젝트별 카드 */}
+        {projects.map((project) => {
+          const itemTypeCount = project.items?.length ?? 0
+
+          return (
+            <Card key={project.id} className={styles.projectCard}>
+              <div className={styles.projectCardHeader}>
+                <div className={styles.projectCardLeft}>
+                  <span className={styles.projectCardTitle}>{project.name}</span>
+                  <span className={styles.projectCardCount}>
+                    장비 {itemTypeCount}종 · {project.total ?? 0}대
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.moreBtnOnDark}
+                  onClick={() => handleProjectView(project.id)}
+                >
+                  더보기 &gt;
+                </button>
+              </div>
+
+              <div className={styles.tableHeader}>
+                <span className={styles.tableHeaderCell}>구분</span>
+                <span className={styles.tableHeaderCell}>수량(EA)</span>
+              </div>
+
+              <div className={styles.tableBody}>
+                {(project.items ?? []).length === 0 ? (
+                  <div className={styles.tableRow}>
+                    <span className={styles.tableCell} style={{ color: 'var(--color-text-secondary)' }}>
+                      데이터가 없습니다.
+                    </span>
+                  </div>
+                ) : (
+                  (project.items ?? []).map((item) => (
+                    <div key={item.itemType} className={styles.tableRow}>
+                      <span className={styles.tableCell}>{item.itemType}</span>
+                      <span className={styles.tableCellRight}>{item.quantity}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          )
+        })}
+
+      </div>
     </div>
   )
 }

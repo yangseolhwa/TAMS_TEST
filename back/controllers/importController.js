@@ -11,16 +11,15 @@ const {
   AssetEnterpriseHistory, Department, Profile, User,
 } = require('../models');
 
-// ─────────────────────────────────────────────────────────────
-// 공통 유틸
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// 공통 유틸 (기존 그대로)
+// ─────────────────────────────────────────────────────────────────
 function toVal(v) {
   if (v == null) return null;
   const s = String(v).trim();
   return (s === '' || s === '-' || s.toLowerCase() === 'n/a') ? null : s;
 }
 
-// serial_number 전용: 'N/A' 또는 '확인불가' → '확인불가', 빈값/'-' → null
 function toSerialVal(v) {
   if (v == null) return null;
   const s = String(v).trim();
@@ -38,7 +37,6 @@ function parseDate(value) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// ExcelJS 셀 값 읽기 (하이퍼링크 객체 처리 포함)
 function readCell(ws, r, col) {
   if (!col) return null;
   const v = ws.getCell(r, col).value;
@@ -48,7 +46,6 @@ function readCell(ws, r, col) {
   return String(v).trim();
 }
 
-// xlsx 라이브러리 기준 행 배열에서 셀 값 읽기
 function readXlsxCell(row, col) {
   const v = row[col];
   if (v == null) return null;
@@ -63,7 +60,7 @@ async function loadExcel(file) {
   return wb;
 }
 
-const KEY_TYPE_MAP   = { '시리얼': 'serial', '크레덴셜': 'credential' };
+const KEY_TYPE_MAP    = { '시리얼': 'serial', '크레덴셜': 'credential' };
 const SPECIAL_USER_RE = /sdoe|공용|관리자/i;
 const SDOE_RE         = /^sdoe\s*(\d+)?대?$/i;
 
@@ -71,9 +68,9 @@ function isSpecialUser(name) {
   return SPECIAL_USER_RE.test(name.trim());
 }
 
-// ─────────────────────────────────────────────────────────────
-// DF IMPORT
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// DF IMPORT (기존 그대로)
+// ─────────────────────────────────────────────────────────────────
 function detectDfColumns(ws) {
   const KEYWORD_MAP = {
     owner_organization: ['소유 기관', '소유기관'],
@@ -153,11 +150,9 @@ const importDf = async (req, res) => {
                         'owner_organization','equipment_number'];
     const last = {};
 
-    // g 함수: 현재 행(r)과 colMap을 클로저로 참조 → 루프 외부에서 r을 인자로 받도록 정의
     const g = (r, key) => readCell(ws, r, colMap[key]);
 
     for (let r = dataStartRow; r <= ws.rowCount; r++) {
-      // 빈 행 감지: carry-forward 적용 전 원본 값 기준으로 판단
       const rawSubType   = toVal(g(r, 'sub_type'));
       const rawModelName = toVal(g(r, 'model_name'));
       const rawMfr       = toVal(g(r, 'manufacturer'));
@@ -165,7 +160,6 @@ const importDf = async (req, res) => {
       const rawSerial    = toVal(g(r, 'serial_number'));
       if (!rawSubType && !rawModelName && !rawMfr && !rawAcqDate && !rawSerial) continue;
 
-      // carry-forward
       const row = {};
       for (const key of CARRY_COLS) {
         const raw = g(r, key);
@@ -185,7 +179,6 @@ const importDf = async (req, res) => {
         failed++; continue;
       }
 
-      // parent_type findOrCreate
       let parentId = null;
       if (row.parent_type) {
         const pk = `ROOT::${row.parent_type}`;
@@ -199,7 +192,6 @@ const importDf = async (req, res) => {
         parentId = typeCache[pk];
       }
 
-      // sub_type findOrCreate
       const sk = `${parentId ?? 'ROOT'}::${typeName}`;
       if (!typeCache[sk]) {
         const [st] = await AssetProjectItemType.findOrCreate({
@@ -257,9 +249,9 @@ const importDf = async (req, res) => {
   return res.status(200).json({ message: `DF Import 완료: ${imported}건 성공, ${failed}건 실패`, imported, failed, results });
 };
 
-// ─────────────────────────────────────────────────────────────
-// DF 양식 다운로드
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// DF 양식 다운로드 (기존 그대로)
+// ─────────────────────────────────────────────────────────────────
 const downloadDfTemplate = async (req, res) => {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Sheet1');
@@ -289,12 +281,13 @@ const downloadDfTemplate = async (req, res) => {
   res.end();
 };
 
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 // SW 원본 IMPORT
-// ─────────────────────────────────────────────────────────────
-// 컬럼 인덱스 (0-indexed, xlsx 라이브러리 기준)
-// 번호(0) 제품명(1) 버전(2) 수량(3) 발급일자(4) 제품키(5) 키종류(6)
-// 관련링크(7) 제조사(8) 사용자(9) 사용자수량(10) 남은수량(11) 비고(12)
+// ─────────────────────────────────────────────────────────────────
+// 변경 사항:
+//   - 일반 사용자 라이선스 → license_type: 'per_seat'
+//   - SDOE 라이선스 (동일 키 여러 레코드) → license_type: 'shared'
+// ─────────────────────────────────────────────────────────────────
 const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link:7, mfr:8, users:9, remarks:12 };
 
 const importSwOriginal = async (req, res) => {
@@ -309,7 +302,6 @@ const importSwOriginal = async (req, res) => {
     return res.status(400).json({ message: '엑셀 파일을 읽을 수 없습니다.' });
   }
 
-  // profile.name → user_id 캐시
   const profiles = await Profile.findAll({ include: [{ model: User, attributes: ['id'] }] });
   const nameToUserId = {};
   profiles.forEach(p => { if (p.name) nameToUserId[p.name.trim()] = p.user_id; });
@@ -319,12 +311,11 @@ const importSwOriginal = async (req, res) => {
   let lastSwId = null;
   let lastName = null, lastMfr = null, lastVer = null, lastKeyType = null;
 
-  // g 함수: row 배열을 인자로 받아 루프 외부에서 한 번만 정의
   const g = (row, col) => readXlsxCell(row, col);
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const r   = i + 1; // 엑셀 행 번호 (1-indexed)
+    const r   = i + 1;
 
     const rawNum     = g(row, SW_COL.num);
     const rawName    = g(row, SW_COL.name);
@@ -338,23 +329,17 @@ const importSwOriginal = async (req, res) => {
     const rawUsers   = g(row, SW_COL.users);
     const rawRemarks = g(row, SW_COL.remarks);
 
-    // 완전히 빈 행 건너뜀 (공백만 있는 사용자 셀 포함)
     if (!rawNum && !rawName && !rawKey && !rawUsers?.trim()) continue;
 
-    // 번호(A열)가 있으면 새 SW, 없으면 직전 SW에 라이선스 추가
     const isNewSw = rawNum !== null;
 
-    // name/mfr: 병합 셀이므로 항상 carry-forward
     const name = toVal(rawName) ?? lastName;
     const mfr  = toVal(rawMfr)  ?? lastMfr;
-
-    // ver/keyType: 새 SW 행 → 원본값, 연속 행 → carry-forward
     const ver     = isNewSw ? toVal(rawVer) : (toVal(rawVer) ?? lastVer);
     const keyType = isNewSw
       ? (rawKtype ? (KEY_TYPE_MAP[rawKtype] ?? null) : null)
       : ((rawKtype ? (KEY_TYPE_MAP[rawKtype] ?? null) : null) ?? lastKeyType);
 
-    // related_link: carry-forward 없음 (각 행 독립)
     const relLink = (rawLink === '-') ? null : toVal(rawLink);
 
     if (!name) {
@@ -368,7 +353,6 @@ const importSwOriginal = async (req, res) => {
     lastKeyType = keyType ?? lastKeyType;
 
     try {
-      // ── asset_sw 처리 ──────────────────────────────────────────
       let sw;
       if (isNewSw) {
         sw = await AssetSw.create({
@@ -389,15 +373,11 @@ const importSwOriginal = async (req, res) => {
         sw = await AssetSw.findByPk(lastSwId);
       }
 
-      // ── 라이선스 키 처리 ──────────────────────────────────────
-      // rawKey = '-'  → 키 없음, 저장 안 함
-      // rawKey = null → 빈 셀 = 보안상 지운 값, null로 저장
       if (rawKey === '-') {
         results.push({ row: r, status: 'skipped', reason: '라이선스 키 없음 (-)' });
         continue;
       }
 
-      // 크레덴셜: 첫 번째 ',' 기준으로 앞=license_key, 뒤=license_password
       let licKey, licPassword;
       if (keyType === 'credential' && rawKey) {
         const sepIdx = rawKey.indexOf(',');
@@ -415,8 +395,6 @@ const importSwOriginal = async (req, res) => {
 
       const issueDate = rawIssue instanceof Date ? rawIssue : parseDate(rawIssue);
 
-      // ── 사용자 파싱 ───────────────────────────────────────────
-      // 'SDOE N대' → N개의 user_id=null 라이선스 생성 / 'SDOE' 단독 → 1개
       let sdoeCount = 0;
       const userNames = rawUsers
         ? rawUsers.split(',').map(u => u.trim()).filter(u => u && u !== '-').filter(u => {
@@ -426,17 +404,22 @@ const importSwOriginal = async (req, res) => {
           })
         : [];
 
-      // 일반 사용자 라이선스 생성 (in_use)
+      // 일반 사용자 라이선스 → per_seat
       for (const uName of userNames) {
         const isSpecial = isSpecialUser(uName);
         const userId    = isSpecial ? null : (nameToUserId[uName] ?? null);
         const licRemark = isSpecial ? uName : null;
         const lic = await AssetSwLicense.create({
-          asset_sw_id: sw.id, user_id: userId,
-          license_key: licKey, license_password: licPassword,
-          key_type: keyType, related_link: relLink,
-          issue_date: issueDate, remarks: licRemark,
-          state: 'in_use',
+          asset_sw_id:  sw.id,
+          user_id:      userId,
+          license_key:  licKey,
+          license_password: licPassword,
+          key_type:     keyType,
+          license_type: 'per_seat',   // [변경] 일반 사용자 → per_seat
+          related_link: relLink,
+          issue_date:   issueDate,
+          remarks:      licRemark,
+          state:        'in_use',
         });
         await AssetSwHistory.create({
           asset_sw_id: sw.id, license_id: lic.id,
@@ -445,25 +428,35 @@ const importSwOriginal = async (req, res) => {
         });
       }
 
-      // 사용자도 SDOE도 없음 → available 1개
+      // 사용자도 SDOE도 없음 → available, per_seat
       if (userNames.length === 0 && sdoeCount === 0) {
         await AssetSwLicense.create({
-          asset_sw_id: sw.id, user_id: null,
-          license_key: licKey, license_password: licPassword,
-          key_type: keyType, related_link: relLink,
-          issue_date: issueDate, remarks: null,
-          state: 'available',
+          asset_sw_id:  sw.id,
+          user_id:      null,
+          license_key:  licKey,
+          license_password: licPassword,
+          key_type:     keyType,
+          license_type: 'per_seat',   // [변경] 미할당 라이선스 → per_seat
+          related_link: relLink,
+          issue_date:   issueDate,
+          remarks:      null,
+          state:        'available',
         });
       }
 
-      // SDOE N대 → user_id=null, remarks='SDOE', in_use 라이선스 N개
+      // SDOE N대 → shared (동일 키를 여러 레코드로 저장하는 구조)
       for (let s = 0; s < sdoeCount; s++) {
         const lic = await AssetSwLicense.create({
-          asset_sw_id: sw.id, user_id: null,
-          license_key: licKey, license_password: licPassword,
-          key_type: keyType, related_link: relLink,
-          issue_date: issueDate, remarks: 'SDOE',
-          state: 'in_use',
+          asset_sw_id:  sw.id,
+          user_id:      null,
+          license_key:  licKey,
+          license_password: licPassword,
+          key_type:     keyType,
+          license_type: 'shared',     // [변경] SDOE → shared
+          related_link: relLink,
+          issue_date:   issueDate,
+          remarks:      'SDOE',
+          state:        'in_use',
         });
         await AssetSwHistory.create({
           asset_sw_id: sw.id, license_id: lic.id,
@@ -472,7 +465,6 @@ const importSwOriginal = async (req, res) => {
         });
       }
 
-      // asset_sw.state 갱신
       const inUseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
       await sw.update({ state: inUseCount > 0 ? 'in_use' : 'available' });
 
@@ -487,9 +479,9 @@ const importSwOriginal = async (req, res) => {
   return res.status(200).json({ message: `SW Import 완료: ${imported}건 성공, ${failed}건 실패`, imported, failed, results });
 };
 
-// ─────────────────────────────────────────────────────────────
-// Enterprise 원본 IMPORT
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// Enterprise 원본 IMPORT (기존 그대로)
+// ─────────────────────────────────────────────────────────────────
 const CATEGORY_MAP = {
   '사무': 'office', '가구': 'furniture',
   '산업': 'industrial', '전통': 'industrial', '전기': 'electrical',
@@ -522,7 +514,6 @@ const importEnterpriseOriginal = async (req, res) => {
   const ws = wb.getWorksheet('Rawdata') || wb.worksheets[0];
   if (!ws) return res.status(400).json({ message: 'Rawdata 시트를 찾을 수 없습니다.' });
 
-  // 헤더: 자산번호(1) 소관부서(2) 사용위치(3) 취득일자(4) 제조사(5) 분류(6) 규격(7) 일련번호(8) 비고(9)
   const C = { assetNum:1, dept:2, location:3, acq:4, mfr:5, typeName:6, spec:7, serial:8, remarks:9 };
 
   const profiles = await Profile.findAll({ include: [{ model: User, attributes: ['id'] }] });
@@ -541,7 +532,6 @@ const importEnterpriseOriginal = async (req, res) => {
   const results   = [];
   let imported = 0, failed = 0;
 
-  // g 함수: 현재 행(r)과 컬럼 번호를 인자로 받아 루프 외부에서 한 번만 정의
   const g = (r, col) => readCell(ws, r, col);
 
   for (let r = 2; r <= ws.rowCount; r++) {
@@ -563,14 +553,12 @@ const importEnterpriseOriginal = async (req, res) => {
     const { category: catName, code } = parsed;
 
     try {
-      // category findOrCreate
       if (!catCache[catName]) {
         const [cat] = await AssetEnterpriseCategory.findOrCreate({ where: { name: catName }, defaults: { name: catName } });
         catCache[catName] = cat.id;
       }
       const category_id = catCache[catName];
 
-      // item_type: category_id + code + name 조합으로 findOrCreate
       const resolvedName = typeName || code;
       const typeKey = `${category_id}::${code}::${resolvedName}`;
       if (!typeCache[typeKey]) {
@@ -581,11 +569,9 @@ const importEnterpriseOriginal = async (req, res) => {
         typeCache[typeKey] = itemType.id;
       }
 
-      // responsible
       const responsibleType = resolveResponsible(location, nameToUserId);
       const userId = responsibleType === 'personal' ? (nameToUserId[location?.trim()] ?? null) : null;
 
-      // department: personal이면 유저 프로필 부서 자동 할당, 없으면 소관부서 컬럼 사용
       let department_id = null;
       if (responsibleType === 'personal' && location && nameToDeptId[location.trim()]) {
         department_id = nameToDeptId[location.trim()];
@@ -598,7 +584,6 @@ const importEnterpriseOriginal = async (req, res) => {
       }
 
       const asset = await AssetEnterprise.create({
-        asset_number:      assetNumber,
         category_id,
         item_type_id:      typeCache[typeKey],
         department_id,
@@ -619,10 +604,10 @@ const importEnterpriseOriginal = async (req, res) => {
         change_type: 'register', before_value: null, after_value: 'in_use',
       });
 
-      results.push({ row: r, status: 'success', asset_id: asset.id, asset_number: assetNumber });
+      results.push({ row: r, status: 'success', asset_id: asset.id });
       imported++;
     } catch (err) {
-      results.push({ row: r, status: 'failed', reason: err.message, asset_number: assetNumber });
+      results.push({ row: r, status: 'failed', reason: err.message });
       failed++;
     }
   }

@@ -1,64 +1,88 @@
-import { useState } from "react";
-import { Search } from "react-bootstrap-icons";
-import Card from "../../../components/Card/Card";
-import DataTable from "../../../components/DataTable/DataTable";
-import PageHeader from "../../../components/PageHeader/PageHeader";
-import ActionButton from "../../../components/ActionButton/ActionButton";
-import BackButton from "../../../components/BackButton/BackButton";
-import common from "../../AssetPage.common.module.css";
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Search } from 'react-bootstrap-icons'
+import Card from '../../../components/Card/Card'
+import DataTable from '../../../components/DataTable/DataTable'
+import PageHeader from '../../../components/PageHeader/PageHeader'
+import ActionButton from '../../../components/ActionButton/ActionButton'
+import BackButton from '../../../components/BackButton/BackButton'
+import { fetchSwList } from '../../../services/assetService'
+import common from '../../AssetPage.common.module.css'
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ── 상수 ─────────────────────────────────────────────────────────────────────
 const SW_COLUMNS = [
-  { key: "no",           label: "No" },
-  { key: "productName",  label: "제품명",   type: "dash" },
-  { key: "version",      label: "버전",     type: "dash" },
-  { key: "licenseKey",   label: "라이선스", type: "dash" },
-  { key: "manufacturer", label: "제조사",   type: "dash" },
-  { key: "user",         label: "사용자",   type: "dash" },
-  { key: "usedCount",    label: "사용수량", type: "dash" },
-  { key: "remainCount",  label: "남은수량", type: "dash" },
-  { key: "state",        label: "상태",     type: "status" },
-];
+  { key: 'no',           label: 'No' },
+  { key: 'productName',  label: '제품명',   type: 'dash' },
+  { key: 'version',      label: '버전',     type: 'dash' },
+  { key: 'manufacturer', label: '제조사',   type: 'dash' },
+  { key: 'usedCount',    label: '사용수량', type: 'dash' },
+  { key: 'remainCount',  label: '남은수량', type: 'dash' },
+  { key: 'state',        label: '상태',     type: 'status' },
+]
 
 const SW_STATUS_MAP = {
-  available: { label: "사용가능", color: "blue"  },
-  active:    { label: "사용중",   color: "green" },
-};
+  in_use:    { label: '사용중',   color: 'green' },
+  available: { label: '사용가능', color: 'blue'  },
+  returned:  { label: '반납됨',   color: 'gray'  },
+}
 
-// API 연동 시 대체 예정
-const MOCK_PRODUCT_OPTIONS = ["Office 365", "Slack", "Figma", "Adobe XD"];
-const MOCK_MFR_OPTIONS     = ["Microsoft", "Salesforce", "Adobe", "AhnLab"];
-const MOCK_USER_OPTIONS    = ["김철수", "이영희", "박민준"];
+const EMPTY_FILTER = { name: '', manufacturer: '', keyword: '' }
+// ─────────────────────────────────────────────────────────────────────────────
 
-const EMPTY_FILTER = {
-  product: "",
-  mfr:     "",
-  user:    "",
-  keyword: "",
-};
-
-// ─── 컴포넌트 ──────────────────────────────────────────────────────────────────
 const AdminSwAssetsPage = () => {
-  const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER);
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER);
+  const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
-  const handleFilterChange = (key, value) => {
-    setFilterForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const { data, isLoading } = useQuery({
+    queryKey: ['swList', appliedFilters],
+    queryFn:  () => fetchSwList({
+      ...(appliedFilters.name.trim()         && { name:         appliedFilters.name.trim() }),
+      ...(appliedFilters.manufacturer.trim() && { manufacturer: appliedFilters.manufacturer.trim() }),
+    }),
+    refetchOnWindowFocus: false,
+  })
+
+  // SW 목록 → DataTable rows 변환
+  // API: { id, name, version, manufacturer, quantity, in_use_count, available_count, state }
+  const rawList = data?.list ?? []
+
+  // 클라이언트 키워드 필터 후 행 변환
+  const rows = rawList
+    .filter((sw) => {
+      if (!appliedFilters.keyword) return true
+      const kw = appliedFilters.keyword.toLowerCase()
+      return (
+        sw.name?.toLowerCase().includes(kw) ||
+        sw.manufacturer?.toLowerCase().includes(kw) ||
+        sw.version?.toLowerCase().includes(kw)
+      )
+    })
+    .map((sw, i) => ({
+      id:           sw.id,
+      no:           i + 1,
+      productName:  sw.name         ?? null,
+      version:      sw.version      ?? null,
+      manufacturer: sw.manufacturer ?? null,
+      usedCount:    sw.in_use_count    ?? 0,
+      remainCount:  sw.available_count ?? 0,
+      state:        sw.state,
+    }))
+
+  const handleFilterChange = (key, value) =>
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
 
   const handleFilterReset = () => {
-    setFilterForm(EMPTY_FILTER);
-    setAppliedFilters(EMPTY_FILTER);
-  };
+    setFilterForm(EMPTY_FILTER)
+    setAppliedFilters(EMPTY_FILTER)
+  }
 
-  const handleSearch = () => {
-    setAppliedFilters(filterForm);
-  };
+  const handleSearch = () => setAppliedFilters(filterForm)
 
   return (
     <div className={common.page}>
-      <PageHeader title="SW 전체 조회" 
-      desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
+      <PageHeader
+        title="SW 전체 조회"
+        desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
       />
 
       <section className={common.section}>
@@ -67,34 +91,23 @@ const AdminSwAssetsPage = () => {
           <div className={common.filterArea}>
             <select
               className={common.filterSelect}
-              value={filterForm.product}
-              onChange={(e) => handleFilterChange("product", e.target.value)}
+              value={filterForm.name}
+              onChange={(e) => handleFilterChange('name', e.target.value)}
             >
               <option value="">제품명 전체</option>
-              {MOCK_PRODUCT_OPTIONS.map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {rawList.map((sw) => (
+                <option key={sw.id} value={sw.name}>{sw.name}</option>
               ))}
             </select>
 
             <select
               className={common.filterSelect}
-              value={filterForm.mfr}
-              onChange={(e) => handleFilterChange("mfr", e.target.value)}
+              value={filterForm.manufacturer}
+              onChange={(e) => handleFilterChange('manufacturer', e.target.value)}
             >
               <option value="">제조사 전체</option>
-              {MOCK_MFR_OPTIONS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-
-            <select
-              className={common.filterSelect}
-              value={filterForm.user}
-              onChange={(e) => handleFilterChange("user", e.target.value)}
-            >
-              <option value="">사용자 전체</option>
-              {MOCK_USER_OPTIONS.map((u) => (
-                <option key={u} value={u}>{u}</option>
+              {[...new Set(rawList.map((sw) => sw.manufacturer).filter(Boolean))].map((mfr) => (
+                <option key={mfr} value={mfr}>{mfr}</option>
               ))}
             </select>
 
@@ -111,8 +124,8 @@ const AdminSwAssetsPage = () => {
                 className={common.filterInput}
                 placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
-                onChange={(e) => handleFilterChange("keyword", e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
               <button className={common.filterSearchBtn} onClick={handleSearch}>
                 <Search size={14} />
@@ -122,18 +135,18 @@ const AdminSwAssetsPage = () => {
 
           <DataTable
             columns={SW_COLUMNS}
-            rows={[]}
+            rows={isLoading ? [] : rows}
             statusMap={SW_STATUS_MAP}
             selectable={false}
             selectedIds={[]}
             onSelectionChange={() => {}}
-            totalCount={0}
+            totalCount={rows.length}
             highlight={appliedFilters.keyword}
           />
         </Card>
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default AdminSwAssetsPage;
+export default AdminSwAssetsPage

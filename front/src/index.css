@@ -70,6 +70,10 @@ html, body {
   --color-badge-sw-bg:       rgba(16, 185, 129, 0.12);
   --color-badge-sw-text:     #059669;
 
+  /* 내 자산 현황 - SW/PC 라벨 */
+  --color-label-sw:          #6834D0;
+  --color-label-pc:          #C2660A;
+
   /* Badge - Status */
   --color-badge-yellow-bg:   rgba(245, 158, 11, 0.12);
   --color-badge-yellow:      #d97706;

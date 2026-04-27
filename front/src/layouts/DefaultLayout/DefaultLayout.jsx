@@ -12,19 +12,19 @@ const TABS_BY_ROLE = {
       id: 'my-assets',
       label: '내 자산 관리',
       menus: [
-        { id: 'my-assets-list',            label: '내 자산 현황', path: 'my-assets'        },
-        { id: 'my-assets-request',         label: '내 자산 등록',        path: 'request'          },
-        { id: 'my-assets-request-history', label: '내 자산 요청 내역',        path: 'request-history'  },
-        { id: 'my-assets-history',         label: '내 자산 히스토리',    path: 'history'          },
+        { id: 'my-assets-list',            label: '내 자산 현황',    path: 'my-assets'        },
+        { id: 'my-assets-request',         label: '내 자산 등록',    path: 'request'          },
+        { id: 'my-assets-request-history', label: '내 자산 요청 내역', path: 'request-history' },
+        { id: 'my-assets-history',         label: '내 자산 히스토리', path: 'history'          },
       ],
     },
     {
       id: 'df-assets',
       label: 'DF 자산 관리',
       menus: [
-        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
-        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
-        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
+        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard' },
+        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'  },
+        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'   },
       ],
     },
   ],
@@ -33,49 +33,39 @@ const TABS_BY_ROLE = {
       id: 'my-assets',
       label: '내 자산 관리',
       menus: [
-        { id: 'my-assets-list',    label: '내 자산 현황', path: 'my-assets' },
-        { id: 'my-assets-request', label: '내 자산 등록 요청',        path: 'request'   },
-        { id: 'my-assets-history', label: '내 자산 요청 내역',        path: 'history'   },
+        { id: 'my-assets-list',    label: '내 자산 현황',    path: 'my-assets' },
+        { id: 'my-assets-request', label: '내 자산 등록 요청', path: 'request'  },
+        { id: 'my-assets-history', label: '내 자산 요청 내역', path: 'history'  },
       ],
     },
     {
       id: 'df-assets',
       label: 'DF 자산 관리',
       menus: [
-        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
-        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
-        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
-      ],
-    },
-  ],
-  df: [
-    {
-      id: 'my-assets',
-      label: '내 자산 관리',
-      menus: [
-        { id: 'my-assets-list',    label: '내 자산 항목조회', path: 'my-assets' },
-        { id: 'my-assets-history', label: '자산 히스토리',    path: 'history'   },
-      ],
-    },
-    {
-      id: 'df-assets',
-      label: 'DF 자산 관리',
-      menus: [
-        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard'  },
-        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'   },
-        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'    },
+        { id: 'df-dashboard', label: 'DF 자산 현황',     path: 'dashboard' },
+        { id: 'df-register',  label: 'DF 자산 등록',     path: 'register'  },
+        { id: 'df-history',   label: 'DF 자산 히스토리', path: 'history'   },
       ],
     },
   ],
 }
 
-const DefaultLayout = ({ role, onLogout }) => {
-  const navigate = useNavigate()
-  const location = useLocation()
+const DefaultLayout = ({ role, name, onLogout }) => {
+  const navigate  = useNavigate()
+  const location  = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const TABS = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
+  const TABS      = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
   const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
+
+  // 헤더 표시 이름
+  // user  → "김철수"
+  // admin → "김철수 (admin)"
+  const displayName = name
+    ? role === 'admin'
+      ? `${name} (admin)`
+      : name
+    : role
 
   const handleLogout = async () => {
     try {
@@ -104,7 +94,7 @@ const DefaultLayout = ({ role, onLogout }) => {
         <div className={styles.headerRight}>
           <div className={styles.profile}>
             <PersonCircle className={styles.profileIcon} />
-            <span className={styles.profileName}>{role}</span>
+            <span className={styles.profileName}>{displayName}</span>
           </div>
           <button className={styles.logoutBtn} onClick={handleLogout}>로그아웃</button>
         </div>

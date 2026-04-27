@@ -1,171 +1,140 @@
-import { useState, useMemo } from "react";
-import { Search } from "react-bootstrap-icons";
-import PageHeader from "../../components/PageHeader/PageHeader";
-import Card from "../../components/Card/Card";
-import DataTable from "../../components/DataTable/DataTable";
-import ActionButton from "../../components/ActionButton/ActionButton";
-import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
-import common from "../AssetPage.common.module.css";
-import styles from "./DfAssetsHistoryPage.module.css";
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Search } from 'react-bootstrap-icons'
+import PageHeader from '../../components/PageHeader/PageHeader'
+import Card from '../../components/Card/Card'
+import DataTable from '../../components/DataTable/DataTable'
+import ActionButton from '../../components/ActionButton/ActionButton'
+import { fetchDfDashboard, fetchDfHistory } from '../../services/assetService'
+import common from '../AssetPage.common.module.css'
+import styles from './DfAssetsHistoryPage.module.css'
 
-/**
- * [공통 설정]
- */
-
-// API 연동 시 대체 예정
-const MOCK_PROJECT_OPTIONS  = ["A 프로젝트", "B 프로젝트", "C 프로젝트"];
-const MOCK_LOCATION_OPTIONS = ["서울 본사 1층", "서울 본사 2층", "부산 사무소"];
-
-// API 연동 시 대체 예정
-const MOCK_HISTORY = [
-  { id: 1,  requestedAt: "2026-02-04", user: "admin", requestType: "등록",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "A 프로젝트", category: "노트북",  modelName: "LG Gram",        serialNumber: "032738" },
-  { id: 2,  requestedAt: "2026-02-04", user: "admin", requestType: "등록",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "B 프로젝트", category: "데스크탑", modelName: "Dell XPS",       serialNumber: "032738" },
-  { id: 3,  requestedAt: "2026-02-04", user: "admin", requestType: "이동",     prevLocation: "5층",         nextLocation: "6층",          prevState: null,    nextState: null,    projectName: "A 프로젝트", category: "노트북",  modelName: "MacBook Pro",    serialNumber: "032738" },
-  { id: 4,  requestedAt: "2026-02-04", user: "admin", requestType: "반납",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "C 프로젝트", category: "모니터",  modelName: "LG 27UK850",     serialNumber: "032738" },
-  { id: 5,  requestedAt: "2026-02-04", user: "admin", requestType: "등록",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "B 프로젝트", category: "노트북",  modelName: "ThinkPad X1",    serialNumber: "032738" },
-  { id: 6,  requestedAt: "2026-02-04", user: "user",  requestType: "등록",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "A 프로젝트", category: "데스크탑", modelName: "HP EliteDesk",   serialNumber: "032738" },
-  { id: 7,  requestedAt: "2026-02-04", user: "user",  requestType: "이동",     prevLocation: "서울 본사 1층", nextLocation: "서울 본사 2층", prevState: null,    nextState: null,    projectName: "C 프로젝트", category: "노트북",  modelName: "Dell Latitude",  serialNumber: "032738" },
-  { id: 8,  requestedAt: "2026-02-04", user: "admin", requestType: "상태 변경", prevLocation: null,         nextLocation: null,          prevState: "보관중", nextState: "사용중", projectName: "A 프로젝트", category: "모니터",  modelName: "Samsung 32",     serialNumber: "032738" },
-  { id: 9,  requestedAt: "2026-02-04", user: "user",  requestType: "이동",     prevLocation: "부산 사무소",  nextLocation: "서울 본사 1층", prevState: null,    nextState: null,    projectName: "B 프로젝트", category: "노트북",  modelName: "ASUS ZenBook",   serialNumber: "032738" },
-  { id: 10, requestedAt: "2026-02-04", user: "admin", requestType: "반납",     prevLocation: null,         nextLocation: null,          prevState: null,    nextState: null,    projectName: "C 프로젝트", category: "데스크탑", modelName: "Lenovo IdeaPad", serialNumber: "032738" },
-];
-
-const REQUEST_TYPE = {
-  REGISTER:     "등록",
-  MOVE:         "이동",
-  RETURN:       "반납",
-  STATE_CHANGE: "상태 변경",
-};
-
+// ── 상수 ─────────────────────────────────────────────────────────────────────
 const REQUEST_TYPE_STYLE = {
-  [REQUEST_TYPE.REGISTER]:     styles.badgeRegister,
-  [REQUEST_TYPE.MOVE]:         styles.badgeMove,
-  [REQUEST_TYPE.RETURN]:       styles.badgeReturn,
-  [REQUEST_TYPE.STATE_CHANGE]: styles.badgeStateChange,
-};
+  '등록':     styles.badgeRegister,
+  '반납':     styles.badgeReturn,
+  '상태 변경': styles.badgeStateChange,
+  '이동':     styles.badgeMove,
+}
 
 const STATE_BADGE_STYLE = {
-  "사용중": styles.stateActive,
-  "보관중": styles.stateStored,
-  "미사용": styles.stateInactive,
-};
+  '사용중': styles.stateActive,
+  '보관중': styles.stateStored,
+  '대여중': styles.stateInactive,
+}
 
-// 변경 전/후 셀 렌더링 헬퍼
 const renderChangedCell = (requestType, locationVal, stateVal) => {
-  if (requestType === REQUEST_TYPE.MOVE) {
+  if (requestType === '이동') {
     return locationVal
       ? <span>{locationVal}</span>
-      : <span className={styles.dash}>-</span>;
+      : <span className={styles.dash}>-</span>
   }
-  if (requestType === REQUEST_TYPE.STATE_CHANGE) {
+  if (requestType === '상태 변경') {
     return stateVal
-      ? <span className={`${styles.badge} ${STATE_BADGE_STYLE[stateVal] ?? ""}`}>{stateVal}</span>
-      : <span className={styles.dash}>-</span>;
+      ? <span className={`${styles.badge} ${STATE_BADGE_STYLE[stateVal] ?? ''}`}>{stateVal}</span>
+      : <span className={styles.dash}>-</span>
   }
-  return <span className={styles.dash}>-</span>;
-};
+  return <span className={styles.dash}>-</span>
+}
 
 const COLUMNS = [
-  { key: "no",          label: "No" },
-  { key: "requestedAt", label: "날짜" },
-  { key: "user",        label: "사용자" },
+  { key: 'no',          label: 'No' },
+  { key: 'requestedAt', label: '날짜' },
+  { key: 'user',        label: '사용자', renderCell: (row) => row.user ?? <span className={styles.dash}>-</span> },
   {
-    key: "requestType",
-    label: "요청",
+    key: 'requestType',
+    label: '요청',
     renderCell: (row) => (
-      <span className={`${styles.badge} ${REQUEST_TYPE_STYLE[row.requestType] ?? ""}`}>
+      <span className={`${styles.badge} ${REQUEST_TYPE_STYLE[row.requestType] ?? ''}`}>
         {row.requestType}
       </span>
     ),
   },
   {
-    key: "prevChange",
-    label: "변경 전",
+    key: 'prevChange',
+    label: '변경 전',
     renderCell: (row) => renderChangedCell(row.requestType, row.prevLocation, row.prevState),
   },
   {
-    key: "nextChange",
-    label: "변경 후",
+    key: 'nextChange',
+    label: '변경 후',
     renderCell: (row) => renderChangedCell(row.requestType, row.nextLocation, row.nextState),
   },
-  { key: "projectName",  label: "프로젝트",  renderCell: (row) => row.projectName  ?? <span className={styles.dash}>-</span> },
-  { key: "category",     label: "자산 종류",  renderCell: (row) => row.category     ?? <span className={styles.dash}>-</span> },
-  { key: "modelName",    label: "모델명",     renderCell: (row) => row.modelName    ?? <span className={styles.dash}>-</span> },
-  { key: "serialNumber", label: "시리얼",     renderCell: (row) => row.serialNumber ?? <span className={styles.dash}>-</span> },
-];
+  { key: 'projectName',  label: '프로젝트',  renderCell: (row) => row.projectName  ?? <span className={styles.dash}>-</span> },
+  { key: 'category',     label: '자산 종류',  renderCell: (row) => row.category     ?? <span className={styles.dash}>-</span> },
+  { key: 'modelName',    label: '모델명',     renderCell: (row) => row.modelName    ?? <span className={styles.dash}>-</span> },
+  { key: 'serialNumber', label: '시리얼',     renderCell: (row) => row.serialNumber ?? <span className={styles.dash}>-</span> },
+]
 
 const EMPTY_FILTER = {
-  projectName: "",
-  user:        "",
-  dateFrom:    "",
-  dateTo:      "",
-  location:    "",
-  keyword:     "",
-};
+  project_id:    '',
+  asset_type_id: '',
+  from:          '',
+  to:            '',
+  keyword:       '',
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const DfAssetsHistoryPage = ({ role }) => {
-  // --- [State: 필터] ---
-  const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER);
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER);
+  const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
+  const [appliedKeyword, setAppliedKeyword] = useState('')
 
-  // --- [State: 삭제 모드] (admin 전용) ---
-  const [isDeleteMode,      setIsDeleteMode]      = useState(false);
-  const [selectedIds,       setSelectedIds]       = useState([]);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // ── 옵션 (대시보드 캐시 재사용) ───────────────────────────────────────────
+  const { data: dashboard } = useQuery({
+    queryKey: ['dfDashboard'],
+    queryFn:  fetchDfDashboard,
+    refetchOnWindowFocus: false,
+  })
+  const projectOptions = dashboard?.projectOptions ?? []
+  const typeOptions    = dashboard?.typeOptions    ?? []
 
-  // --- [필터 적용된 rows] ---
+  // ── 히스토리 조회 ─────────────────────────────────────────────────────────
+  // keyword는 프론트 클라이언트 필터링 (API 파라미터 없음)
+  const apiParams = useMemo(() => {
+    const { keyword: _k, ...rest } = appliedFilters
+    return rest
+  }, [appliedFilters])
+
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ['dfHistory', apiParams],
+    queryFn:  () => fetchDfHistory(apiParams),
+    refetchOnWindowFocus: false,
+  })
+
+  // ── 클라이언트 키워드 필터 ────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
-    const kw = appliedFilters.keyword.toLowerCase();
+    if (!appliedKeyword) return rows
+    const kw = appliedKeyword.toLowerCase()
+    return rows.filter((row) => {
+      const target = [
+        row.user, row.projectName, row.category,
+        row.modelName, row.serialNumber,
+        row.prevLocation, row.nextLocation,
+      ].filter(Boolean).join(' ').toLowerCase()
+      return target.includes(kw)
+    }).map((row, i) => ({ ...row, no: i + 1 }))
+  }, [rows, appliedKeyword])
 
-    return MOCK_HISTORY.filter((row) => {
-      if (appliedFilters.projectName && row.projectName !== appliedFilters.projectName) return false;
-      if (appliedFilters.user        && row.user        !== appliedFilters.user)        return false;
-      if (appliedFilters.dateFrom    && row.requestedAt <  appliedFilters.dateFrom)     return false;
-      if (appliedFilters.dateTo      && row.requestedAt >  appliedFilters.dateTo)       return false;
-      if (appliedFilters.location) {
-        const loc = appliedFilters.location;
-        if (row.prevLocation !== loc && row.nextLocation !== loc) return false;
-      }
-      if (kw) {
-        const target = [row.user, row.projectName, row.category, row.modelName, row.serialNumber, row.prevLocation, row.nextLocation]
-          .filter(Boolean).join(" ").toLowerCase();
-        if (!target.includes(kw)) return false;
-      }
-      return true;
-    }).map((row, i) => ({ ...row, no: i + 1 }));
-  }, [appliedFilters]);
-
-  // --- [Handlers: 필터] ---
-  const handleFilterChange = (key, value) => {
-    setFilterForm((prev) => ({ ...prev, [key]: value }));
-  };
+  // ── 필터 핸들러 ───────────────────────────────────────────────────────────
+  const handleFilterChange = (key, value) =>
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
 
   const handleFilterReset = () => {
-    setFilterForm(EMPTY_FILTER);
-    setAppliedFilters(EMPTY_FILTER);
-  };
+    setFilterForm(EMPTY_FILTER)
+    setAppliedFilters(EMPTY_FILTER)
+    setAppliedKeyword('')
+  }
 
-  const handleSearch = () => setAppliedFilters(filterForm);
-
-  // --- [Handlers: 삭제 모드] ---
-  const handleDeleteModeEnter  = () => setIsDeleteMode(true);
-
-  const handleDeleteModeCancel = () => {
-    setIsDeleteMode(false);
-    setSelectedIds([]);
-  };
-
-  // API 연동 시 구현 예정
-  const handleDelete = () => {
-    setShowDeleteConfirm(false);
-    setIsDeleteMode(false);
-    setSelectedIds([]);
-  };
+  const handleSearch = () => {
+    setAppliedFilters(filterForm)
+    setAppliedKeyword(filterForm.keyword)
+  }
 
   return (
     <div className={common.page}>
       <PageHeader
-        title="히스토리"
+        title="DF 자산 히스토리"
         desc="자산 이동, 상태 변경, 반납, 등록에 관한 모든 이력을 조회합니다."
       />
 
@@ -175,61 +144,51 @@ const DfAssetsHistoryPage = ({ role }) => {
           <div className={common.filterArea}>
             <select
               className={common.filterSelect}
-              value={filterForm.projectName}
-              onChange={(e) => handleFilterChange("projectName", e.target.value)}
+              value={filterForm.project_id}
+              onChange={(e) => handleFilterChange('project_id', e.target.value)}
             >
               <option value="">전체 프로젝트</option>
-              {MOCK_PROJECT_OPTIONS.map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {projectOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
 
             <select
               className={common.filterSelect}
-              value={filterForm.user}
-              onChange={(e) => handleFilterChange("user", e.target.value)}
+              value={filterForm.asset_type_id}
+              onChange={(e) => handleFilterChange('asset_type_id', e.target.value)}
             >
-              <option value="">사용자 구분</option>
-              <option value="admin">admin</option>
-              <option value="user">user</option>
+              <option value="">자산 종류 전체</option>
+              {typeOptions.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
             </select>
 
+            {/* 날짜 범위 */}
             <input
               type="date"
               className={styles.filterDate}
-              value={filterForm.dateFrom}
-              onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+              value={filterForm.from}
+              onChange={(e) => handleFilterChange('from', e.target.value)}
             />
             <span className={styles.dateSeparator}>~</span>
             <input
               type="date"
               className={styles.filterDate}
-              value={filterForm.dateTo}
-              onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+              value={filterForm.to}
+              onChange={(e) => handleFilterChange('to', e.target.value)}
             />
-
-            <select
-              className={common.filterSelect}
-              value={filterForm.location}
-              onChange={(e) => handleFilterChange("location", e.target.value)}
-            >
-              <option value="">위치 구분</option>
-              {MOCK_LOCATION_OPTIONS.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
 
             <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
-            {/* 검색 */}
             <div className={common.filterSearchWrap}>
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="검색어를 입력하세요"
+                placeholder="모델명 / 시리얼 / 위치 검색"
                 value={filterForm.keyword}
-                onChange={(e) => handleFilterChange("keyword", e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
               <button className={common.filterSearchBtn} onClick={handleSearch}>
                 <Search size={14} />
@@ -237,53 +196,24 @@ const DfAssetsHistoryPage = ({ role }) => {
             </div>
           </div>
 
-          {/* 총 건수 + 삭제 버튼 영역 */}
+          {/* 총 건수 */}
           <div className={styles.tableHeader}>
             <span className={styles.totalCount}>
-              총 {MOCK_HISTORY.length}건 중 {filteredRows.length}건 표시
+              총 {filteredRows.length}건
             </span>
-
-            {role === "admin" && (
-              isDeleteMode ? (
-                <>
-                  <ActionButton variant="white" size="sm" label="취소" onClick={handleDeleteModeCancel} />
-                  <ActionButton
-                    variant="red"
-                    size="sm"
-                    label={`삭제 (${selectedIds.length})`}
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={selectedIds.length === 0}
-                  />
-                </>
-              ) : (
-                <ActionButton variant="red" size="sm" label="삭제" onClick={handleDeleteModeEnter} />
-              )
-            )}
           </div>
 
           <DataTable
             columns={COLUMNS}
-            rows={filteredRows}
-            selectable={isDeleteMode}
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
+            rows={isLoading ? [] : filteredRows}
+            selectable={false}
             totalCount={filteredRows.length}
+            highlight={appliedKeyword}
           />
         </Card>
       </section>
-
-      {/* 모달 모음 */}
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        title={`선택한 이력 ${selectedIds.length}건을 삭제할까요?`}
-        desc="삭제된 이력은 복구할 수 없습니다."
-        confirmLabel="삭제"
-        confirmVariant="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </div>
-  );
-};
+  )
+}
 
-export default DfAssetsHistoryPage;
+export default DfAssetsHistoryPage
