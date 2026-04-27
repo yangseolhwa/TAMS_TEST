@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { PlusCircleFill } from "react-bootstrap-icons";
-import ActionButton from "../../../components/ActionButton/ActionButton";
 import toast from "react-hot-toast";
+import ActionButton from "../../../components/ActionButton/ActionButton";
 import Card from "../../../components/Card/Card";
 import Banner from "../../../components/Banner/Banner";
 import PageHeader from "../../../components/PageHeader/PageHeader";
@@ -19,56 +18,54 @@ import {
   requestSwAsset,
 } from "../../../services/assetService";
 
-/**
- * [공통 설정]
- */
-const MAX_ITEMS = 5;
+// ─── 상수 ────────────────────────────────────────────────────────────────────
+const MAX_ITEMS    = 5;
+const DIRECT_INPUT = "__direct__";
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const UserRequestPage = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // --- [State] ---
-  const [items, setItems] = useState([createInitialItem()]);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [items,             setItems]             = useState([createInitialItem()]);
+  const [showResetConfirm,  setShowResetConfirm]  = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
-  // --- [React Query] ---
-
-  // 등록 요청 폼용 Enterprise 자산 목록
+  // ── 데이터 조회 ────────────────────────────────────────────────────────────
   const { data: enterpriseAssetsForForm = [] } = useQuery({
     queryKey: ["enterpriseAssetsForForm"],
-    queryFn: fetchEnterpriseAssetsForForm,
+    queryFn:  fetchEnterpriseAssetsForForm,
     refetchOnWindowFocus: false,
   });
 
-  // 등록 요청 폼용 SW 자산 목록
   const { data: swAssetsForForm = [] } = useQuery({
     queryKey: ["swAssetsForForm"],
-    queryFn: fetchSwAssetsForForm,
+    queryFn:  fetchSwAssetsForForm,
     refetchOnWindowFocus: false,
   });
 
-  // --- [Handlers: 등록 요청 폼] ---
+  // ── 폼 핸들러 ──────────────────────────────────────────────────────────────
+
+  // 자산 유형(PC/SW) 변경 시 해당 항목 초기화
   const handleAssetTypeChange = (index, value) => {
     setItems((prev) =>
       prev.map((item, i) =>
         i === index
           ? { ...createInitialItem(), id: item.id, assetType: value }
-          : item,
-      ),
+          : item
+      )
     );
   };
 
-  // fieldOrObject: 단일 필드명(string) 또는 { field: value, ... } 객체 (카스케이딩 초기화 등에 활용)
+  // 단일 필드 또는 객체로 여러 필드 동시 변경
   const handleItemChange = (index, fieldOrObject, value) => {
     setItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item;
-        if (typeof fieldOrObject === "object")
-          return { ...item, ...fieldOrObject };
+        if (typeof fieldOrObject === "object") return { ...item, ...fieldOrObject };
         return { ...item, [fieldOrObject]: value };
-      }),
+      })
     );
   };
 
@@ -86,118 +83,82 @@ const UserRequestPage = () => {
     setShowResetConfirm(false);
   };
 
-  // 등록 요청 Mutation — PC/SW, 기존/신규 분리 후 Promise.allSettled로 동시 호출
-  // 각 task에 해당 items를 함께 묶어, 실패한 task의 items만 폼에 남겨 재시도 가능하게 처리
+  // ── 등록 요청 Mutation ─────────────────────────────────────────────────────
+  // user는 pending 요청 생성 (최대 5개)
+  // PC: 항상 신규 등록 요청
+  // SW: swId가 실제 id면 기존 SW에 라이선스 추가 요청, 아니면 신규 SW 등록 요청
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const pcNew = items.filter(
-        (i) => i.assetType === "pc" && i.requestType === "new",
-      );
-      const pcExisting = items.filter(
-        (i) => i.assetType === "pc" && i.requestType === "existing",
-      );
-      const swNew = items.filter(
-        (i) => i.assetType === "sw" && i.requestType === "new",
-      );
-      const swExisting = items.filter(
-        (i) => i.assetType === "sw" && i.requestType === "existing",
-      );
+      const pcItems = items.filter((i) => i.assetType === "pc");
+      const swItems = items.filter((i) => i.assetType === "sw");
 
-      // { promise, items } 형태로 묶어서 관리
       const tasks = [
-        ...(pcNew.length > 0
+        // PC — 신규 등록 요청 (여러 개 한 번에)
+        ...(pcItems.length > 0
           ? [{
-              items: pcNew,
+              items: pcItems,
               promise: requestEnterpriseAsset({
-                is_existing: false,
-                assets: pcNew.map((i) => ({
-                  asset_number: i.assetNumber.trim(),
-                  model_name: i.modelName.trim(),
+                assets: pcItems.map((i) => ({
                   category_id: Number(i.categoryId),
-                  item_type_id: Number(i.itemTypeId),
-                  manufacturer: i.manufacturer.trim(),
+                  ...(i.itemTypeId && i.itemTypeId !== DIRECT_INPUT
+                    ? { item_type_id:   Number(i.itemTypeId) }
+                    : { item_type_name: i.itemTypeName.trim() }
+                  ),
+                  manufacturer: i.manufacturer === DIRECT_INPUT
+                    ? i.manufacturerName.trim()
+                    : i.manufacturer,
                   acquisition_date: i.acquisitionDate,
-                  ...(i.spec.trim() && { spec: i.spec.trim() }),
-                  ...(i.serialNumber.trim() && {
-                    serial_number: i.serialNumber.trim(),
-                  }),
-                  ...(i.requiredQuantity && {
-                    required_quantity: Number(i.requiredQuantity),
-                  }),
-                  ...(i.requestReason.trim() && {
-                    request_reason: i.requestReason.trim(),
-                  }),
+                  ...(i.spec.trim()          && { spec:           i.spec.trim() }),
+                  ...(i.serialNumber.trim()  && { serial_number:  i.serialNumber.trim() }),
+                  ...(i.requestReason.trim() && { request_reason: i.requestReason.trim() }),
                 })),
               }),
             }]
           : []),
 
-        ...(pcExisting.length > 0
-          ? [{
-              items: pcExisting,
-              promise: requestEnterpriseAsset({
-                is_existing: true,
-                assets: pcExisting.map((i) => ({
-                  asset_id: Number(i.selectedAssetId),
-                  acquisition_date: i.acquisitionDate,
-                  ...(i.spec.trim() && { spec: i.spec.trim() }),
-                  ...(i.serialNumber.trim() && {
-                    serial_number: i.serialNumber.trim(),
-                  }),
-                  ...(i.requiredQuantity && {
-                    required_quantity: Number(i.requiredQuantity),
-                  }),
-                  ...(i.requestReason.trim() && {
-                    request_reason: i.requestReason.trim(),
-                  }),
-                })),
-              }),
-            }]
-          : []),
+        // SW — swId 유무로 기존/신규 분기, 아이템별 개별 요청
+        ...swItems.map((i) => {
+          const isExistingSw = i.swId && i.swId !== DIRECT_INPUT;
+          const manufacturer = i.swManufacturer === DIRECT_INPUT
+            ? i.swManufacturerName.trim()
+            : i.swManufacturer;
 
-        ...(swNew.length > 0
-          ? [{
-              items: swNew,
-              promise: requestSwAsset({
-                is_existing: false,
-                licenses: swNew.map((i) => ({
-                  name: i.swName.trim(),
-                  software_type: i.softwareType,
-                  manufacturer: i.swManufacturer.trim(),
-                  license_key: i.licenseKey.trim(),
-                  key_type: i.keyType,
-                  ...(i.isSubscription !== "" && {
-                    is_subscription: i.isSubscription === "true",
-                  }),
-                  ...(i.requestReason.trim() && {
-                    request_reason: i.requestReason.trim(),
-                  }),
-                })),
-              }),
-            }]
-          : []),
+          // 라이선스 공통 데이터
+          const licenseData = {
+            license_key:  i.licenseKey.trim(),
+            key_type:     i.keyType,
+            license_type: i.licenseType,
+            ...(i.licensePassword.trim() && { license_password: i.licensePassword.trim() }),
+            ...(i.relatedLink.trim()     && { related_link:     i.relatedLink.trim() }),
+            ...(i.requestReason.trim()   && { request_reason:   i.requestReason.trim() }),
+          };
 
-        ...(swExisting.length > 0
-          ? [{
-              items: swExisting,
-              promise: requestSwAsset({
-                is_existing: true,
-                licenses: swExisting.map((i) => ({
-                  asset_sw_id: Number(i.selectedSwId),
-                  license_key: i.licenseKey.trim(),
-                  key_type: i.keyType,
-                  ...(i.requestReason.trim() && {
-                    request_reason: i.requestReason.trim(),
-                  }),
-                })),
-              }),
-            }]
-          : []),
+          return {
+            items: [i],
+            promise: requestSwAsset(
+              isExistingSw
+                ? {
+                    is_existing:  true,
+                    asset_sw_id:  Number(i.swId),
+                    licenses: [licenseData],
+                  }
+                : {
+                    name:         i.swName.trim(),
+                    manufacturer,
+                    ...(i.version.trim()    && { version:          i.version.trim() }),
+                    ...(i.acquisitionDateSw && { acquisition_date: i.acquisitionDateSw }),
+                    ...(i.quantity !== ""   && { quantity:         Number(i.quantity) }),
+                    ...(i.swRemarks.trim()  && { remarks:          i.swRemarks.trim() }),
+                    licenses: [licenseData],
+                  }
+            ),
+          };
+        }),
       ];
 
       const results = await Promise.allSettled(tasks.map((t) => t.promise));
 
-      // 실패한 task에 해당하는 items만 추출
+      // 실패한 task의 items만 반환하여 폼에 남김
       const failedItems = results.flatMap((result, i) =>
         result.status === "rejected" ? tasks[i].items : []
       );
@@ -209,14 +170,11 @@ const UserRequestPage = () => {
       setShowSubmitConfirm(false);
 
       if (failedItems.length === 0) {
-        // 전체 성공
         toast.success("자산 등록 요청이 완료되었습니다.");
         setItems([createInitialItem()]);
       } else if (failedItems.length === items.length) {
-        // 전체 실패
         toast.error("등록 요청에 실패했습니다. 다시 시도해주세요.");
       } else {
-        // 일부 성공, 일부 실패 — 실패한 항목만 폼에 남김
         toast.error("일부 항목 요청에 실패했습니다. 실패한 항목을 확인 후 다시 요청해주세요.");
         setItems(failedItems);
       }
@@ -227,61 +185,71 @@ const UserRequestPage = () => {
     },
   });
 
+  // ── 유효성 검사 ────────────────────────────────────────────────────────────
   const handleSubmit = () => {
-    // 각 항목 유효성 검사
     for (const item of items) {
       if (!item.assetType) {
         toast.error("자산 유형을 선택해주세요.");
         return;
       }
-      if (item.assetType === "pc" && item.requestType === "existing") {
-        if (!item.selectedAssetId || !item.acquisitionDate) {
-          toast.error("PC 기존 자산: 자산 선택과 취득일은 필수 항목입니다.");
+
+      if (item.assetType === "pc") {
+        if (!item.categoryId) {
+          toast.error("PC: 카테고리를 선택해주세요.");
+          return;
+        }
+        const hasItemType =
+          (item.itemTypeId && item.itemTypeId !== DIRECT_INPUT) ||
+          item.itemTypeName.trim();
+        if (!hasItemType) {
+          toast.error("PC: 자산 유형을 선택하거나 직접 입력해주세요.");
+          return;
+        }
+        const manufacturer = item.manufacturer === DIRECT_INPUT
+          ? item.manufacturerName.trim()
+          : item.manufacturer;
+        if (!manufacturer) {
+          toast.error("PC: 제조사를 선택하거나 직접 입력해주세요.");
+          return;
+        }
+        if (!item.acquisitionDate) {
+          toast.error("PC: 취득일은 필수 항목입니다.");
           return;
         }
       }
-      if (item.assetType === "pc" && item.requestType === "new") {
-        if (
-          !item.assetNumber ||
-          !item.categoryId ||
-          !item.itemTypeId ||
-          !item.manufacturer ||
-          !item.modelName ||
-          !item.acquisitionDate
-        ) {
-          toast.error("PC 신규 자산: 필수 항목을 모두 입력해주세요.");
+
+      if (item.assetType === "sw") {
+        const isExistingSw = item.swId && item.swId !== DIRECT_INPUT;
+
+        if (!isExistingSw && !item.swName.trim()) {
+          toast.error("SW: 소프트웨어명은 필수 항목입니다.");
           return;
         }
-      }
-      if (item.assetType === "sw" && item.requestType === "existing") {
-        if (!item.selectedSwId || !item.licenseKey || !item.keyType) {
-          toast.error(
-            "SW 기존 자산: 소프트웨어 선택, 라이선스키, 키 유형은 필수 항목입니다.",
-          );
+        const manufacturer = item.swManufacturer === DIRECT_INPUT
+          ? item.swManufacturerName.trim()
+          : item.swManufacturer;
+        if (!manufacturer) {
+          toast.error("SW: 제조사를 선택하거나 직접 입력해주세요.");
           return;
         }
-      }
-      if (item.assetType === "sw" && item.requestType === "new") {
-        if (
-          !item.swName ||
-          !item.softwareType ||
-          !item.swManufacturer ||
-          !item.licenseKey ||
-          !item.keyType
-        ) {
-          toast.error("SW 신규 자산: 필수 항목을 모두 입력해주세요.");
+        if (!item.licenseKey.trim()) {
+          toast.error("SW: 라이선스 키는 필수 항목입니다.");
+          return;
+        }
+        if (!item.keyType) {
+          toast.error("SW: 키 유형을 선택해주세요.");
           return;
         }
       }
     }
+
     setShowSubmitConfirm(true);
   };
 
+  // ── 렌더링 ─────────────────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
-      <PageHeader
-        title="내 자산 등록 요청"
-      />
+      <PageHeader title="내 자산 등록 요청" />
 
       <section className={styles.section}>
         <Card>
@@ -294,7 +262,10 @@ const UserRequestPage = () => {
               </>
             }
           />
-          <fieldset disabled={submitMutation.isPending} style={{ border: "none", padding: 0, margin: 0 }}>
+          <fieldset
+            disabled={submitMutation.isPending}
+            style={{ border: "none", padding: 0, margin: 0 }}
+          >
             <RequestFormFields
               items={items}
               enterpriseAssets={enterpriseAssetsForForm}
@@ -304,6 +275,7 @@ const UserRequestPage = () => {
               onRemoveItem={handleRemoveItem}
             />
           </fieldset>
+
           <div className={styles.formActions}>
             {items.length < MAX_ITEMS && (
               <button
@@ -311,8 +283,8 @@ const UserRequestPage = () => {
                 onClick={handleAddItem}
                 disabled={submitMutation.isPending}
               >
-                <PlusCircleFill size={15} /> 항목 추가 ({items.length} /{" "}
-                {MAX_ITEMS})
+                <PlusCircleFill size={15} />
+                항목 추가 ({items.length} / {MAX_ITEMS})
               </button>
             )}
             <div className={styles.actionBtns}>
@@ -335,7 +307,7 @@ const UserRequestPage = () => {
         </Card>
       </section>
 
-      {/* 모달 모음 */}
+      {/* 모달 */}
       <ConfirmModal
         isOpen={showResetConfirm}
         title="입력 내용을 초기화할까요?"
