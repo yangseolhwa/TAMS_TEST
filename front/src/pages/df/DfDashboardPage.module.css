@@ -11,58 +11,12 @@
   gap: 20px;
 }
 
-/* ── 전체 프로젝트 요약 카드 ── */
-.overviewCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 284px;
-  padding: 0;
-}
-
-.overviewTitleRow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.overviewTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.overviewCount {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.overviewMoreBtn {
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.overviewMoreBtn:hover {
-  color: var(--color-primary);
-}
-
 /* ── 프로젝트 카드 ── */
 .projectCard {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 284px;
+  height: 500px;
   padding: 0;
 }
 
