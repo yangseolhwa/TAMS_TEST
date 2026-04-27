@@ -468,15 +468,17 @@ export const fetchDfDashboard = async () => {
       })
     })
 
-    const projects = raw.map((proj) => ({
-      id:    proj.id,
-      name:  proj.name,
-      total: proj.total_count ?? 0,
-      items: (proj.by_type ?? []).map((t) => ({
-        itemType: t.type_name,
-        quantity: t.count ?? 0,
-      })),
-    }))
+    const projects = raw
+      .map((proj) => ({
+        id:    proj.id,
+        name:  proj.name,
+        total: proj.total_count ?? 0,
+        items: (proj.by_type ?? []).map((t) => ({
+          itemType: t.type_name,
+          quantity: t.count ?? 0,
+        })),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
     return { projects, projectOptions, typeOptions: [...typeMap.values()] }
   } catch (error) {
