@@ -263,7 +263,7 @@ const importDf = async (req, res) => {
           });
           typeCache[sk] = st.id;
         }
-        assetTypeId = typeCache[`${parentId}::${subTypeName}`];
+        assetTypeId = typeCache[sk];
       }
 
       const acqDate = row.acquisition_date instanceof Date ? row.acquisition_date : parseDate(row.acquisition_date);
