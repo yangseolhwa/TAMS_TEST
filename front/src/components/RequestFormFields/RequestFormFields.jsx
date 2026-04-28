@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { XCircleFill } from "react-bootstrap-icons";
+import { XCircleFill, ChevronDown, ChevronUp } from "react-bootstrap-icons";
 import styles from "./RequestFormFields.module.css";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -42,14 +42,15 @@ export const createInitialItem = () => ({
   swName:             "",     // 직접 입력값
   swManufacturer:     "",     // 셀렉트 선택값 (문자열) 또는 "__direct__"
   swManufacturerName: "",     // 직접 입력값
-  version:            "",
+  version:            "",     // "__direct__" 포함
+  versionName:        "",     // 직접 입력값
   acquisitionDateSw:  new Date().toISOString().slice(0, 10),
   quantity:           "",
   swRemarks:          "",     // SW 메타데이터 비고
 
   // SW 라이선스
   licenseKey:      "",
-  keyType:         "",
+  keyType:         "serial",
   licenseType:     "per_seat",
   licensePassword: "",        // keyType === "credential" 일 때만 전송
   relatedLink:     "",
@@ -57,6 +58,100 @@ export const createInitialItem = () => ({
   // 공통
   requestReason: "",
 });
+
+// ─── SW 라이선스 섹션 (토글) ─────────────────────────────────────────────────
+const SwLicenseSection = ({ item, index, onItemChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className={styles.licenseToggleWrapper}>
+      {/* 토글 버튼 */}
+      <button
+        type="button"
+        className={styles.licenseToggleBtn}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <span>라이선스 입력</span>
+        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+
+      {/* 라이선스 그룹 (토글 시 표시) */}
+      {isOpen && (
+        <div className={styles.licenseGroup}>
+          {/* 키 유형 (라디오버튼) */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>키 유형</label>
+            <div className={styles.radioGroup}>
+              {KEY_TYPE_OPTIONS.map((opt) => (
+                <label key={opt.value} className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name={`keyType-${item.id}`}
+                    value={opt.value}
+                    checked={item.keyType === opt.value}
+                    onChange={() =>
+                      onItemChange(index, {
+                        keyType:         opt.value,
+                        licensePassword: "",
+                      })
+                    }
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 라이선스 키 */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>라이선스 키</label>
+            <input
+              className={styles.input}
+              type="text"
+              placeholder="라이선스 키 입력"
+              value={item.licenseKey}
+              onChange={(e) => onItemChange(index, "licenseKey", e.target.value)}
+            />
+          </div>
+
+          {/* 크리덴셜 선택 시 비밀번호 */}
+          {item.keyType === "credential" && (
+            <div className={styles.inputGroup}>
+              <label className={styles.selectLabel}>라이선스 비밀번호</label>
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="라이선스 비밀번호 입력"
+                value={item.licensePassword}
+                onChange={(e) => onItemChange(index, "licensePassword", e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* 라이선스 타입 */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>라이선스 타입</label>
+            <select
+              className={styles.select}
+              value={item.licenseType}
+              onChange={(e) => onItemChange(index, "licenseType", e.target.value)}
+            >
+              {LICENSE_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+SwLicenseSection.propTypes = {
+  item:         PropTypes.object.isRequired,
+  index:        PropTypes.number.isRequired,
+  onItemChange: PropTypes.func.isRequired,
+};
 
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 const RequestFormFields = ({
@@ -88,6 +183,11 @@ const RequestFormFields = ({
   // SW: 전체 제조사 목록 (중복 제거)
   const swManufacturers = useMemo(() => [
     ...new Set((swAssets ?? []).map((s) => s.manufacturer).filter(Boolean)),
+  ], [swAssets]);
+
+  // SW: 전체 버전 목록 (중복 제거)
+  const swVersions = useMemo(() => [
+    ...new Set((swAssets ?? []).map((s) => s.version).filter(Boolean)),
   ], [swAssets]);
 
   return (
@@ -380,20 +480,43 @@ const RequestFormFields = ({
                   </div>
                 </div>
 
-                {/* Row 2: 버전 + 취득일 + 수량 */}
+                {/* Row 2: 버전(콤보박스) + 취득일(필수) + 수량 */}
                 <div className={styles.inputRow}>
                   <div className={styles.inputGroup}>
                     <label className={styles.selectLabel}>버전</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="버전 입력"
-                      value={item.version}
-                      onChange={(e) => onItemChange(index, "version", e.target.value)}
-                    />
+                    {item.version === DIRECT_INPUT ? (
+                      <input
+                        className={styles.input}
+                        type="text"
+                        placeholder="버전 직접 입력"
+                        value={item.versionName}
+                        autoFocus
+                        onChange={(e) => onItemChange(index, "versionName", e.target.value)}
+                      />
+                    ) : (
+                      <select
+                        className={styles.select}
+                        value={item.version}
+                        onChange={(e) =>
+                          onItemChange(index, {
+                            version:     e.target.value,
+                            versionName: "",
+                          })
+                        }
+                      >
+                        <option value="">선택</option>
+                        {swVersions.map((ver) => (
+                          <option key={ver} value={ver}>{ver}</option>
+                        ))}
+                        <option value={DIRECT_INPUT}>직접 입력...</option>
+                      </select>
+                    )}
                   </div>
+
                   <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>취득일</label>
+                    <label className={styles.selectLabel}>
+                      취득일 <span className={styles.required}>*</span>
+                    </label>
                     <input
                       className={styles.input}
                       type="date"
@@ -401,6 +524,7 @@ const RequestFormFields = ({
                       onChange={(e) => onItemChange(index, "acquisitionDateSw", e.target.value)}
                     />
                   </div>
+
                   <div className={styles.inputGroup}>
                     <label className={styles.selectLabel}>수량</label>
                     <input
@@ -414,72 +538,7 @@ const RequestFormFields = ({
                   </div>
                 </div>
 
-                {/* Row 3: 라이선스 키 + 키 유형 + 라이선스 타입 */}
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      라이선스 키 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="라이선스 키 입력"
-                      value={item.licenseKey}
-                      onChange={(e) => onItemChange(index, "licenseKey", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      키 유형 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.keyType}
-                      onChange={(e) =>
-                        // 시리얼로 변경 시 비밀번호 초기화
-                        onItemChange(index, {
-                          keyType:         e.target.value,
-                          licensePassword: "",
-                        })
-                      }
-                    >
-                      <option value="">선택</option>
-                      {KEY_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>라이선스 타입</label>
-                    <select
-                      className={styles.select}
-                      value={item.licenseType}
-                      onChange={(e) => onItemChange(index, "licenseType", e.target.value)}
-                    >
-                      {LICENSE_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Row 4: 라이선스 비밀번호 — 크리덴셜 선택 시만 표시 */}
-                {item.keyType === "credential" && (
-                  <div className={styles.inputRow}>
-                    <div className={styles.inputGroup}>
-                      <label className={styles.selectLabel}>라이선스 비밀번호</label>
-                      <input
-                        className={styles.input}
-                        type="text"
-                        placeholder="라이선스 비밀번호 입력"
-                        value={item.licensePassword}
-                        onChange={(e) => onItemChange(index, "licensePassword", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Row 5: 관련 링크 + 비고 + 요청 사유 */}
+                {/* Row 3: 관련 링크 + 비고 + 요청 사유 */}
                 <div className={styles.inputRow}>
                   <div className={styles.inputGroup}>
                     <label className={styles.selectLabel}>관련 링크</label>
@@ -512,6 +571,14 @@ const RequestFormFields = ({
                     />
                   </div>
                 </div>
+
+                {/* 라이선스 입력 토글 섹션 */}
+                <SwLicenseSection
+                  item={item}
+                  index={index}
+                  onItemChange={onItemChange}
+                />
+
               </div>
             )}
 
