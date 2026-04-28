@@ -91,7 +91,7 @@ const AdminMyAssetsPage = () => {
             <span className={styles.swDashboardHeaderName}>소프트웨어명</span>
             <span className={styles.swDashboardHeaderCount}>총 수량</span>
             <span className={styles.swDashboardHeaderCount}>사용 중</span>
-            <span className={styles.swDashboardHeaderCount}>사용자</span>
+            <span className={styles.swDashboardHeaderUser}>사용자</span>
             <span className={styles.swDashboardHeaderChevron} />
           </div>
 
@@ -142,8 +142,6 @@ const AdminMyAssetsPage = () => {
                                 <span className={styles.swLicensePassword}> / {license.password}</span>
                               )}
                             </span>
-                            <span className={styles.swLicenseSpacer} />
-                            <span className={styles.swLicenseSpacer} />
                             <span className={styles.swLicenseUser}>{license.user}</span>
                             <span className={styles.swLicenseChevronSpacer} />
                           </div>
