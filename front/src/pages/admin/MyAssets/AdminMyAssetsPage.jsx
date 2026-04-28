@@ -27,6 +27,8 @@ const AdminMyAssetsPage = () => {
       licenses: (sw.licenses ?? []).map((lic) => ({
         id:   lic.id,
         key:  lic.license_key,
+        password: lic.license_password ?? null,
+        keyType:  lic.key_type,
         user: lic.user?.name ?? lic.user?.email ?? '-',
       })),
     })),
@@ -89,7 +91,7 @@ const AdminMyAssetsPage = () => {
             <span className={styles.swDashboardHeaderName}>소프트웨어명</span>
             <span className={styles.swDashboardHeaderCount}>총 수량</span>
             <span className={styles.swDashboardHeaderCount}>사용 중</span>
-            <span className={styles.swDashboardHeaderCount}>미사용</span>
+            <span className={styles.swDashboardHeaderCount}>사용자</span>
             <span className={styles.swDashboardHeaderChevron} />
           </div>
 
@@ -116,9 +118,7 @@ const AdminMyAssetsPage = () => {
                     <span className={styles.swDashboardName}>{sw.name}</span>
                     <span className={styles.swDashboardCount}>{sw.totalCount}</span>
                     <span className={styles.swDashboardCount}>{sw.activeCount}</span>
-                    <span className={`${styles.swDashboardCount} ${sw.inactiveCount > 0 ? styles.swDashboardCountWarning : styles.swDashboardCountZero}`}>
-                      {sw.inactiveCount > 0 ? sw.inactiveCount : '-'}
-                    </span>
+                    <span />
                     <span className={`${styles.swDashboardChevron} ${isOpen ? styles.swDashboardChevronOpen : ''}`}>
                       {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </span>
@@ -133,27 +133,22 @@ const AdminMyAssetsPage = () => {
                     {sw.licenses.length === 0 ? (
                       <p className={styles.swLicenseEmpty}>사용 중인 라이선스가 없습니다.</p>
                     ) : (
-                      <table className={styles.swLicenseTable}>
-                        {/* colgroup으로 열 너비 고정 */}
-                        <colgroup>
-                          <col style={{ width: '60%' }} />
-                          <col style={{ width: '40%' }} />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th>라이선스 키</th>
-                            <th>사용자</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sw.licenses.map((license) => (
-                            <tr key={license.id}>
-                              <td style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>{license.key}</td>
-                              <td>{license.user}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <div className={styles.swLicenseList}>
+                        {sw.licenses.map((license) => (
+                          <div key={license.id} className={styles.swLicenseRow}>
+                            <span className={styles.swLicenseKey}>
+                              {license.key}
+                              {license.keyType === 'credential' && license.password && (
+                                <span className={styles.swLicensePassword}> / {license.password}</span>
+                              )}
+                            </span>
+                            <span className={styles.swLicenseSpacer} />
+                            <span className={styles.swLicenseSpacer} />
+                            <span className={styles.swLicenseUser}>{license.user}</span>
+                            <span className={styles.swLicenseChevronSpacer} />
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </li>

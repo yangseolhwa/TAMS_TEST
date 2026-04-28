@@ -352,7 +352,7 @@
 .swDashboardTitleRight {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 35px;
 }
 
 .swDashboardTitleCount {
@@ -380,7 +380,7 @@
 /* 컬럼 헤더 */
 .swDashboardHeader {
   display: grid;
-  grid-template-columns: 1fr 100px 100px 100px 32px;
+  grid-template-columns: 1fr 100px 135px 135px 50px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--color-border-light);
 }
@@ -394,6 +394,13 @@
 
 .swDashboardHeaderCount {
   text-align: right;
+}
+
+.swDashboardHeaderUser {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding-left: 8px;
 }
 
 .swDashboardHeaderChevron {
@@ -418,7 +425,7 @@
 /* 소프트웨어 행 버튼 */
 .swDashboardRow {
   display: grid;
-  grid-template-columns: 1fr 100px 100px 100px 32px;
+  grid-template-columns: 1fr 100px 135px 135px 50px;
   align-items: center;
   width: 100%;
   padding: 12px 16px;
@@ -454,17 +461,6 @@
   text-align: right;
 }
 
-/* 미사용 수량 > 0 일 때 경고 색상 */
-.swDashboardCountWarning {
-  color: var(--color-badge-yellow);
-  font-weight: 600;
-}
-
-/* 미사용 수량 = 0 일 때 회색 */
-.swDashboardCountZero {
-  color: var(--color-text-secondary);
-}
-
 .swDashboardChevron {
   display: flex;
   justify-content: flex-end;
@@ -488,36 +484,44 @@
   border-top: 1px solid var(--color-accent-border);
 }
 
-.swLicenseTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+.swLicenseList {
+  display: flex;
+  flex-direction: column;
 }
 
-.swLicenseTable th {
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-  background-color: var(--color-accent-border);
+.swLicenseRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 100px 50px;
+  align-items: center;
+  padding: 7px 16px;
   border-bottom: 1px solid var(--color-accent-border);
-}
-
-.swLicenseTable td {
-  padding: 6px 12px;
-  color: var(--color-text);
   background-color: var(--color-accent-bg);
-  border-bottom: 1px solid var(--color-accent-border);
   transition: background-color var(--transition-fast);
 }
 
-.swLicenseTable tr:hover td {
+.swLicenseRow:last-child {
+  border-bottom: none;
+}
+
+.swLicenseRow:hover {
   background-color: var(--color-accent-border);
 }
 
-.swLicenseTable tr:last-child td {
-  border-bottom: none;
+.swLicenseKey {
+  font-size: 13px;
+  color: var(--color-text);
+  word-break: break-all;
+  white-space: normal;
+}
+
+.swLicensePassword {
+  color: var(--color-text-secondary);
+}
+
+.swLicenseUser {
+  font-size: 13px;
+  color: var(--color-text);
+  padding-left: 60px;
 }
 
 /* =====================
