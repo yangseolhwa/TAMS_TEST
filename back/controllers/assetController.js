@@ -627,7 +627,7 @@ exports.registerDf = asyncWrapper(async (req, res) => {
       return res.status(400).json({ message: '자산 종류를 선택해주세요.' });
     }
     if (!item.manufacturer || !item.model_number) {
-      return res.status(400).json({ message: '제조사, 모델 번호은 필수 입력 항목입니다.' });
+      return res.status(400).json({ message: '제조사, 모델 번호는 필수 입력 항목입니다.' });
     }
     if (!item.acquisition_date) {
       return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
