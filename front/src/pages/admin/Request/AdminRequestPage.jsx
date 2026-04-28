@@ -146,7 +146,10 @@ const AdminRequestPage = () => {
                 : {
                     name:         i.swName.trim(),
                     manufacturer,
-                    ...(i.version.trim()    && { version:          i.version.trim() }),
+                    ...((() => {
+                      const ver = i.version === DIRECT_INPUT ? i.versionName.trim() : i.version;
+                      return ver ? { version: ver } : {};
+                    })()),
                     ...(i.acquisitionDateSw && { acquisition_date: i.acquisitionDateSw }),
                     ...(i.quantity !== ""   && { quantity:         Number(i.quantity) }),
                     ...(i.swRemarks.trim()  && { remarks:          i.swRemarks.trim() }),
@@ -235,12 +238,8 @@ const AdminRequestPage = () => {
           toast.error("SW: 제조사를 선택하거나 직접 입력해주세요.");
           return;
         }
-        if (!item.licenseKey.trim()) {
-          toast.error("SW: 라이선스 키는 필수 항목입니다.");
-          return;
-        }
-        if (!item.keyType) {
-          toast.error("SW: 키 유형을 선택해주세요.");
+        if (!item.acquisitionDateSw) {
+          toast.error("SW: 취득일은 필수 항목입니다.");
           return;
         }
       }
