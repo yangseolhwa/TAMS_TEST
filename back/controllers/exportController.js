@@ -32,15 +32,24 @@ function formatDate(value) {
   return d.toISOString().slice(0, 10);
 }
 
-// ── 항목 정렬 (대분류→중분류→소유기관→제조사→규격→취득일) ────────
-function sortItems(items) {
+// ── 시트 타입 결정 ─────────────────────────────────────────────────
+// item_type.parent.name 기준, 없으면 PC 전용 필드 존재 여부로 판별
+function resolveSheetType(item) {
+  const parentName = item.item_type?.parent?.name;
+  if (parentName === 'PC' || parentName === 'PLC') return parentName;
+  if (item.manufacturer || item.product_name || item.model_number) return 'PC';
+  return 'PLC';
+}
+
+// ── PC 정렬: Item → 두산ItemNo → Manufacturer → ProductName → ModelNumber → 취득일
+function sortPcItems(items) {
   return [...items].sort((a, b) => {
     const pairs = [
-      [a.item_type?.parent?.name      ?? '', b.item_type?.parent?.name      ?? ''],
       [a.item_type?.name              ?? '', b.item_type?.name              ?? ''],
-      [a.owner_organization           ?? '', b.owner_organization           ?? ''],
+      [a.equipment_number             ?? '', b.equipment_number             ?? ''],
       [a.manufacturer                 ?? '', b.manufacturer                 ?? ''],
-      [a.spec                         ?? '', b.spec                         ?? ''],
+      [a.product_name                 ?? '', b.product_name                 ?? ''],
+      [a.model_number                 ?? '', b.model_number                 ?? ''],
       [formatDate(a.acquisition_date) ?? '', formatDate(b.acquisition_date) ?? ''],
     ];
     for (const [av, bv] of pairs) {
@@ -51,34 +60,33 @@ function sortItems(items) {
   });
 }
 
-// ── 계층적 셀 병합 ────────────────────────────────────────────────
-// 각 필드의 groupKey에 상위 필드를 누적 포함 → 상위 그룹 안에서만 병합
-function applyColumnMerges(ws, dataStartRow, sortedItems) {
-  if (sortedItems.length < 2) return;
+// ── PLC 정렬: Item → SerialNumber → 취득일
+function sortPlcItems(items) {
+  return [...items].sort((a, b) => {
+    const pairs = [
+      [a.item_type?.name              ?? '', b.item_type?.name              ?? ''],
+      [a.serial_number                ?? '', b.serial_number                ?? ''],
+      [formatDate(a.acquisition_date) ?? '', formatDate(b.acquisition_date) ?? ''],
+    ];
+    for (const [av, bv] of pairs) {
+      const r = av.localeCompare(bv, 'ko');
+      if (r !== 0) return r;
+    }
+    return 0;
+  });
+}
 
-  const S  = '\x00';
-  const gp = (i) => sortedItems[i].item_type?.parent?.name      ?? '';
-  const gt = (i) => sortedItems[i].item_type?.name              ?? '';
-  const go = (i) => sortedItems[i].owner_organization           ?? '';
-  const gm = (i) => sortedItems[i].manufacturer                 ?? '';
-  const gs = (i) => sortedItems[i].spec                         ?? '';
-  const gd = (i) => formatDate(sortedItems[i].acquisition_date) ?? '';
+// ── 계층적 셀 병합 (범용) ─────────────────────────────────────────
+// mergeRules: [{ col, keyFn(i) }]  keyFn은 누적 상위 키를 포함해야 함
+function applyMerges(ws, dataStartRow, items, mergeRules) {
+  if (items.length < 2) return;
 
-  const fields = [
-    { col: 3,  key: (i) => gp(i) },
-    { col: 4,  key: (i) => `${gp(i)}${S}${gt(i)}` },
-    { col: 5,  key: (i) => `${gp(i)}${S}${gt(i)}${S}${go(i)}` },
-    { col: 7,  key: (i) => `${gp(i)}${S}${gt(i)}${S}${go(i)}${S}${gm(i)}` },
-    { col: 10, key: (i) => `${gp(i)}${S}${gt(i)}${S}${go(i)}${S}${gm(i)}${S}${gs(i)}` },
-    { col: 11, key: (i) => `${gp(i)}${S}${gt(i)}${S}${go(i)}${S}${gm(i)}${S}${gs(i)}${S}${gd(i)}` },
-  ];
-
-  for (const { col, key } of fields) {
+  for (const { col, keyFn } of mergeRules) {
     let groupStart = 0;
-    for (let i = 1; i <= sortedItems.length; i++) {
-      const prevKey = key(groupStart);
-      const currKey = i < sortedItems.length ? key(i) : null;
-      if (i === sortedItems.length || prevKey !== currKey) {
+    for (let i = 1; i <= items.length; i++) {
+      const prevKey = keyFn(groupStart);
+      const currKey = i < items.length ? keyFn(i) : null;
+      if (i === items.length || prevKey !== currKey) {
         const startRow = dataStartRow + groupStart;
         const endRow   = dataStartRow + i - 1;
         if (endRow > startRow) {
@@ -93,28 +101,76 @@ function applyColumnMerges(ws, dataStartRow, sortedItems) {
   }
 }
 
-// ── project 시트 빌드 ─────────────────────────────────────────────
-// 헤더 순서: number | 대분류 | 중분류 | owner_organization | equipment_number
-//           | manufacturer | model_number | serial_number | spec
-//           | acquisition_date | return_date | state | location | remarks
-const PROJ_HEADERS    = [
-  'number', '대분류', '중분류', 'owner_organization', 'equipment_number',
-  'manufacturer', 'model_number', 'serial_number', 'spec',
-  'acquisition_date', 'return_date', 'state', 'location', 'remarks',
-];
-const PROJ_COL_WIDTHS = [10, 14, 14, 20, 18, 16, 18, 20, 16, 16, 16, 12, 18, 20];
+// ── PC 컬럼 정의 ──────────────────────────────────────────────────
+// Col 2: No | Col 3: Item | Col 4: 두산 Item No | Col 5: Manufacturer
+// Col 6: Product Name | Col 7: Model Number | Col 8: Serial Number
+// Col 9: QTY | Col 10: rental_date | Col 11: return_date | Col 12: remark
+const PC_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
+const PC_COL_WIDTHS = [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20];
 
-function buildProjectSheet(wb, sheetName, rawItems) {
+// ── PLC 컬럼 정의 ─────────────────────────────────────────────────
+// Col 2: No | Col 3: Item | Col 4: Serial Number
+// Col 5: QTY | Col 6: rental_date | Col 7: return_date | Col 8: remark
+const PLC_HEADERS    = ['No', 'Item', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
+const PLC_COL_WIDTHS = [8, 16, 22, 8, 14, 14, 20];
+
+// ── PC 병합 규칙 ──────────────────────────────────────────────────
+function buildPcMergeRules(items) {
+  const S   = '\x00';
+  const gi  = (i) => items[i].item_type?.name              ?? '';
+  const ge  = (i) => items[i].equipment_number             ?? '';
+  const gm  = (i) => items[i].manufacturer                 ?? '';
+  const gp  = (i) => items[i].product_name                 ?? '';
+  const gmn = (i) => items[i].model_number                 ?? '';
+  const gd  = (i) => formatDate(items[i].acquisition_date) ?? '';
+
+  return [
+    { col: 3,  keyFn: (i) => gi(i) },
+    { col: 4,  keyFn: (i) => `${gi(i)}${S}${ge(i)}` },
+    { col: 5,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}` },
+    { col: 6,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}` },
+    { col: 7,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}${S}${gmn(i)}` },
+    { col: 10, keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}${S}${gmn(i)}${S}${gd(i)}` },
+  ];
+}
+
+// ── PLC 병합 규칙 ─────────────────────────────────────────────────
+function buildPlcMergeRules(items) {
+  const S  = '\x00';
+  const gi = (i) => items[i].item_type?.name              ?? '';
+  const gd = (i) => formatDate(items[i].acquisition_date) ?? '';
+
+  return [
+    { col: 3, keyFn: (i) => gi(i) },
+    { col: 6, keyFn: (i) => `${gi(i)}${S}${gd(i)}` },
+  ];
+}
+
+// ── project 시트 빌드 ─────────────────────────────────────────────
+function buildProjectSheet(wb, sheetName, rawItems, sheetType) {
   const ws             = wb.addWorksheet(sheetName);
   const DATA_START_ROW = 3;
 
-  ws.getColumn(1).width = 9;
-  PROJ_HEADERS.forEach((_, i) => { ws.getColumn(i + 2).width = PROJ_COL_WIDTHS[i]; });
-  ws.getRow(1).height = 15;
+  const HEADERS    = sheetType === 'PC' ? PC_HEADERS    : PLC_HEADERS;
+  const COL_WIDTHS = sheetType === 'PC' ? PC_COL_WIDTHS : PLC_COL_WIDTHS;
 
-  // 헤더 행
+  ws.getColumn(1).width = 4;
+  HEADERS.forEach((_, i) => { ws.getColumn(i + 2).width = COL_WIDTHS[i]; });
+
+  // 타이틀 행 (Row 1): 시트명(프로젝트명) 병합
+  const lastCol   = HEADERS.length + 2 - 1; // 마지막 데이터 컬럼 번호
+  ws.mergeCells(1, 2, 1, lastCol);
+  const titleCell     = ws.getRow(1).getCell(2);
+  titleCell.value     = sheetName;
+  titleCell.font      = FONT_TITLE;
+  titleCell.fill      = TOTAL_TITLE_FILL;
+  titleCell.border    = THIN_BORDER;
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 28;
+
+  // 헤더 행 (Row 2)
   const headerRow = ws.getRow(2);
-  PROJ_HEADERS.forEach((h, i) => {
+  HEADERS.forEach((h, i) => {
     const cell     = headerRow.getCell(i + 2);
     cell.value     = h;
     cell.font      = FONT_HEADER;
@@ -124,26 +180,37 @@ function buildProjectSheet(wb, sheetName, rawItems) {
   });
   headerRow.height = 30;
 
-  // 정렬 후 데이터 행 작성
-  const items = sortItems(rawItems);
+  // 정렬
+  const items = sheetType === 'PC' ? sortPcItems(rawItems) : sortPlcItems(rawItems);
+
+  // 데이터 행
   items.forEach((item, idx) => {
-    const row    = ws.getRow(DATA_START_ROW + idx);
-    const values = [
-      idx + 1,
-      item.item_type?.parent?.name      || '-',
-      item.item_type?.name              || '-',
-      item.owner_organization           || '-',
-      item.equipment_number             || '-',
-      item.manufacturer                 || '-',
-      item.model_number                   || '-',
-      item.serial_number                || '-',
-      item.spec                         || '-',
-      formatDate(item.acquisition_date) || '-',
-      formatDate(item.return_date)      || '-',
-      item.state                        || '-',
-      item.location                     || '-',
-      item.remarks                      || '-',
-    ];
+    const row = ws.getRow(DATA_START_ROW + idx);
+
+    const values = sheetType === 'PC'
+      ? [
+          idx + 1,
+          item.item_type?.name              || '-',
+          item.equipment_number             || '-',
+          item.manufacturer                 || '-',
+          item.product_name                 || '-',
+          item.model_number                 || '-',
+          item.serial_number                || '-',
+          item.quantity                     ?? '-',
+          formatDate(item.acquisition_date) || '-',
+          formatDate(item.return_date)      || '-',
+          item.remarks                      || '-',
+        ]
+      : [
+          idx + 1,
+          item.item_type?.name              || '-',
+          item.serial_number                || '-',
+          item.quantity                     ?? '-',
+          formatDate(item.acquisition_date) || '-',
+          formatDate(item.return_date)      || '-',
+          item.remarks                      || '-',
+        ];
+
     values.forEach((v, i) => {
       const cell     = row.getCell(i + 2);
       cell.value     = v;
@@ -154,15 +221,16 @@ function buildProjectSheet(wb, sheetName, rawItems) {
     row.height = 35;
   });
 
-  // 병합: 대분류 / 중분류 / 소유기관 / 제조사 / 규격 / 취득일
-  applyColumnMerges(ws, DATA_START_ROW, items);
+  // 병합
+  const mergeRules = sheetType === 'PC' ? buildPcMergeRules(items) : buildPlcMergeRules(items);
+  applyMerges(ws, DATA_START_ROW, items, mergeRules);
 }
 
 
 // ── TOTAL 시트 빌드 ───────────────────────────────────────────────
 // 레이아웃:
-//   col B-D  : Total 요약 테이블 (row 1 ~)
-//   col F 이후: 프로젝트 블록들 (row 1 ~, 3개씩 가로 배치)
+//   col B-D  : Total 요약 테이블 (대분류=PC/PLC, 중분류=Item, 수량)
+//   col F 이후: 프로젝트 블록들 (3개씩 가로 배치)
 //
 const PROJ_BLOCK_START_COL = 6;  // F열
 const PROJ_BLOCK_WIDTH     = 3;  // 블록 1개 = 데이터 2열 + 간격 1열
@@ -172,9 +240,10 @@ function buildTotalSheet(wb, grouped) {
   const ws           = wb.getWorksheet('TOTAL') || wb.addWorksheet('TOTAL');
   const projectNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ko'));
 
-  // ── Total 테이블 (col B-D, row 1부터) ────────────────────────
+  // ── Total 테이블 (col B-D) ────────────────────────────────────
   const TC_B = 2, TC_C = 3, TC_D = 4;
 
+  // 대분류(PC/PLC) → 중분류(Item) → 수량 집계
   const grandMap = {};
   for (const name of projectNames) {
     for (const item of grouped[name]) {
@@ -204,7 +273,7 @@ function buildTotalSheet(wb, grouped) {
   tr++;
 
   // 헤더
-  ['대분류', '중분류', '수량'].forEach((h, i) => {
+  ['분류', '구분', '수량 (EA)'].forEach((h, i) => {
     const cell     = ws.getRow(tr).getCell(TC_B + i);
     cell.value     = h;
     cell.font      = FONT_TOTAL_HDR;
@@ -271,8 +340,8 @@ function buildTotalSheet(wb, grouped) {
   }
 
   // Total 테이블 컬럼 너비
-  ws.getColumn(TC_B).width = 16;
-  ws.getColumn(TC_C).width = 16;
+  ws.getColumn(TC_B).width = 12;
+  ws.getColumn(TC_C).width = 18;
   ws.getColumn(TC_D).width = 10;
 
   // ── 프로젝트 블록 (col F 이후, row 1부터 가로 배치) ──────────
@@ -281,15 +350,16 @@ function buildTotalSheet(wb, grouped) {
   for (let blockStart = 0; blockStart < projectNames.length; blockStart += PROJS_PER_ROW) {
     const chunk = projectNames.slice(blockStart, blockStart + PROJS_PER_ROW);
 
+    // 프로젝트별 중분류 집계 (null 중분류 → '장비')
     const summaries = chunk.map((name) => {
       const typeCount = {};
       grouped[name].forEach((item) => {
-        const t = item.item_type?.name || '-';
-        typeCount[t] = (typeCount[t] || 0) + 1;
+        const label = item.item_type?.name ?? '장비';
+        typeCount[label] = (typeCount[label] || 0) + 1;
       });
       return Object.entries(typeCount).sort(([a], [b]) => a.localeCompare(b, 'ko'));
     });
-    const maxDataRows = Math.max(...summaries.map((s) => s.length));
+    const maxDataRows = Math.max(...summaries.map((s) => s.length + 1)); // +1: 합계 행
 
     chunk.forEach((projName, ci) => {
       const colB = PROJ_BLOCK_START_COL + ci * PROJ_BLOCK_WIDTH;
@@ -307,7 +377,7 @@ function buildTotalSheet(wb, grouped) {
       // 헤더
       const hB = ws.getRow(pr + 1).getCell(colB);
       const hC = ws.getRow(pr + 1).getCell(colC);
-      hB.value = '중분류';
+      hB.value = '분류';
       hC.value = '수량';
       [hB, hC].forEach((c) => {
         c.font      = FONT_HEADER;
@@ -317,10 +387,10 @@ function buildTotalSheet(wb, grouped) {
       });
 
       // 데이터
-      summaries[ci].forEach(([typeName, cnt], di) => {
+      summaries[ci].forEach(([label, cnt], di) => {
         const dB  = ws.getRow(pr + 2 + di).getCell(colB);
         const dC  = ws.getRow(pr + 2 + di).getCell(colC);
-        dB.value  = typeName;
+        dB.value  = label;
         dC.value  = cnt;
         [dB, dC].forEach((c) => {
           c.font      = FONT_BASE;
@@ -329,7 +399,21 @@ function buildTotalSheet(wb, grouped) {
         });
       });
 
-      ws.getColumn(colB).width = 18;
+      // 합계 행
+      const totalCnt  = summaries[ci].reduce((acc, [, cnt]) => acc + cnt, 0);
+      const sumRowIdx = pr + 2 + summaries[ci].length;
+      const sB = ws.getRow(sumRowIdx).getCell(colB);
+      const sC = ws.getRow(sumRowIdx).getCell(colC);
+      sB.value = '합계';
+      sC.value = totalCnt;
+      [sB, sC].forEach((c) => {
+        c.font      = FONT_HEADER;
+        c.fill      = TOTAL_HEADER_FILL;
+        c.border    = THIN_BORDER;
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+
+      ws.getColumn(colB).width = 22;
       ws.getColumn(colC).width = 10;
     });
 
@@ -343,14 +427,14 @@ const exportDf = async (req, res) => {
   try {
     const { project_id, item_type_id, manufacturer, state, keyword } = req.query;
 
-    const where = { state: { [Op.ne]: 'returned' } };
+    const where = {}; // returned 포함 전체 조회
     if (project_id)   where.project_id    = project_id;
     if (item_type_id) where.asset_type_id = item_type_id;
     if (manufacturer) where.manufacturer  = { [Op.like]: `%${manufacturer}%` };
     if (state)        where.state         = state;
     if (keyword) {
       where[Op.or] = [
-        { model_number:    { [Op.like]: `%${keyword}%` } },
+        { model_number:  { [Op.like]: `%${keyword}%` } },
         { serial_number: { [Op.like]: `%${keyword}%` } },
         { location:      { [Op.like]: `%${keyword}%` } },
         { remarks:       { [Op.like]: `%${keyword}%` } },
@@ -379,23 +463,45 @@ const exportDf = async (req, res) => {
       return res.status(404).json({ message: '내보낼 데이터가 없습니다.' });
     }
 
-    const grouped = {};
+    // TOTAL용: 프로젝트명 → 전체 아이템
+    // 시트용:  프로젝트명 → { PC: [], PLC: [] }
+    const groupedForTotal  = {};
+    const groupedForSheets = {};
+
     items.forEach((item) => {
-      const name = item.project?.name || 'Unknown';
-      if (!grouped[name]) grouped[name] = [];
-      grouped[name].push(item);
+      const projName  = item.project?.name || 'Unknown';
+      const sheetType = resolveSheetType(item);
+
+      if (!groupedForTotal[projName])             groupedForTotal[projName]       = [];
+      if (!groupedForSheets[projName])            groupedForSheets[projName]      = { PC: [], PLC: [] };
+
+      groupedForTotal[projName].push(item);
+      groupedForSheets[projName][sheetType].push(item);
     });
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'TAMS';
     wb.created = new Date();
 
-    buildTotalSheet(wb, grouped);
+    // TOTAL 시트 먼저 생성
+    buildTotalSheet(wb, groupedForTotal);
 
-    Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b, 'ko'))
-      .forEach(([projName, projItems]) => {
-        buildProjectSheet(wb, projName, projItems);
+    // 프로젝트 시트: 이름순 정렬
+    Object.keys(groupedForSheets)
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .forEach((projName) => {
+        const { PC: pcItems, PLC: plcItems } = groupedForSheets[projName];
+        const hasBoth = pcItems.length > 0 && plcItems.length > 0;
+
+        if (hasBoth) {
+          // 동일 프로젝트에 PC/PLC 혼재 → 시트명에 _PC / _PLC 구분
+          buildProjectSheet(wb, `${projName}_PC`,  pcItems,  'PC');
+          buildProjectSheet(wb, `${projName}_PLC`, plcItems, 'PLC');
+        } else if (pcItems.length > 0) {
+          buildProjectSheet(wb, projName, pcItems,  'PC');
+        } else if (plcItems.length > 0) {
+          buildProjectSheet(wb, projName, plcItems, 'PLC');
+        }
       });
 
     const fileName = `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -405,7 +511,7 @@ const exportDf = async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error('Excel export failed:', error);
+    logger.error('Excel export failed:', error);
     if (!res.headersSent) {
       res.status(500).json({ message: '엑셀 파일 생성 중 오류가 발생했습니다.' });
     }
