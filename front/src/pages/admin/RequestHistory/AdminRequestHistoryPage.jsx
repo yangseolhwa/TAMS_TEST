@@ -24,19 +24,13 @@ import {
 const BASE_REQUEST_COLUMNS = [
   { key: "no",          label: "No" },
   { key: "requester",   label: "요청자",    type: "dash" },
-  { key: "assetType",   label: "자산 유형", type: "assetType" },
   { key: "assetName",   label: "자산명" },
+  { key: "manufacturer", label: "제조사",    type: "dash" },
+  { key: "serialNumber", label: "시리얼",    type: "dash" },
+  { key: "licenseKey",   label: "라이선스 키", type: "dash" },
   { key: "spec",        label: "규격",      type: "dash" },
-  { key: "requestType", label: "요청 구분" },
-  { key: "requestedAt", label: "요청일" },
-  { key: "status",      label: "상태",      type: "status" },
+  { key: "requestedAt", label: "날짜" },
 ];
-
-const REQUEST_STATUS_MAP = {
-  PENDING:  { label: "대기", color: "yellow" },
-  APPROVED: { label: "승인", color: "green"  },
-  REJECTED: { label: "반려", color: "red"    },
-};
 
 const AdminRequestHistoryPage = () => {
   const navigate = useNavigate();
@@ -118,13 +112,13 @@ const AdminRequestHistoryPage = () => {
         <div className={styles.rowActions}>
           <ActionButton
             variant="blue"
-            size="xs"
+            size="xxs"
             label="승인"
             onClick={() => { setTargetRowId(row.id); setShowApproveConfirm(true); }}
           />
           <ActionButton
             variant="red"
-            size="xs"
+            size="xxs"
             label="반려"
             onClick={() => { setTargetRowId(row.id); setRejectReason(""); setShowRejectModal(true); }}
           />
@@ -147,7 +141,6 @@ const AdminRequestHistoryPage = () => {
           <DataTable
             columns={columns}
             rows={requestRows}
-            statusMap={REQUEST_STATUS_MAP}
             selectable={false}
             totalCount={requestRows.length}
             isLoading={isLoading}
