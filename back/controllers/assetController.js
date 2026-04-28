@@ -813,7 +813,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// 관리자 Enterprise 요청 승인
+// 관리자 Enterprise 요청 승인 (register + assign 통합)
 // ─────────────────────────────────────────
 exports.approveEnterprise = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
@@ -825,10 +825,65 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
  
+  // ── assign 요청 분기 ──────────────────────────────────────────────
+  if (request.request_type === 'assign') {
+    const asset = await sequelize.transaction(async (t) => {
+      // 락 걸고 재조회 (동시 승인 방지)
+      const lockedAsset = await AssetEnterprise.findByPk(request.asset_id, {
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+      if (!lockedAsset) {
+        const err = new Error('자산을 찾을 수 없습니다.');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (lockedAsset.state !== 'stored' || lockedAsset.responsible_type !== 'vacant') {
+        const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.');
+        err.statusCode = 409;
+        throw err;
+      }
+ 
+      await AssetEnterpriseHistory.create({
+        asset_enterprise_id: lockedAsset.id,
+        user_id:             userId,
+        change_type:         'assign',
+        before_value:        lockedAsset.state,
+        after_value:         'in_use',
+      }, { transaction: t });
+ 
+      lockedAsset.state            = 'in_use';
+      lockedAsset.responsible_type = 'personal';
+      lockedAsset.user_id          = request.requester_id;
+      await lockedAsset.save({ transaction: t });
+ 
+      request.status       = 'approved';
+      request.processed_at = new Date();
+      await request.save({ transaction: t });
+ 
+      return lockedAsset;
+    });
+ 
+    return res.status(200).json({
+      message: '자산 할당 요청이 승인되었습니다.',
+      asset:   {
+        id:               asset.id,
+        state:            asset.state,
+        responsible_type: asset.responsible_type,
+        user_id:          asset.user_id,
+      },
+      request: { id: request.id, status: request.status, processed_at: request.processed_at },
+    });
+  }
+ 
+  // ── register 요청 분기 ────────────────────────────────────────────
+  if (request.request_type !== 'register') {
+    return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
+  }
+ 
   let assetData = {};
  
   if (request.asset_id) {
-    // is_existing 요청 — 원본 자산 + override 병합
     const original = await AssetEnterprise.findByPk(request.asset_id);
     if (!original) return res.status(404).json({ message: '원본 자산을 찾을 수 없습니다.' });
  
@@ -846,7 +901,6 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       department_id:    overrides.department_id    ?? null,
     };
   } else {
-    // 신규 등록 요청 — new_asset_data 사용 (item_type_id는 요청 시 이미 resolve됨)
     if (!request.new_asset_data) {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
@@ -883,7 +937,6 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
  
   res.status(200).json({ message: '자산 등록 요청이 승인되었습니다.', asset: created });
 });
-
 
 // ─────────────────────────────────────────
 // 관리자 Enterprise 요청 거절
@@ -992,6 +1045,10 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   }
  
   // ── register 요청 분기 ────────────────────────────────────────────
+  if (request.request_type !== 'register') {
+    return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
+  }
+ 
   const { sw, license } = await sequelize.transaction(async (t) => {
     let swId = request.asset_sw_id ?? null;
  
@@ -1793,7 +1850,6 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   });
 });
 
-
 // ─────────────────────────────────────────
 // Enterprise(PC) 전체 조회 (admin 전용)
 // GET /assets/enterprise/list
@@ -1912,6 +1968,117 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
     sw:         swHistory,
     enterprise: enterpriseHistory,
   });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 자산 할당 요청 (user)
+// POST /api/assets/enterprise/assign/request
+// body: { asset_id, request_reason? }
+// 조건: state === 'stored' AND responsible_type === 'vacant'
+// ─────────────────────────────────────────
+exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
+  const { userId } = req.user;
+  const { asset_id, request_reason } = req.body;
+ 
+  if (!asset_id) return res.status(400).json({ message: '자산 ID를 입력해주세요.' });
+ 
+  const asset = await AssetEnterprise.findByPk(asset_id, {
+    include: [
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+      { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+    ],
+  });
+  if (!asset) return res.status(404).json({ message: '자산을 찾을 수 없습니다.' });
+  if (asset.state !== 'stored' || asset.responsible_type !== 'vacant') {
+    return res.status(400).json({ message: '보관 중이며 담당자가 없는 자산만 할당 요청할 수 있습니다.' });
+  }
+ 
+  // 동일 자산에 대해 이미 pending 요청이 있는지 확인
+  const existingPending = await AssetEnterpriseRequest.findOne({
+    where: {
+      asset_id,
+      status:       'pending',
+      request_type: 'assign',
+    },
+  });
+  if (existingPending) {
+    return res.status(409).json({ message: '해당 자산에 이미 처리 중인 할당 요청이 있습니다.' });
+  }
+ 
+  const request = await AssetEnterpriseRequest.create({
+    asset_id:          Number(asset_id),
+    requester_id:      userId,
+    status:            'pending',
+    request_type:      'assign',
+    request_date:      new Date(),
+    required_quantity: 1,
+    request_reason:    request_reason ?? null,
+    new_asset_data:    null,
+  });
+ 
+  res.status(201).json({
+    message: '자산 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
+    request,
+  });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 자산 직접 할당 (admin 전용)
+// PATCH /api/assets/enterprise/assign
+// body: { asset_id, user_id }
+// 조건: state === 'stored' AND responsible_type === 'vacant'
+// ─────────────────────────────────────────
+exports.assignEnterprise = asyncWrapper(async (req, res) => {
+  const { role, userId: adminId } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+ 
+  const { asset_id, user_id } = req.body;
+ 
+  if (!asset_id) return res.status(400).json({ message: '자산 ID를 입력해주세요.' });
+  if (!user_id)  return res.status(400).json({ message: '할당할 사용자 ID를 입력해주세요.' });
+ 
+  // 사전 유효성 검사 (트랜잭션 외부)
+  const asset = await AssetEnterprise.findByPk(asset_id);
+  if (!asset) return res.status(404).json({ message: '자산을 찾을 수 없습니다.' });
+  if (asset.state !== 'stored' || asset.responsible_type !== 'vacant') {
+    return res.status(400).json({ message: '보관 중이며 담당자가 없는 자산만 할당할 수 있습니다.' });
+  }
+ 
+  const targetUser = await User.findByPk(user_id);
+  if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+ 
+  await sequelize.transaction(async (t) => {
+    // 락 재조회 (동시 할당 방지)
+    const lockedAsset = await AssetEnterprise.findByPk(asset_id, {
+      lock: t.LOCK.UPDATE,
+      transaction: t,
+    });
+    if (!lockedAsset) {
+      const err = new Error('자산을 찾을 수 없습니다.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (lockedAsset.state !== 'stored' || lockedAsset.responsible_type !== 'vacant') {
+      const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.');
+      err.statusCode = 409;
+      throw err;
+    }
+ 
+    await AssetEnterpriseHistory.create({
+      asset_enterprise_id: lockedAsset.id,
+      user_id:             adminId,
+      change_type:         'assign',
+      before_value:        lockedAsset.state,
+      after_value:         'in_use',
+    }, { transaction: t });
+ 
+    lockedAsset.state            = 'in_use';
+    lockedAsset.responsible_type = 'personal';
+    lockedAsset.user_id          = user_id;
+    await lockedAsset.save({ transaction: t });
+  });
+ 
+  res.status(200).json({ message: '자산이 할당되었습니다.', asset_id, user_id });
 });
 
 
