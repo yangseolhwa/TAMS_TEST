@@ -39,10 +39,10 @@ const renderChangedCell = (requestType, locationVal, stateVal) => {
 
 const COLUMNS = [
   { key: 'no',          label: 'No' },
-  { key: 'projectName',  label: '프로젝트',  renderCell: (row) => row.projectName  ?? <span className={styles.dash}>-</span> },
-  { key: 'category',     label: '자산 종류',  renderCell: (row) => row.category     ?? <span className={styles.dash}>-</span> },
-  { key: 'modelName',    label: '모델명',     renderCell: (row) => row.modelName    ?? <span className={styles.dash}>-</span> },
-  { key: 'serialNumber', label: '시리얼',     renderCell: (row) => row.serialNumber ?? <span className={styles.dash}>-</span> },
+  { key: 'projectName',  label: '프로젝트' },
+  { key: 'category',     label: '자산 종류', },
+  { key: 'modelName',    label: '모델명', },
+  { key: 'serialNumber', label: '시리얼', },
   {
     key: 'requestType',
     label: '요청',
