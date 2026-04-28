@@ -262,7 +262,16 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
       where: itemWhere,
       required: true,
       include: [
-        { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'parent_id'] },
+        {
+          model: AssetProjectItemType,
+          as: 'item_type',
+          attributes: ['id', 'name', 'parent_id'],
+          include: [{
+            model: AssetProjectItemType,
+            as: 'parent',
+            attributes: ['id', 'name'],
+          }],
+        },
         { ...USER_INCLUDE, as: 'manager' },
       ],
     }],
