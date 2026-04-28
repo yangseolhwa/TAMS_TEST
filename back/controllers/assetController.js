@@ -245,7 +245,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   if (item_type_id) itemWhere.asset_type_id = Number(item_type_id);
   if (keyword) {
     itemWhere[Op.or] = [
-      { model_name:         { [Op.like]: `%${keyword}%` } },
+      { model_number:         { [Op.like]: `%${keyword}%` } },
       { serial_number:      { [Op.like]: `%${keyword}%` } },
       { spec:               { [Op.like]: `%${keyword}%` } },
       { location:           { [Op.like]: `%${keyword}%` } },
@@ -626,8 +626,8 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     if (!item.asset_type_id) {
       return res.status(400).json({ message: '자산 종류를 선택해주세요.' });
     }
-    if (!item.manufacturer || !item.model_name) {
-      return res.status(400).json({ message: '제조사, 모델명은 필수 입력 항목입니다.' });
+    if (!item.manufacturer || !item.model_number) {
+      return res.status(400).json({ message: '제조사, 모델 번호은 필수 입력 항목입니다.' });
     }
     if (!item.acquisition_date) {
       return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
@@ -651,9 +651,11 @@ exports.registerDf = asyncWrapper(async (req, res) => {
         asset_type_id:      item.asset_type_id,
         owner_organization: item.owner_organization ?? null,
         equipment_number:   item.equipment_number   ?? null,
-        manufacturer:       item.manufacturer,
-        model_name:         item.model_name,
+        manufacturer:       item.manufacturer       ?? null,
+        product_name:       item.product_name       ?? null,
+        model_number:       item.model_number       ?? null,
         serial_number:      item.serial_number      ?? null,
+        quantity:           item.quantity           ?? null,
         spec:               item.spec               ?? null,
         acquisition_date:   item.acquisition_date,
         return_date:        item.return_date         ?? null,
@@ -1727,7 +1729,7 @@ exports.getDfHistory = asyncWrapper(async (req, res) => {
   const itemInclude = {
     model: AssetProjectItem,
     as: 'item',
-    attributes: ['id', 'item_number', 'model_name', 'manufacturer', 'serial_number', 'state'],
+    attributes: ['id', 'item_number', 'model_number', 'manufacturer', 'serial_number', 'state'],
     ...(asset_type_id ? { where: { asset_type_id: Number(asset_type_id) } } : {}),
     required: !!asset_type_id,
     include: [

@@ -69,47 +69,82 @@ function isSpecialUser(name) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// DF IMPORT (기존 그대로)
+// DF IMPORT
 // ─────────────────────────────────────────────────────────────────
-function detectDfColumns(ws) {
-  const KEYWORD_MAP = {
-    owner_organization: ['소유 기관', '소유기관'],
-    equipment_number:   ['장비 번호', '장비번호'],
-    manufacturer:       ['제조사'],
-    parent_type:        ['대분류'],
-    sub_type:           ['중분류', '소분류', 'card', '중뷴류'],
-    model_name:         ['모델명'],
-    serial_number:      ['시리얼 넘버', '시리얼넘버'],
-    spec:               ['규격'],
-    acquisition_date:   ['대여일', '취득일자', '취득일'],
-    return_date:        ['반납일'],
-    location:           ['위치'],
-    remarks:            ['비고'],
-  };
 
+// QTY 파싱: null / '' / '-' / 'n/a' → null, 양수 정수 → 그대로, 0 이하 → null
+function parseQty(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === '' || s === '-' || s.toLowerCase() === 'n/a') return null;
+  const n = parseInt(s, 10);
+  return (isNaN(n) || n <= 0) ? null : n;
+}
+
+// 일반 필드 변환: null / '' / '-' → null, 'n/a' → '확인불가'
+function toFieldVal(v) {
+  if (v == null) return null;
+  if (v instanceof Date) return v;
+  const s = String(v).trim();
+  if (s === '' || s === '-') return null;
+  if (s.toLowerCase() === 'n/a') return '확인불가';
+  return s;
+}
+
+// PC 헤더 키워드 매핑
+const PC_KEYWORD_MAP = {
+  item:             ['item'],
+  dusan_item_no:    ['두산 item no', '두산 item no.', '두산item no'],
+  manufacturer:     ['manufacturer', '제조사'],
+  product_name:     ['product name', 'productname', 'product_name'],
+  model_number:     ['model number', 'model no', 'modelnumber', 'model_number'],
+  serial_number:    ['serial number', 'serial no', 'serialnumber', 'serial_number'],
+  quantity:         ['qty'],
+  acquisition_date: ['rental_date', '대여일', '취득일', '취득일자'],
+  return_date:      ['return_date', '반납일'],
+  remarks:          ['remark', 'remarks', '비고'],
+};
+
+// PLC 헤더 키워드 매핑
+const PLC_KEYWORD_MAP = {
+  item:             ['item'],
+  serial_number:    ['serial number', 'serial no', 'serialnumber', 'serial_number'],
+  quantity:         ['qty'],
+  acquisition_date: ['rental_date', '대여일', '취득일', '취득일자'],
+  return_date:      ['return_date', '반납일'],
+  remarks:          ['remark', 'remarks', '비고'],
+};
+
+function detectDfColumns(ws) {
   for (let r = 1; r <= 10; r++) {
     const row = [];
-    for (let c = 1; c <= 20; c++) {
+    for (let c = 1; c <= 25; c++) {
       const v = ws.getCell(r, c).value;
       row.push(v != null ? String(v).trim() : '');
     }
-    const isHeader = row.some(v => {
-      const l = v.toLowerCase();
-      return ['대분류', '중분류', '소분류', 'card', '중뷴류'].includes(l);
-    });
-    if (!isHeader) continue;
+
+    // 'Item' 키워드가 있는 행을 헤더로 판단
+    const rowLower = row.map(v => v.toLowerCase());
+    const hasItem  = rowLower.some(v => v === 'item');
+    if (!hasItem) continue;
+
+    // PC vs PLC 판별: 'Model Number' 또는 'Product Name' 존재 여부
+    const isPC      = rowLower.some(v => v === 'model number' || v === 'product name');
+    const sheetType = isPC ? 'PC' : 'PLC';
+    const KEYWORD_MAP = isPC ? PC_KEYWORD_MAP : PLC_KEYWORD_MAP;
 
     const colMap = {};
     for (const [key, keywords] of Object.entries(KEYWORD_MAP)) {
       colMap[key] = null;
-      for (let c = 0; c < row.length; c++) {
-        if (keywords.some(kw => row[c].toLowerCase() === kw.toLowerCase())) {
+      for (let c = 0; c < rowLower.length; c++) {
+        if (keywords.some(kw => rowLower[c] === kw)) {
           colMap[key] = c + 1;
           break;
         }
       }
     }
-    return { colMap, dataStartRow: r + 1 };
+
+    return { colMap, dataStartRow: r + 1, sheetType };
   }
   return null;
 }
@@ -138,7 +173,7 @@ const importDf = async (req, res) => {
       results.push({ sheet: ws.name, status: 'skipped', reason: '헤더 감지 실패' });
       continue;
     }
-    const { colMap, dataStartRow } = detected;
+    const { colMap, dataStartRow, sheetType } = detected;
 
     if (!projectCache[ws.name]) {
       const [proj] = await AssetProject.findOrCreate({ where: { name: ws.name }, defaults: { name: ws.name } });
@@ -146,63 +181,93 @@ const importDf = async (req, res) => {
     }
     const project_id = projectCache[ws.name];
 
-    const CARRY_COLS = ['manufacturer','parent_type','sub_type','model_name','spec',
-                        'owner_organization','equipment_number'];
-    const last = {};
+    // Carry-forward 대상 필드 (sheetType에 따라 분기)
+    const CARRY_FIELDS = sheetType === 'PC'
+      ? ['item', 'manufacturer', 'dusan_item_no', 'product_name', 'model_number', 'acquisition_date', 'return_date']
+      : ['item', 'acquisition_date', 'return_date'];
 
+    const last = {};
     const g = (r, key) => readCell(ws, r, colMap[key]);
 
     for (let r = dataStartRow; r <= ws.rowCount; r++) {
-      const rawSubType   = toVal(g(r, 'sub_type'));
-      const rawModelName = toVal(g(r, 'model_name'));
-      const rawMfr       = toVal(g(r, 'manufacturer'));
-      const rawAcqDate   = g(r, 'acquisition_date');
-      const rawSerial    = toVal(g(r, 'serial_number'));
-      if (!rawSubType && !rawModelName && !rawMfr && !rawAcqDate && !rawSerial) continue;
 
+      // ── 빈 행 스킵 ────────────────────────────────────────────
+      // item, model_number, manufacturer, product_name, serial_number, quantity, acquisition_date
+      // 모두 비어있으면 스킵
+      const chkItem    = toFieldVal(g(r, 'item'));
+      const chkModel   = sheetType === 'PC' ? toFieldVal(g(r, 'model_number'))  : null;
+      const chkMfr     = sheetType === 'PC' ? toFieldVal(g(r, 'manufacturer'))  : null;
+      const chkProduct = sheetType === 'PC' ? toFieldVal(g(r, 'product_name'))  : null;
+      const chkSerial  = toFieldVal(g(r, 'serial_number'));
+      const chkQty     = parseQty(g(r, 'quantity'));
+      const chkAcq     = g(r, 'acquisition_date');
+
+      // 모든 셀이 비어있으면 데이터 끝으로 판단 → 다음 시트로
+      const isAllEmpty = !chkItem && !chkModel && !chkMfr && !chkProduct && !chkSerial && chkQty === null && !chkAcq
+        && !toFieldVal(g(r, 'return_date')) && !toFieldVal(g(r, 'remarks'));
+      if (isAllEmpty) break;
+
+      // ── Carry-forward 처리 ────────────────────────────────────
       const row = {};
-      for (const key of CARRY_COLS) {
+      for (const key of CARRY_FIELDS) {
         const raw = g(r, key);
-        const val = raw instanceof Date ? raw : toVal(raw);
+        const val = raw instanceof Date ? raw : toFieldVal(raw);
         if (val !== null) { last[key] = raw; row[key] = val; }
-        else { row[key] = last[key] instanceof Date ? last[key] : toVal(last[key] ?? null); }
-      }
-      row.serial_number    = toSerialVal(g(r, 'serial_number'));
-      row.acquisition_date = g(r, 'acquisition_date');
-      row.return_date      = g(r, 'return_date');
-      row.location         = toVal(g(r, 'location'));
-      row.remarks          = toVal(g(r, 'remarks'));
-
-      const typeName = row.sub_type;
-      if (!typeName) {
-        results.push({ sheet: ws.name, row: r, status: 'failed', reason: '자산 중분류 없음' });
-        failed++; continue;
+        else { row[key] = last[key] instanceof Date ? last[key] : toFieldVal(last[key] ?? null); }
       }
 
-      let parentId = null;
-      if (row.parent_type) {
-        const pk = `ROOT::${row.parent_type}`;
-        if (!typeCache[pk]) {
-          const [pt] = await AssetProjectItemType.findOrCreate({
-            where: { name: row.parent_type, parent_id: null },
-            defaults: { name: row.parent_type, parent_id: null },
-          });
-          typeCache[pk] = pt.id;
+      // Carry-forward 비대상 필드 직접 읽기
+      row.serial_number = toFieldVal(g(r, 'serial_number'));
+      row.quantity      = parseQty(g(r, 'quantity'));
+      row.remarks       = toFieldVal(g(r, 'remarks'));
+
+      // acquisition_date / return_date: carry-forward 결과가 있으면 사용, 없으면 현재 행 직접 읽기
+      if (!row.acquisition_date) row.acquisition_date = g(r, 'acquisition_date');
+      if (!row.return_date)      row.return_date      = g(r, 'return_date');
+
+      // ── 두산 Item No 처리 (PC 전용) ───────────────────────────
+      // colMap에 dusan_item_no가 존재하면 owner_organization = '두산' 고정,
+      // equipment_number = 두산 Item No 셀 값
+      let ownerOrg     = null;
+      let equipmentNum = null;
+      if (sheetType === 'PC' && colMap.dusan_item_no) {
+        const dusanVal = typeof row.dusan_item_no === 'string' ? row.dusan_item_no : null;
+        if (dusanVal) {
+          ownerOrg     = '두산';
+          equipmentNum = dusanVal;
         }
-        parentId = typeCache[pk];
       }
 
-      const sk = `${parentId ?? 'ROOT'}::${typeName}`;
-      if (!typeCache[sk]) {
-        const [st] = await AssetProjectItemType.findOrCreate({
-          where: { name: typeName, parent_id: parentId },
-          defaults: { name: typeName, parent_id: parentId },
+      // ── 대분류(parent_type) = PC / PLC 자동 결정 ─────────────
+      const parentTypeName = sheetType;
+      const pk = `ROOT::${parentTypeName}`;
+      if (!typeCache[pk]) {
+        const [pt] = await AssetProjectItemType.findOrCreate({
+          where:    { name: parentTypeName, parent_id: null },
+          defaults: { name: parentTypeName, parent_id: null },
         });
-        typeCache[sk] = st.id;
+        typeCache[pk] = pt.id;
+      }
+      const parentId = typeCache[pk];
+
+      // ── 중분류(sub_type) = Item 컬럼 값
+      // Item 값이 없으면 asset_type_id = null (중분류 미지정)
+      const subTypeName = typeof row.item === 'string' ? row.item : null;
+      let assetTypeId = null;
+      if (subTypeName) {
+        const sk = `${parentId}::${subTypeName}`;
+        if (!typeCache[sk]) {
+          const [st] = await AssetProjectItemType.findOrCreate({
+            where:    { name: subTypeName, parent_id: parentId },
+            defaults: { name: subTypeName, parent_id: parentId },
+          });
+          typeCache[sk] = st.id;
+        }
+        assetTypeId = typeCache[`${parentId}::${subTypeName}`];
       }
 
       const acqDate = row.acquisition_date instanceof Date ? row.acquisition_date : parseDate(row.acquisition_date);
-      const retDate = row.return_date instanceof Date ? row.return_date : parseDate(row.return_date);
+      const retDate = row.return_date      instanceof Date ? row.return_date      : parseDate(row.return_date);
       const state   = retDate ? 'returned' : 'in_use';
 
       const t = await sequelize.transaction();
@@ -211,21 +276,23 @@ const importDf = async (req, res) => {
           where: { project_id }, order: [['item_number', 'DESC']],
           lock: t.LOCK.UPDATE, transaction: t,
         });
+
         const item = await AssetProjectItem.create({
           user_id:            req.user.userId,
           project_id,
           item_number:        (lastItem?.item_number ?? 0) + 1,
-          asset_type_id:      typeCache[sk],
-          owner_organization: colMap.owner_organization ? row.owner_organization : null,
-          equipment_number:   colMap.equipment_number   ? row.equipment_number   : null,
-          manufacturer:       row.manufacturer  || null,
-          model_name:         row.model_name    || null,
-          serial_number:      row.serial_number || null,
-          spec:               row.spec          || null,
-          acquisition_date:   acqDate           || null,
-          return_date:        retDate           || null,
+          asset_type_id:      assetTypeId,
+          owner_organization: ownerOrg,
+          equipment_number:   equipmentNum,
+          manufacturer:       sheetType === 'PC' ? (row.manufacturer  || null) : null,
+          product_name:       sheetType === 'PC' ? (row.product_name  || null) : null,
+          model_number:       sheetType === 'PC' ? (row.model_number  || null) : null,
+          serial_number:      row.serial_number  || null,
+          quantity:           row.quantity,
+          acquisition_date:   acqDate            || null,
+          return_date:        retDate            || null,
           state,
-          location:           row.location      || null,
+          location:           null,
           remarks:            row.remarks        || null,
         }, { transaction: t });
 
@@ -415,7 +482,7 @@ const importSwOriginal = async (req, res) => {
           license_key:  licKey,
           license_password: licPassword,
           key_type:     keyType,
-          license_type: 'per_seat',   // [변경] 일반 사용자 → per_seat
+          license_type: 'per_seat',
           related_link: relLink,
           issue_date:   issueDate,
           remarks:      licRemark,
@@ -436,7 +503,7 @@ const importSwOriginal = async (req, res) => {
           license_key:  licKey,
           license_password: licPassword,
           key_type:     keyType,
-          license_type: 'per_seat',   // [변경] 미할당 라이선스 → per_seat
+          license_type: 'per_seat',
           related_link: relLink,
           issue_date:   issueDate,
           remarks:      null,
@@ -444,7 +511,7 @@ const importSwOriginal = async (req, res) => {
         });
       }
 
-      // SDOE N대 → shared (동일 키를 여러 레코드로 저장하는 구조)
+      // SDOE N대 → shared
       for (let s = 0; s < sdoeCount; s++) {
         const lic = await AssetSwLicense.create({
           asset_sw_id:  sw.id,
@@ -452,7 +519,7 @@ const importSwOriginal = async (req, res) => {
           license_key:  licKey,
           license_password: licPassword,
           key_type:     keyType,
-          license_type: 'shared',     // [변경] SDOE → shared
+          license_type: 'shared',
           related_link: relLink,
           issue_date:   issueDate,
           remarks:      'SDOE',

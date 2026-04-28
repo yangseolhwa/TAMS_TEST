@@ -95,11 +95,11 @@ function applyColumnMerges(ws, dataStartRow, sortedItems) {
 
 // ── project 시트 빌드 ─────────────────────────────────────────────
 // 헤더 순서: number | 대분류 | 중분류 | owner_organization | equipment_number
-//           | manufacturer | model_name | serial_number | spec
+//           | manufacturer | model_number | serial_number | spec
 //           | acquisition_date | return_date | state | location | remarks
 const PROJ_HEADERS    = [
   'number', '대분류', '중분류', 'owner_organization', 'equipment_number',
-  'manufacturer', 'model_name', 'serial_number', 'spec',
+  'manufacturer', 'model_number', 'serial_number', 'spec',
   'acquisition_date', 'return_date', 'state', 'location', 'remarks',
 ];
 const PROJ_COL_WIDTHS = [10, 14, 14, 20, 18, 16, 18, 20, 16, 16, 16, 12, 18, 20];
@@ -135,7 +135,7 @@ function buildProjectSheet(wb, sheetName, rawItems) {
       item.owner_organization           || '-',
       item.equipment_number             || '-',
       item.manufacturer                 || '-',
-      item.model_name                   || '-',
+      item.model_number                   || '-',
       item.serial_number                || '-',
       item.spec                         || '-',
       formatDate(item.acquisition_date) || '-',
@@ -350,7 +350,7 @@ const exportDf = async (req, res) => {
     if (state)        where.state         = state;
     if (keyword) {
       where[Op.or] = [
-        { model_name:    { [Op.like]: `%${keyword}%` } },
+        { model_number:    { [Op.like]: `%${keyword}%` } },
         { serial_number: { [Op.like]: `%${keyword}%` } },
         { location:      { [Op.like]: `%${keyword}%` } },
         { remarks:       { [Op.like]: `%${keyword}%` } },
