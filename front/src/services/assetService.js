@@ -204,7 +204,7 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
   }
 }
 
-const REQUEST_TYPE_LABEL = { register: '등록 요청', return: '반납 요청' }
+const REQUEST_TYPE_LABEL = { register: '등록', return: '반납' }
 
 export const fetchAssetRequests = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
@@ -216,6 +216,9 @@ export const fetchAssetRequests = async () => {
       assetType:   'PC',
       assetName:   parsed.model_name ?? null,
       spec:        parsed.spec       ?? null,
+      manufacturer: parsed.manufacturer  ?? null,
+      serialNumber: parsed.serial_number ?? null,
+      licenseKey:   null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
       requester:   item.requester?.email ?? null,
       requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
@@ -232,6 +235,9 @@ export const fetchAssetRequests = async () => {
       assetType:   'SW',
       assetName:   parsed.name ?? item.sw?.name ?? null,
       spec:        null,
+      manufacturer: parsed.manufacturer ?? null,
+      serialNumber: null,
+      licenseKey:   parsed.license_key   ?? null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
       requester:   item.requester?.email ?? null,
       requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
