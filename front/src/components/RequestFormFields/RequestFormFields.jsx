@@ -35,6 +35,7 @@ export const createInitialItem = () => ({
   acquisitionDate:  new Date().toISOString().slice(0, 10),
   spec:             "",
   serialNumber:     "",
+  remarks:          "",
 
   // SW 메타데이터
   swId:               "",     // "__direct__" 포함
@@ -96,11 +97,6 @@ const RequestFormFields = ({
         const pcManufacturers = [
           ...new Set(
             (enterpriseAssets ?? [])
-              .filter((a) =>
-                item.itemTypeId &&
-                item.itemTypeId !== DIRECT_INPUT &&
-                String(a.item_type?.id) === item.itemTypeId
-              )
               .map((a) => a.manufacturer)
               .filter(Boolean)
           ),
@@ -255,7 +251,7 @@ const RequestFormFields = ({
                   </div>
                 </div>
 
-                {/* Row 3: 규격 + 시리얼 번호 + 요청 사유 */}
+                {/* Row 3: 규격 + 시리얼 번호 + 비고 + 요청 사유 */}
                 <div className={styles.inputRow}>
                   <div className={styles.inputGroup}>
                     <label className={styles.selectLabel}>규격</label>
@@ -275,6 +271,16 @@ const RequestFormFields = ({
                       placeholder="시리얼 번호 입력"
                       value={item.serialNumber}
                       onChange={(e) => onItemChange(index, "serialNumber", e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.selectLabel}>비고</label>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      placeholder="비고 입력"
+                      value={item.remarks}
+                      onChange={(e) => onItemChange(index, "remarks", e.target.value)}
                     />
                   </div>
                   <div className={styles.inputGroup}>

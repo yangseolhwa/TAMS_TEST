@@ -111,6 +111,7 @@ const AdminRequestPage = () => {
                   ...(i.spec.trim()          && { spec:           i.spec.trim() }),
                   ...(i.serialNumber.trim()  && { serial_number:  i.serialNumber.trim() }),
                   ...(i.requestReason.trim() && { request_reason: i.requestReason.trim() }),
+                  ...(i.remarks.trim() && { remarks: i.remarks.trim() }),
                 })),
               }),
             }]
