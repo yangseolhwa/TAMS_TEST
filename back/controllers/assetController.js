@@ -1045,6 +1045,10 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   }
  
   // ── register 요청 분기 ────────────────────────────────────────────
+  if (request.request_type !== 'register') {
+    return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
+  }
+ 
   const { sw, license } = await sequelize.transaction(async (t) => {
     let swId = request.asset_sw_id ?? null;
  
@@ -1845,7 +1849,6 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
     request,
   });
 });
-
 
 // ─────────────────────────────────────────
 // Enterprise(PC) 전체 조회 (admin 전용)
