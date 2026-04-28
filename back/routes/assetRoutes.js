@@ -54,8 +54,11 @@ router.patch('/enterprise/state', assetController.changeEnterpriseState);
 router.patch('/sw/state', assetController.changeSwState);
 router.patch('/df/state', assetController.changeDfState);
 
-// 할당
+// SW 할당 (admin 직접 할당)
 router.patch('/sw/assign', assetController.assignSwLicense);
+
+// SW 할당 요청 (user → pending)
+router.post('/sw/assign/request', assetController.requestSwAssign);
 
 // DF 엑셀 import / export / 양식 다운로드
 router.post('/df/import', upload.single('file'), importDf);

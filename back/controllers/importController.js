@@ -461,10 +461,12 @@ const importSwOriginal = async (req, res) => {
       if (isNewSw) {
         sw = await AssetSw.create({
           name,
-          version:          ver  || null,
-          manufacturer:     mfr  || null,
-          quantity:         (rawQty && rawQty !== '-') ? Number(rawQty) : 0,
+          version:          ver     || null,
+          manufacturer:     mfr     || null,
+          quantity:         0,                  // 라이선스 생성 시 +1 처리하므로 0 시작
           acquisition_date: null,
+          license_required: true,               // 원본 데이터는 모두 라이선스형
+          related_link:     relLink || null,    // 기존 relLink 변수 활용
           state:            'available',
           remarks:          toVal(rawRemarks) || null,
         });
@@ -512,61 +514,57 @@ const importSwOriginal = async (req, res) => {
       for (const uName of userNames) {
         const isSpecial = isSpecialUser(uName);
         const userId    = isSpecial ? null : (nameToUserId[uName] ?? null);
-        const licRemark = isSpecial ? uName : null;
         const lic = await AssetSwLicense.create({
-          asset_sw_id:  sw.id,
-          user_id:      userId,
-          license_key:  licKey,
+          asset_sw_id:      sw.id,
+          user_id:          userId,
+          license_key:      licKey,
           license_password: licPassword,
-          key_type:     keyType,
-          license_type: 'per_seat',
-          related_link: relLink,
-          issue_date:   issueDate,
-          remarks:      licRemark,
-          state:        'in_use',
+          key_type:         keyType,
+          license_type:     'per_seat',
+          issue_date:       issueDate,
+          state:            'in_use',
         });
         await AssetSwHistory.create({
           asset_sw_id: sw.id, license_id: lic.id,
           user_id: userId, change_type: 'register',
           before_value: null, after_value: 'in_use',
         });
+        await sw.increment('quantity', { by: 1 }); // 라이선스 1개 → quantity +1
       }
 
       // 사용자도 SDOE도 없음 → available, per_seat
       if (userNames.length === 0 && sdoeCount === 0) {
         await AssetSwLicense.create({
-          asset_sw_id:  sw.id,
-          user_id:      null,
-          license_key:  licKey,
+          asset_sw_id:      sw.id,
+          user_id:          null,
+          license_key:      licKey,
           license_password: licPassword,
-          key_type:     keyType,
-          license_type: 'per_seat',
-          related_link: relLink,
-          issue_date:   issueDate,
-          remarks:      null,
-          state:        'available',
+          key_type:         keyType,
+          license_type:     'per_seat',
+          issue_date:       issueDate,
+          state:            'available',
         });
+        await sw.increment('quantity', { by: 1 }); // quantity +1
       }
 
       // SDOE N대 → shared
       for (let s = 0; s < sdoeCount; s++) {
         const lic = await AssetSwLicense.create({
-          asset_sw_id:  sw.id,
-          user_id:      null,
-          license_key:  licKey,
+          asset_sw_id:      sw.id,
+          user_id:          null,
+          license_key:      licKey,
           license_password: licPassword,
-          key_type:     keyType,
-          license_type: 'shared',
-          related_link: relLink,
-          issue_date:   issueDate,
-          remarks:      'SDOE',
-          state:        'in_use',
+          key_type:         keyType,
+          license_type:     'shared',
+          issue_date:       issueDate,
+          state:            'in_use',
         });
         await AssetSwHistory.create({
           asset_sw_id: sw.id, license_id: lic.id,
           user_id: null, change_type: 'register',
           before_value: null, after_value: 'in_use',
         });
+        await sw.increment('quantity', { by: 1 }); // quantity +1
       }
 
       const inUseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
