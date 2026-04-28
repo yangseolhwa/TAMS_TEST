@@ -877,6 +877,10 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
   }
  
   // ── register 요청 분기 ────────────────────────────────────────────
+  if (request.request_type !== 'register') {
+    return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
+  }
+ 
   let assetData = {};
  
   if (request.asset_id) {
@@ -933,7 +937,6 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
  
   res.status(200).json({ message: '자산 등록 요청이 승인되었습니다.', asset: created });
 });
-
 
 // ─────────────────────────────────────────
 // 관리자 Enterprise 요청 거절
@@ -2047,6 +2050,11 @@ exports.assignEnterprise = asyncWrapper(async (req, res) => {
       lock: t.LOCK.UPDATE,
       transaction: t,
     });
+    if (!lockedAsset) {
+      const err = new Error('자산을 찾을 수 없습니다.');
+      err.statusCode = 404;
+      throw err;
+    }
     if (lockedAsset.state !== 'stored' || lockedAsset.responsible_type !== 'vacant') {
       const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.');
       err.statusCode = 409;
