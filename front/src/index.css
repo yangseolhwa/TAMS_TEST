@@ -21,6 +21,9 @@ html, body {
   --color-error-ring:      rgba(192, 57, 43, 0.07);
   --color-error-border:    rgba(192, 57, 43, 0.25);
   --color-focus-ring:      rgba(59, 130, 246, 0.1);
+  --color-status-pending:  #F59E0B;
+  --color-status-approved: #16A34A;
+  --color-status-rejected: #DC2626;
 
   /* Submit Button */
   --color-submit:          #4A7FC1;
