@@ -1,25 +1,22 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 
-const AssetEnterprise = sequelize.define('AssetEnterprise', {
+const AssetEnterpriseRequest = sequelize.define('AssetEnterpriseRequest', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  category_id: { type: DataTypes.INTEGER },
-  item_type_id: { type: DataTypes.INTEGER },
-  department_id: { type: DataTypes.INTEGER },
-  responsible_type: { type: DataTypes.ENUM('personal', 'place', 'vacant', 'shared') },
-  user_id: { type: DataTypes.INTEGER },
-  state: { type: DataTypes.ENUM('in_use', 'stored', 'returned') },
-  acquisition_date: { type: DataTypes.DATEONLY },
-  manufacturer: { type: DataTypes.STRING(100) },
-  spec: { type: DataTypes.STRING(200) },
-  serial_number: { type: DataTypes.STRING(100) },
-  location: { type: DataTypes.STRING(100) },
-  remarks: { type: DataTypes.TEXT },
+  asset_id: { type: DataTypes.INTEGER },
+  requester_id: { type: DataTypes.INTEGER },
+  status: { type: DataTypes.ENUM('pending', 'approved', 'rejected') },
+  required_quantity: { type: DataTypes.INTEGER },
+  request_date: { type: DataTypes.DATEONLY },
+  request_reason: { type: DataTypes.STRING(255) },
+  new_asset_data: { type: DataTypes.TEXT },
+  request_type: { type: DataTypes.ENUM('register', 'return', 'assign') },
+  processed_at: { type: DataTypes.DATE },
 }, {
-  tableName: 'asset_enterprise',
+  tableName: 'asset_enterprise_request',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 });
 
-module.exports = AssetEnterprise;
+module.exports = AssetEnterpriseRequest;

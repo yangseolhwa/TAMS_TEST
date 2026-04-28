@@ -686,19 +686,19 @@ const importEnterpriseOriginal = async (req, res) => {
       }
 
       const asset = await AssetEnterprise.create({
-        category_id,
-        item_type_id:      typeCache[typeKey],
-        department_id,
-        responsible_type:  responsibleType,
-        user_id:           userId,
-        state:             'in_use',
-        acquisition_date:  parseDate(g(r, C.acq)) || null,
-        manufacturer:      toVal(g(r, C.mfr))     || null,
-        spec:              toVal(g(r, C.spec))     || null,
-        serial_number:     toVal(g(r, C.serial))   || null,
-        location:          location                || null,
-        remarks:           toVal(g(r, C.remarks))  || null,
-      });
+      category_id,
+      item_type_id:      typeCache[typeKey],
+      department_id,
+      responsible_type:  responsibleType,
+      user_id:           userId,
+      state:             responsibleType === 'vacant' ? 'stored' : 'in_use',
+      acquisition_date:  parseDate(g(r, C.acq)) || null,
+      manufacturer:      toVal(g(r, C.mfr))     || null,
+      spec:              toVal(g(r, C.spec))     || null,
+      serial_number:     toVal(g(r, C.serial))   || null,
+      location:          location                || null,
+      remarks:           toVal(g(r, C.remarks))  || null,
+    });
 
       await AssetEnterpriseHistory.create({
         asset_enterprise_id: asset.id,
