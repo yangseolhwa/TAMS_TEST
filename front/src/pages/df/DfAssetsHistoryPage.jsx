@@ -40,7 +40,6 @@ const renderChangedCell = (requestType, locationVal, stateVal) => {
 const COLUMNS = [
   { key: 'no',          label: 'No' },
   { key: 'requestedAt', label: '날짜' },
-  { key: 'user',        label: '사용자', renderCell: (row) => row.user ?? <span className={styles.dash}>-</span> },
   {
     key: 'requestType',
     label: '요청',
@@ -108,7 +107,7 @@ const DfAssetsHistoryPage = ({ role }) => {
     const kw = appliedKeyword.toLowerCase()
     return rows.filter((row) => {
       const target = [
-        row.user, row.projectName, row.category,
+        row.projectName, row.category,
         row.modelName, row.serialNumber,
         row.prevLocation, row.nextLocation,
       ].filter(Boolean).join(' ').toLowerCase()
@@ -197,12 +196,6 @@ const DfAssetsHistoryPage = ({ role }) => {
           </div>
 
           {/* 총 건수 */}
-          <div className={styles.tableHeader}>
-            <span className={styles.totalCount}>
-              총 {filteredRows.length}건
-            </span>
-          </div>
-
           <DataTable
             columns={COLUMNS}
             rows={isLoading ? [] : filteredRows}
