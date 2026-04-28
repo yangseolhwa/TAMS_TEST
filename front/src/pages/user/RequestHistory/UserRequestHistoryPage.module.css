@@ -9,3 +9,35 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* =====================
+   상태 뱃지
+   ===================== */
+.statusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.status_PENDING {
+  background-color: var(--color-status-pending);
+}
+
+.status_APPROVED {
+  background-color: var(--color-status-approved);
+}
+
+.status_REJECTED {
+  background-color: var(--color-status-rejected);
+}
+
+/* =====================
+   대시
+   ===================== */
+.dash {
+  color: var(--color-text-secondary);
+}
