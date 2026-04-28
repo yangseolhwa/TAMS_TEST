@@ -9,26 +9,34 @@ import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
+
+// 변경 컬럼 배지 스타일
 const CHANGE_TYPE_STYLE = {
   '등록':     styles.badgeRegister,
   '반납':     styles.badgeReturn,
   '상태 변경': styles.badgeStateChange,
   '이동':     styles.badgeMove,
-  '할당':     styles.badgeMove,
+  '할당':     styles.badgeAssign,
+}
+
+// 상태값 → 한글 매핑
+const STATE_LABEL = {
+  in_use:    '사용중',
+  stored:    '보관중',
+  returned:  '반납됨',
+  available: '사용가능',
+}
+
+// 변경 전/후 셀 렌더링 (한글 텍스트로만 표시)
+const renderValueCell = (value) => {
+  if (value == null || value === '') return <span className={styles.dash}>-</span>
+  const korean = STATE_LABEL[value] ?? value
+  return <span>{korean}</span>
 }
 
 const COLUMNS = [
   { key: 'no',          label: 'No' },
   { key: 'requestedAt', label: '날짜' },
-  {
-    key: 'assetType',
-    label: '유형',
-    renderCell: (row) => (
-      <span className={`${styles.badge} ${row.assetType === 'SW' ? styles.badgeSw : styles.badgePc}`}>
-        {row.assetType}
-      </span>
-    ),
-  },
   {
     key: 'changeType',
     label: '변경',
@@ -41,12 +49,12 @@ const COLUMNS = [
   {
     key: 'beforeValue',
     label: '변경 전',
-    renderCell: (row) => row.beforeValue ?? <span className={styles.dash}>-</span>,
+    renderCell: (row) => renderValueCell(row.beforeValue),
   },
   {
     key: 'afterValue',
     label: '변경 후',
-    renderCell: (row) => row.afterValue ?? <span className={styles.dash}>-</span>,
+    renderCell: (row) => renderValueCell(row.afterValue),
   },
   { key: 'assetName', label: '자산명',  renderCell: (row) => row.assetName ?? <span className={styles.dash}>-</span> },
   { key: 'detail',    label: '상세',    renderCell: (row) => row.detail    ?? <span className={styles.dash}>-</span> },
@@ -156,12 +164,6 @@ const AdminAssetHistoryPage = () => {
                 <Search size={14} />
               </button>
             </div>
-          </div>
-
-          <div className={styles.tableHeader}>
-            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              총 {filteredRows.length}건
-            </span>
           </div>
 
           <DataTable
