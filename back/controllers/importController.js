@@ -317,30 +317,67 @@ const importDf = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// DF 양식 다운로드 (기존 그대로)
+// DF 양식 다운로드 (PC / PLC 시트 분리)
+// 구조: 타이틀(시트명) → 컬럼명 → 빈 데이터 행 1줄
 // ─────────────────────────────────────────────────────────────────
+const TMPL_THIN  = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
+const TMPL_TITLE_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1F3864' } };
+const TMPL_HEADER_FILL = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD9E1F2' } };
+const TMPL_FONT_BASE   = { name:'맑은 고딕', size:11 };
+const TMPL_FONT_HEADER = { name:'맑은 고딕', size:11, bold:true };
+const TMPL_FONT_TITLE  = { name:'맑은 고딕', size:12, bold:true, color:{ argb:'FFFFFFFF' } };
+
+const TMPL_SHEETS = [
+  {
+    name:      'PC',
+    headers:   ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'],
+    colWidths: [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20],
+  },
+  {
+    name:      'PLC',
+    headers:   ['No', 'Item', 'Serial Number', 'QTY', '대여일', '반납일', '비고'],
+    colWidths: [8, 16, 22, 8, 14, 14, 20],
+  },
+];
+
 const downloadDfTemplate = async (req, res) => {
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Sheet1');
+  wb.creator = 'TAMS';
 
-  const HEADERS    = ['No','제조사','대분류','중분류','모델명','시리얼 넘버','규격','대여일','반납일','위치','비고'];
-  const COL_WIDTHS = [8, 14, 14, 14, 18, 20, 14, 14, 14, 16, 20];
-  const THIN = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
-  const FILL = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD9E1F2' } };
+  for (const { name, headers, colWidths } of TMPL_SHEETS) {
+    const ws      = wb.addWorksheet(name);
+    const lastCol = headers.length + 2 - 1; // col 2 ~ lastCol
 
-  ws.getColumn(1).width = 4;
-  HEADERS.forEach((h, i) => {
-    ws.getColumn(i + 2).width = COL_WIDTHS[i];
-    const cell = ws.getRow(1).getCell(i + 2);
-    cell.value = h;
-    cell.font  = { name: '맑은 고딕', size: 11, bold: true };
-    cell.fill  = FILL;
-    cell.border = THIN;
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-  });
-  ws.getRow(1).height = 30;
-  HEADERS.forEach((_, i) => { ws.getRow(2).getCell(i + 2).border = THIN; });
-  ws.getRow(2).height = 25;
+    ws.getColumn(1).width = 4;
+    headers.forEach((_, i) => { ws.getColumn(i + 2).width = colWidths[i]; });
+
+    // Row 1: 타이틀 (시트명 병합)
+    ws.mergeCells(1, 2, 1, lastCol);
+    const titleCell     = ws.getRow(1).getCell(2);
+    titleCell.value     = name;
+    titleCell.font      = TMPL_FONT_TITLE;
+    titleCell.fill      = TMPL_TITLE_FILL;
+    titleCell.border    = TMPL_THIN;
+    titleCell.alignment = { horizontal:'center', vertical:'middle' };
+    ws.getRow(1).height = 28;
+
+    // Row 2: 컬럼명
+    headers.forEach((h, i) => {
+      const cell     = ws.getRow(2).getCell(i + 2);
+      cell.value     = h;
+      cell.font      = TMPL_FONT_HEADER;
+      cell.fill      = TMPL_HEADER_FILL;
+      cell.border    = TMPL_THIN;
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+    ws.getRow(2).height = 30;
+
+    // Row 3: 빈 데이터 행 (테두리만)
+    headers.forEach((_, i) => {
+      ws.getRow(3).getCell(i + 2).border = TMPL_THIN;
+    });
+    ws.getRow(3).height = 25;
+  }
 
   res.setHeader('Content-Disposition', 'attachment; filename="DF_IMPORT_TEMPLATE.xlsx"');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
