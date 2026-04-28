@@ -39,7 +39,10 @@ const renderChangedCell = (requestType, locationVal, stateVal) => {
 
 const COLUMNS = [
   { key: 'no',          label: 'No' },
-  { key: 'requestedAt', label: '날짜' },
+  { key: 'projectName',  label: '프로젝트',  renderCell: (row) => row.projectName  ?? <span className={styles.dash}>-</span> },
+  { key: 'category',     label: '자산 종류',  renderCell: (row) => row.category     ?? <span className={styles.dash}>-</span> },
+  { key: 'modelName',    label: '모델명',     renderCell: (row) => row.modelName    ?? <span className={styles.dash}>-</span> },
+  { key: 'serialNumber', label: '시리얼',     renderCell: (row) => row.serialNumber ?? <span className={styles.dash}>-</span> },
   {
     key: 'requestType',
     label: '요청',
@@ -59,10 +62,7 @@ const COLUMNS = [
     label: '변경 후',
     renderCell: (row) => renderChangedCell(row.requestType, row.nextLocation, row.nextState),
   },
-  { key: 'projectName',  label: '프로젝트',  renderCell: (row) => row.projectName  ?? <span className={styles.dash}>-</span> },
-  { key: 'category',     label: '자산 종류',  renderCell: (row) => row.category     ?? <span className={styles.dash}>-</span> },
-  { key: 'modelName',    label: '모델명',     renderCell: (row) => row.modelName    ?? <span className={styles.dash}>-</span> },
-  { key: 'serialNumber', label: '시리얼',     renderCell: (row) => row.serialNumber ?? <span className={styles.dash}>-</span> },
+  { key: 'requestedAt', label: '날짜' },
 ]
 
 const EMPTY_FILTER = {
