@@ -15,6 +15,7 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
+const VALID_DF_QUERY_STATES = ['in_use', 'stored', 'rented', 'returned'];
 
 /**
  * item_type 해결 헬퍼
@@ -231,7 +232,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
 exports.getDfAssets = asyncWrapper(async (req, res) => {
   const { project_id, item_type_id, manufacturer, state, keyword } = req.query;
 
-  if (state && !VALID_DF_STATES.includes(state)) {
+  if (state && !VALID_DF_QUERY_STATES.includes(state)) {
     return res.status(400).json({ message: '유효하지 않은 상태값입니다.' });
   }
   if (project_id   && isNaN(Number(project_id)))   return res.status(400).json({ message: '유효하지 않은 프로젝트 ID입니다.' });
