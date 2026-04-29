@@ -230,10 +230,10 @@
   gap: 8px;
 }
 
-/* input(1fr) + 삭제버튼(36px) + 플러스버튼(36px) 3열 고정 */
+/* input(1fr) + 버튼(36px) 2열 고정 */
 .licenseKeyRow {
   display: grid;
-  grid-template-columns: 1fr 36px 36px;
+  grid-template-columns: 1fr 36px;
   align-items: center;
   gap: 8px;
 }
@@ -249,14 +249,10 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: opacity var(--transition-fast);
 }
 
 .removeKeyBtn { color: var(--color-error); }
 .addKeyBtn    { color: var(--color-accent); }
-
-.removeKeyBtn:hover,
-.addKeyBtn:hover { opacity: 0.7; }
 
 /* =====================
    라이선스 입력 토글
