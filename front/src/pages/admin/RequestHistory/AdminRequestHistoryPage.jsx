@@ -1,12 +1,10 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import Banner from "../../../components/Banner/Banner";
 import Card from "../../../components/Card/Card";
-import DataTable from "../../../components/DataTable/DataTable";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import RejectReasonModal from "../../../components/RejectReasonModal/RejectReasonModal";
 import styles from "./AdminRequestHistoryPage.module.css";
@@ -18,49 +16,54 @@ import {
   rejectSwRequest,
 } from "../../../services/assetService";
 
-/**
- * [공통 설정]
- */
-const BASE_REQUEST_COLUMNS = [
-  { key: "no",          label: "No" },
-  { key: "requester",   label: "요청자",    type: "dash" },
-  { key: "assetName",   label: "자산명" },
-  { key: "manufacturer", label: "제조사",    type: "dash" },
-  { key: "serialNumber", label: "시리얼",    type: "dash" },
-  { key: "licenseKey",   label: "라이선스 키", type: "dash" },
-  { key: "spec",        label: "규격",      type: "dash" },
-  { key: "requestedAt", label: "날짜" },
+// ── 상수 ─────────────────────────────────────────────────────────────────────
+const PC_COLUMNS = [
+  { key: "no",           label: "No"       },
+  { key: "requestedAt",  label: "요청일"   },
+  { key: "userName",     label: "요청자"   },
+  { key: "itemTypeName", label: "자산 종류" },
+  { key: "manufacturer", label: "제조사"   },
+  { key: "spec",         label: "규격"     },
+  { key: "serialNumber", label: "시리얼"   },
 ];
 
+const SW_COLUMNS = [
+  { key: "no",             label: "No"            },
+  { key: "requestedAt",    label: "요청일"        },
+  { key: "userName",       label: "요청자"        },
+  { key: "assetName",      label: "소프트웨어명"  },
+  { key: "manufacturer",   label: "제조사"        },
+  { key: "version",        label: "버전"          },
+  { key: "licenseKey",     label: "라이선스 키"   },
+  { key: "licensePassword", label: "라이선스 PW"  },
+];
+// ─────────────────────────────────────────────────────────────────────────────
+
 const AdminRequestHistoryPage = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // --- [State] ---
-  // targetRowId: 모달 오픈 시 처리할 행 id 저장, mutate() 호출 시 인자로 전달
   const [targetRowId,        setTargetRowId]        = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showRejectModal,    setShowRejectModal]    = useState(false);
   const [rejectReason,       setRejectReason]       = useState("");
 
-  // --- [React Query] ---
-  const { data: requestRows = [], isLoading } = useQuery({
+  // ── 데이터 조회 ───────────────────────────────────────────────────────────
+  const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn: fetchAssetRequests,
     refetchOnWindowFocus: false,
   });
 
-  // --- [Helpers] ---
+  const pcRows = useMemo(() => data?.enterpriseRows ?? [], [data]);
+  const swRows = useMemo(() => data?.swRows ?? [], [data]);
 
-  // rowId("req-ent-1", "req-sw-2" 등)에서 자산 유형과 숫자 id를 추출
+  // ── 헬퍼 ─────────────────────────────────────────────────────────────────
   const parseRowId = (rowId) => ({
     type: rowId.startsWith("req-ent-") ? "enterprise" : "sw",
     id:   parseInt(rowId.replace(/^req-(ent|sw)-/, ""), 10),
   });
 
-  // --- [Mutations] ---
-
-  // 승인 Mutation — rowId를 인자로 받아 처리 (state 클로저 의존 방지)
+  // ── Mutations ─────────────────────────────────────────────────────────────
   const approveMutation = useMutation({
     mutationFn: async (rowId) => {
       const { type, id } = parseRowId(rowId);
@@ -81,7 +84,6 @@ const AdminRequestHistoryPage = () => {
     },
   });
 
-  // 반려 Mutation — rowId를 인자로 받아 처리 (state 클로저 의존 방지)
   const rejectMutation = useMutation({
     mutationFn: async (rowId) => {
       const { type, id } = parseRowId(rowId);
@@ -101,14 +103,10 @@ const AdminRequestHistoryPage = () => {
     },
   });
 
-  // --- [컬럼 정의: 행마다 승인/반려 버튼 추가] ---
-  // state setter는 안정적이므로 deps 빈 배열로 처리
-  const columns = useMemo(() => [
-    ...BASE_REQUEST_COLUMNS,
-    {
-      key: "actions",
-      label: "처리",
-      renderCell: (row) => (
+  // ── 셀 렌더링 ─────────────────────────────────────────────────────────────
+  const renderCell = (col, row) => {
+    if (col.key === "actions") {
+      return (
         <div className={styles.rowActions}>
           <ActionButton
             variant="blue"
@@ -123,32 +121,78 @@ const AdminRequestHistoryPage = () => {
             onClick={() => { setTargetRowId(row.id); setRejectReason(""); setShowRejectModal(true); }}
           />
         </div>
-      ),
-    },
-  ], []);
+      );
+    }
+    return row[col.key] ?? "—";
+  };
+
+  // ── 처리 버튼 컬럼 ───────────────────────────────────────────────────────
+  const actionsColumn = { key: "actions", label: "처리" };
+
+  const pcColumns = useMemo(() => [...PC_COLUMNS, actionsColumn], []);
+  const swColumns = useMemo(() => [...SW_COLUMNS, actionsColumn], []);
+
+  // ── 테이블 렌더링 헬퍼 ───────────────────────────────────────────────────
+  const renderTable = (columns, rows, emptyMsg) => (
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {columns.map((col) => <th key={col.key}>{col.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr><td colSpan={columns.length} className={styles.empty}>불러오는 중...</td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={columns.length} className={styles.empty}>{emptyMsg}</td></tr>
+          ) : rows.map((row) => (
+            <tr key={row.id}>
+              {columns.map((col) => <td key={col.key}>{renderCell(col, row)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        title="내 자산 요청 내역"
+      <PageHeader title="내 자산 요청 내역" />
+
+      <Banner
+        text={<>사용자의 <strong>등록 요청</strong>을 승인하거나 반려할 수 있습니다.</>}
       />
 
+      {/* PC 섹션 */}
       <section className={styles.section}>
-        <Card>
-          <Banner
-            text={<>사용자의 <strong>등록 요청</strong>을 승인하거나 반려할 수 있습니다.</>}
-          />
-          <DataTable
-            columns={columns}
-            rows={requestRows}
-            selectable={false}
-            totalCount={requestRows.length}
-            isLoading={isLoading}
-          />
+        <div className={styles.summaryWrap}>
+          <div className={`${styles.summaryLabel} ${styles.labelPc}`}>PC</div>
+          <Card className={styles.summaryCard}>
+            <div className={styles.summaryCount}>{pcRows.length}</div>
+            <div className={styles.summaryUnit}>요청</div>
+          </Card>
+        </div>
+        <Card className={styles.tableCard}>
+          {renderTable(pcColumns, pcRows, "요청 내역이 없습니다.")}
         </Card>
       </section>
 
-      {/* 모달 모음 */}
+      {/* SW 섹션 */}
+      <section className={styles.section}>
+        <div className={styles.summaryWrap}>
+          <div className={`${styles.summaryLabel} ${styles.labelSw}`}>SW</div>
+          <Card className={styles.summaryCard}>
+            <div className={styles.summaryCount}>{swRows.length}</div>
+            <div className={styles.summaryUnit}>요청</div>
+          </Card>
+        </div>
+        <Card className={styles.tableCard}>
+          {renderTable(swColumns, swRows, "요청 내역이 없습니다.")}
+        </Card>
+      </section>
+
+      {/* 모달 */}
       <ConfirmModal
         isOpen={showApproveConfirm}
         title="요청을 승인할까요?"

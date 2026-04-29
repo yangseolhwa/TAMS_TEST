@@ -205,42 +205,22 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
     throw new Error(error.response?.data?.message ?? 'SW 요청 반려에 실패했습니다.')
   }
 }
-
-// ─── assetService.js 에서 아래 부분을 교체하세요 ───
-//
-// [삭제할 코드]
-// const REQUEST_TYPE_LABEL = { register: '등록', return: '반납' }
-// export const fetchAssetRequests = async () => { ... }
-//
-// [교체할 코드] ↓↓↓
-
 export const fetchAssetRequests = async () => {
-  // item_type id→name 매핑을 위해 enterprise list-simple 병렬 조회
-  const [requestRes, listSimpleRes] = await Promise.all([
-    api.get(ENDPOINTS.ASSETS.REQUESTS),
-    api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE),
-  ])
-  const data = requestRes.data
-
-  // item_type_id → name 맵 생성
-  const itemTypeMap = {}
-  for (const cat of listSimpleRes.data.categories ?? []) {
-    for (const type of cat.item_types ?? []) {
-      itemTypeMap[type.id] = type.name
-    }
-  }
+  const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
 
   const enterpriseRows = (data.enterprise ?? [])
     .filter((item) => item.request_type === 'register')
     .map((item) => {
       let parsed = {}
-      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { }
       return {
         id:              `req-ent-${item.id}`,
         assetType:       'PC',
-        itemTypeName:    itemTypeMap[parsed.item_type_id] ?? null,
-        serialNumber:    parsed.serial_number ?? null,
+        itemTypeName:    item.item_type?.name ?? parsed.item_type_name ?? null,
         manufacturer:    parsed.manufacturer  ?? null,
+        spec:            parsed.spec          ?? null,
+        serialNumber:    parsed.serial_number ?? null,
+        userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
         requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
         status:          item.status?.toUpperCase(),
         rejectionReason: item.rejection_reason ?? null,
@@ -251,14 +231,16 @@ export const fetchAssetRequests = async () => {
     .filter((item) => item.request_type === 'register')
     .map((item) => {
       let parsed = {}
-      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { }
       return {
         id:              `req-sw-${item.id}`,
         assetType:       'SW',
-        assetName:       parsed.name         ?? item.sw?.name ?? null,
+        assetName:       parsed.name         ?? item.sw?.name         ?? null,
         manufacturer:    parsed.manufacturer ?? item.sw?.manufacturer ?? null,
+        version:         parsed.version      ?? item.sw?.version      ?? null,
         licenseKey:      parsed.license_key      ?? null,
         licensePassword: parsed.license_password ?? null,
+        userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
         requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
         status:          item.status?.toUpperCase(),
         rejectionReason: item.rejection_reason ?? null,
