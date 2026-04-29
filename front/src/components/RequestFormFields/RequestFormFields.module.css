@@ -247,7 +247,6 @@
   justify-content: center;
   background: none;
   border: none;
-  padding: 0;
   cursor: pointer;
   transition: opacity var(--transition-fast);
 }
