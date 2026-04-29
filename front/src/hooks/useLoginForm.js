@@ -17,29 +17,31 @@ const useLoginForm = ({ onLoginSuccess }) => {
   const [email,     setEmail]     = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error,     setError]     = useState('')
-
+ 
   const handleEmailChange = (e) => {
     setEmail(e.target.value)
     if (error) setError('')
   }
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
+ 
     const validationError = validate(email)
     if (validationError) {
       setError(validationError)
       return
     }
-
+ 
     setError('')
     setIsLoading(true)
-
+ 
     try {
       const data = await login(email)
-
+ 
       if (data?.role) {
-        onLoginSuccess?.(data.role)
+        // name이 없을 경우 email 앞부분을 fallback으로 사용
+        const name = data.name ?? email.split('@')[0]
+        onLoginSuccess?.(data.role, name)
       } else {
         throw new Error('로그인 응답이 올바르지 않습니다.')
       }
@@ -49,8 +51,8 @@ const useLoginForm = ({ onLoginSuccess }) => {
       setIsLoading(false)
     }
   }
-
+ 
   return { email, handleEmailChange, isLoading, error, handleSubmit }
 }
-
+ 
 export default useLoginForm

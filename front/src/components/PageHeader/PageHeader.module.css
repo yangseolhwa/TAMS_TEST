@@ -23,6 +23,19 @@
   margin: 0;
 }
 
+.pageHeaderRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .pageDate {
   font-size: 12px;
   color: var(--color-text-secondary);

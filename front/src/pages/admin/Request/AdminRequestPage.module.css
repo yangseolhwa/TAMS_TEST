@@ -1,0 +1,61 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =====================
+   섹션 래퍼
+   ===================== */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =====================
+   폼 하단 액션 영역
+   ===================== */
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* =====================
+   항목 추가 버튼
+   ===================== */
+.addItemBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary);
+  background-color: var(--color-primary-tint);
+  border: 1px dashed var(--color-primary-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  justify-content: center;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.addItemBtn:hover {
+  background-color: var(--color-primary-tint-hover);
+  border-color: var(--color-primary-border-hover);
+}
+
+/* =====================
+   초기화 / 요청 버튼 영역
+   ===================== */
+.actionBtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}

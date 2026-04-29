@@ -1,0 +1,22 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* =====================
+   섹션 래퍼
+   ===================== */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =====================
+   행 승인/반려 버튼 영역
+   ===================== */
+.rowActions {
+  display: flex;
+  gap: 6px;
+}

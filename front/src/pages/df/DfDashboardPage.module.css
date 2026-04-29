@@ -1,0 +1,115 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── 3열 그리드 ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* ── 프로젝트 카드 ── */
+.projectCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 500px;
+  padding: 0;
+}
+
+.projectCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background-color: var(--color-primary);
+}
+
+.projectCardLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.projectCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-surface);
+}
+
+.projectCardCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.moreBtnOnDark {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.6);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.moreBtnOnDark:hover {
+  color: var(--color-surface);
+}
+
+/* ── 테이블 헤더 ── */
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 8px 16px;
+  background-color: var(--color-accent-bg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.tableHeaderCell {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.tableHeaderCell:last-child {
+  text-align: right;
+}
+
+/* ── 테이블 바디 ── */
+.tableBody {
+  overflow-y: scroll;
+  flex: 1;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color var(--transition-fast);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.tableRow:hover {
+  background-color: var(--color-primary-tint);
+}
+
+.tableCell {
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.tableCellRight {
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: right;
+}

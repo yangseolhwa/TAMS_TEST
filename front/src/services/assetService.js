@@ -6,290 +6,497 @@
 import api from './httpClient'
 import { ENDPOINTS } from './endpoints'
 
-export const fetchEnterpriseCategories = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
+// ═══════════════════════════════════════════════════════════════
+//  개인 자산
+// ═══════════════════════════════════════════════════════════════
 
-  // item_category 중복 제거 후 { id, name } 목록 반환
-  const seen = new Set();
+export const fetchEnterpriseCategories = async () => {
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: 'enterprise' } })
+  const seen = new Set()
   return (data.enterprise ?? []).reduce((acc, item) => {
-    const cat = item.item_category;
+    const cat = item.item_category
     if (cat && !seen.has(cat.id)) {
-      seen.add(cat.id);
-      acc.push({ id: cat.id, name: cat.name });
+      seen.add(cat.id)
+      acc.push({ id: cat.id, name: cat.name })
     }
-    return acc;
-  }, []);
-};
+    return acc
+  }, [])
+}
 
 export const fetchPersonalAssets = async (params = {}) => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params });
-
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params })
   const enterpriseRows = (data.enterprise ?? []).map((item) => ({
-    id: `ent-${item.id}`,
-    asset_type_label: "PC",
+    id:                 `ent-${item.id}`,
+    rawId:              item.id,
+    asset_type_label:   'PC',
     item_category_name: item.item_category?.name,
-    asset_name: item.model_name,
-    manufacturer: item.manufacturer,
-    spec: item.spec,
-    serial_number: item.serial_number,
-    license_key: "-",
-    acquisition_date: item.acquisition_date,
-    return_date: item.return_date,
-    subscription_date: "-",
-    location: item.location,
-    state: item.state,
-  }));
+    asset_name:         item.model_name,
+    manufacturer:       item.manufacturer,
+    spec:               item.spec,
+    serial_number:      item.serial_number,
+    license_key:        '-',
+    acquisition_date:   item.acquisition_date,
+    return_date:        item.return_date,
+    location:           item.location,
+    state:              item.state,
+  }))
+  const swRows = (data.sw ?? []).flatMap((sw) =>
+    (sw.licenses ?? []).map((license) => ({
+      id:                 `sw-${sw.id}-${license.id}`,
+      rawId:              license.id,
+      swId:               sw.id,
+      asset_type_label:   'SW',
+      item_category_name: sw.software_type,
+      asset_name:         sw.name,
+      manufacturer:       sw.manufacturer,
+      spec:               '-',
+      serial_number:      '-',
+      license_key:        license.license_key,
+      acquisition_date:   '-',
+      return_date:        '-',
+      location:           license.location,
+      state:              license.state,
+    }))
+  )
+  return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
+}
+
+/**
+ * 개인 자산 조회 (UserMyAssetsPage 용 — 원본 구조 유지)
+ * Response: { enterprise: [...], sw: [{ ..., licenses: [...] }] }
+ */
+export const fetchMyAssets = async () => {
+  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL)
+
+  const pcRows = (data.enterprise ?? []).map((item) => ({
+    id:               `ent-${item.id}`,
+    rawId:            item.id,
+    asset_number:     item.asset_number     ?? null,
+    department_id:    item.department_id    ?? null,
+    acquisition_date: item.acquisition_date ?? null,
+    item_type_name:   item.item_type?.name  ?? null,
+    spec:             item.spec             ?? null,
+    manufacturer:     item.manufacturer     ?? null,
+    serial_number:    item.serial_number    ?? null,
+    location:         item.location         ?? null,
+    remarks:          item.remarks          ?? null,
+    state:            item.state,
+  }))
 
   const swRows = (data.sw ?? []).flatMap((sw) =>
     (sw.licenses ?? []).map((license) => ({
-      id: `sw-${sw.id}-${license.id}`,
-      asset_type_label: "SW",
-      item_category_name: sw.software_type,
-      asset_name: sw.name,
-      manufacturer: sw.manufacturer,
-      spec: "-",
-      serial_number: "-",
-      license_key: license.license_key,
-      acquisition_date: "-",
-      return_date: "-",
-      subscription_date: license.subscription_date,
-      location: license.location,
-      state: license.state,
+      id:               `sw-${sw.id}-lic-${license.id}`,
+      rawId:            license.id,
+      swId:             sw.id,
+      asset_name:       sw.name            ?? null,
+      version:          sw.version         ?? null,
+      manufacturer:     sw.manufacturer    ?? null,
+      license_key:      license.license_key    ?? null,
+      license_password: license.license_password ?? null,
+      related_link:     license.related_link    ?? null,
+      remarks:          license.remarks         ?? null,
+      state:            license.state,
     }))
-  );
+  )
 
-  const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
-    ...row,
-    no: index + 1,
-  }));
+  return { pcRows, swRows }
+}
 
-  console.log("변환된 데이터 (Table용):", combined);
-  return combined;
-};
-
-/**
- * 자산 등록 요청 폼용 Enterprise 자산 목록 (원본 데이터)
- */
+// 콤보박스 조회 API — Enterprise 등록용
 export const fetchEnterpriseAssetsForForm = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "enterprise" } });
-  return data.enterprise ?? [];
-};
+  const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE)
+  return data.list ?? []
+}
 
-/**
- * 자산 등록 요청 폼용 SW 자산 목록 (원본 데이터)
- */
+// 콤보박스 조회 API — SW 등록용
 export const fetchSwAssetsForForm = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: "sw" } });
-  return data.sw ?? [];
-};
+  const { data } = await api.get(ENDPOINTS.ASSETS.SW_LIST_SIMPLE)
+  return data.list ?? []
+}
 
-/**
- * Enterprise(PC) 자산 반납
- * @param {{ asset_ids: number[] }} body
- */
 export const returnEnterpriseAssets = async (body) => {
   try {
-    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_RETURN, body);
-    return data;
+    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_RETURN, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'PC 자산 반납에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'PC 자산 반납에 실패했습니다.')
   }
-};
+}
 
-/**
- * SW 라이선스 반납
- * @param {{ license_ids: number[] }} body
- */
 export const returnSwAssets = async (body) => {
   try {
-    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_RETURN, body);
-    return data;
+    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_RETURN, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'SW 자산 반납에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'SW 자산 반납에 실패했습니다.')
   }
-};
+}
 
-/**
- * Enterprise(PC) 자산 위치 이동
- * @param {{ asset_ids: number[], location: string }} body
- */
 export const moveEnterpriseAssets = async (body) => {
   try {
-    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_MOVE, body);
-    return data;
+    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_MOVE, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'PC 자산 이동에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'PC 자산 이동에 실패했습니다.')
   }
-};
+}
 
-/**
- * SW 라이선스 위치 이동
- * @param {{ license_ids: number[], location: string }} body
- */
 export const moveSwAssets = async (body) => {
   try {
-    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_MOVE, body);
-    return data;
+    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_MOVE, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'SW 자산 이동에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'SW 자산 이동에 실패했습니다.')
   }
-};
+}
 
-/**
- * Enterprise(PC) 자산 등록 요청
- * @param {{ is_existing: boolean, assets: object[] }} body
- */
 export const requestEnterpriseAsset = async (body) => {
   try {
-    const { data } = await api.post(ENDPOINTS.ASSETS.ENTERPRISE, body);
-    return data;
+    const { data } = await api.post(ENDPOINTS.ASSETS.ENTERPRISE, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'PC 자산 등록 요청에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'PC 자산 등록 요청에 실패했습니다.')
   }
-};
+}
 
-/**
- * SW 자산 등록 요청
- * @param {{ is_existing: boolean, licenses: object[] }} body
- */
 export const requestSwAsset = async (body) => {
   try {
-    const { data } = await api.post(ENDPOINTS.ASSETS.SW, body);
-    return data;
+    const { data } = await api.post(ENDPOINTS.ASSETS.SW, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'SW 자산 등록 요청에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'SW 자산 등록 요청에 실패했습니다.')
   }
-};
+}
 
-/**
- * Enterprise(PC) 등록 요청 승인
- * @param {number} requestId
- */
 export const approveEnterpriseRequest = async (requestId) => {
   try {
-    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_APPROVE}/${requestId}`);
-    return data;
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_APPROVE}/${requestId}`)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'PC 요청 승인에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'PC 요청 승인에 실패했습니다.')
   }
-};
+}
 
-/**
- * Enterprise(PC) 등록 요청 반려
- * @param {number} requestId
- * @param {string} rejectReason
- */
 export const rejectEnterpriseRequest = async (requestId, rejectReason) => {
   try {
-    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {};
-    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_REJECT}/${requestId}`, body);
-    return data;
+    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {}
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_REJECT}/${requestId}`, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'PC 요청 반려에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'PC 요청 반려에 실패했습니다.')
   }
-};
+}
 
-/**
- * SW 등록 요청 승인
- * @param {number} requestId
- */
 export const approveSwRequest = async (requestId) => {
   try {
-    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_APPROVE}/${requestId}`);
-    return data;
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_APPROVE}/${requestId}`)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'SW 요청 승인에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'SW 요청 승인에 실패했습니다.')
   }
-};
+}
 
-/**
- * SW 등록 요청 반려
- * @param {number} requestId
- * @param {string} rejectReason
- */
 export const rejectSwRequest = async (requestId, rejectReason) => {
   try {
-    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {};
-    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_REJECT}/${requestId}`, body);
-    return data;
+    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {}
+    const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_REJECT}/${requestId}`, body)
+    return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'SW 요청 반려에 실패했습니다.';
-    throw new Error(message);
+    throw new Error(error.response?.data?.message ?? 'SW 요청 반려에 실패했습니다.')
   }
-};
+}
 
-// request_type 한글 레이블
-const REQUEST_TYPE_LABEL = {
-  register: "등록 요청",
-  return:   "반납 요청",
-};
+const REQUEST_TYPE_LABEL = { register: '등록', return: '반납' }
 
-/**
- * 자산 요청 현황 목록 조회 (DataTable용 변환 포함)
- * enterprise / sw 배열을 하나의 행 배열로 합쳐서 반환
- */
 export const fetchAssetRequests = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS);
-
+  const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
   const enterpriseRows = (data.enterprise ?? []).map((item) => {
-    // new_asset_data가 JSON 문자열이므로 파싱하여 자산명/규격 추출
-    let parsed = {};
-    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch (e) { console.warn("enterprise new_asset_data 파싱 실패:", e); }
-
+    let parsed = {}
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
     return {
       id:          `req-ent-${item.id}`,
-      assetType:   "PC",
+      assetType:   'PC',
       assetName:   parsed.model_name ?? null,
       spec:        parsed.spec       ?? null,
+      manufacturer: parsed.manufacturer  ?? null,
+      serialNumber: parsed.serial_number ?? null,
+      licenseKey:   null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:   item.requester?.email ?? null,   // ← 추가
-      requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
-      processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+      requester:   item.requester?.email ?? null,
+      requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
+      processedAt: item.processed_at ? item.processed_at.slice(0, 10) : null,
       status:      item.status?.toUpperCase(),
-      reason:      item.admin_reason  ?? null,
-    };
-  });
-
+      reason:      item.admin_reason ?? null,
+    }
+  })
   const swRows = (data.sw ?? []).map((item) => {
-    let parsed = {};
-    try { parsed = JSON.parse(item.new_asset_data ?? "{}"); } catch (e) { console.warn("sw new_asset_data 파싱 실패:", e); }
-
+    let parsed = {}
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
     return {
       id:          `req-sw-${item.id}`,
-      assetType:   "SW",
+      assetType:   'SW',
       assetName:   parsed.name ?? item.sw?.name ?? null,
       spec:        null,
+      manufacturer: parsed.manufacturer ?? null,
+      serialNumber: null,
+      licenseKey:   parsed.license_key   ?? null,
       requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:   item.requester?.email ?? null,   // ← 추가
-      requestedAt: item.request_date  ? item.request_date.slice(0, 10)  : null,
-      processedAt: item.processed_at  ? item.processed_at.slice(0, 10)  : null,
+      requester:   item.requester?.email ?? null,
+      requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
+      processedAt: item.processed_at ? item.processed_at.slice(0, 10) : null,
       status:      item.status?.toUpperCase(),
-      reason:      item.admin_reason  ?? null,
-    };
-  });
+      reason:      item.admin_reason ?? null,
+    }
+  })
+  return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
+}
 
-  const combined = [...enterpriseRows, ...swRows].map((row, index) => ({
-    ...row,
-    no: index + 1,
-  }));
+// ═══════════════════════════════════════════════════════════════
+//  Admin 대시보드
+// ═══════════════════════════════════════════════════════════════
 
-  return combined;
-};
+/**
+ * SW + PC 집계 대시보드 (admin 전용)
+ * Response: {
+ *   sw: {
+ *     total_sw_count, total_license_count, total_in_use,
+ *     list: [{ id, name, quantity, in_use_count, available_count,
+ *              licenses: [{ id, license_key, state, user: { id, email, name } }] }]
+ *   },
+ *   enterprise: {
+ *     total_count,
+ *     by_item_type: [{ id, code, name, count }]
+ *   }
+ * }
+ */
+export const fetchDashboard = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.DASHBOARD)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? '대시보드 조회에 실패했습니다.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Admin — PC 전체 조회
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * PC(Enterprise) 전체 조회 (admin 전용)
+ * Response: { total, list: [{ id, item_category, item_type, User, ... }] }
+ */
+export const fetchEnterpriseList = async (params = {}) => {
+  try {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v != null)
+    )
+    const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST, { params: cleanParams })
+
+    return {
+      total: data.total ?? 0,
+      rows: (data.list ?? []).map((item, i) => ({
+        id:           item.id,
+        no:           i + 1,
+        categoryName: item.item_category?.name ?? null,
+        itemTypeName: item.item_type?.name     ?? null,
+        manufacturer: item.manufacturer        ?? null,
+        spec:         item.spec                ?? null,
+        serialNumber: item.serial_number       ?? null,
+        location:     item.location            ?? null,
+        acquiredAt:   item.acquisition_date    ?? null,
+        state:        item.state,
+        userName:     item.User?.profile?.name ?? item.User?.email ?? null,
+        departmentName: item.User?.profile?.department?.name ?? null,
+        remarks:      item.remarks ?? null,
+      })),
+      // 필터용 메타 (중복 제거)
+      categories: (() => {
+        const map = new Map()
+        ;(data.list ?? []).forEach((item) => {
+          const cat = item.item_category
+          if (cat && !map.has(cat.id)) map.set(cat.id, { id: cat.id, name: cat.name })
+        })
+        return [...map.values()]
+      })(),
+      itemTypes: (() => {
+        const map = new Map()
+        ;(data.list ?? []).forEach((item) => {
+          const t = item.item_type
+          if (t && !map.has(t.id)) map.set(t.id, { id: t.id, name: t.name })
+        })
+        return [...map.values()]
+      })(),
+    }
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 목록 조회에 실패했습니다.')
+  }
+}
+
+/**
+ * PC 상태 변경 (admin/user)
+ * @param {{ asset_ids: number[], state: 'in_use'|'stored' }} body
+ */
+export const changeEnterpriseState = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_STATE, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 상태 변경에 실패했습니다.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Admin — SW 전체 조회
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * SW 전체 조회 (admin 전용)
+ * Response: { total, list: [{ id, name, version, manufacturer, quantity,
+ *              in_use_count, available_count, licenses: [...] }] }
+ */
+export const fetchSwList = async (params = {}) => {
+  try {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v != null)
+    )
+    const { data } = await api.get(ENDPOINTS.ASSETS.SW_LIST, { params: cleanParams })
+
+    return {
+      total: data.total ?? 0,
+      list:  data.list  ?? [],
+    }
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'SW 목록 조회에 실패했습니다.')
+  }
+}
+
+/**
+ * SW 라이선스 할당 (admin 전용)
+ * @param {{ license_id: number, user_id: number }} body
+ */
+export const assignSwLicense = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_ASSIGN, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'SW 라이선스 할당에 실패했습니다.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  히스토리
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 개인 자산 히스토리 조회 (SW + PC)
+ * Response: {
+ *   sw: [{ id, asset_sw_id, change_type, before_value, after_value, created_at,
+ *          sw: { id, name, version, manufacturer },
+ *          license: { id, license_key, key_type },
+ *          changedBy: { id, email, profile: { name } } }],
+ *   enterprise: [{ id, asset_enterprise_id, change_type, before_value, after_value, created_at,
+ *                  asset: { id, manufacturer, state, item_type: { id, name } },
+ *                  changedBy: { ... } }]
+ * }
+ */
+export const fetchPersonalHistory = async (params = {}) => {
+  try {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v != null)
+    )
+    const { data } = await api.get(ENDPOINTS.ASSETS.HISTORY_PERSONAL, { params: cleanParams })
+
+    const CHANGE_TYPE_LABEL = {
+      register: '등록',
+      returned: '반납',
+      change:   '상태 변경',
+      move:     '이동',
+      assign:   '할당',
+    }
+
+    const swRows = (data.sw ?? []).map((item) => ({
+      id:          `sw-${item.id}`,
+      no:          0,
+      assetType:   'SW',
+      requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
+      beforeValue: item.before_value ?? null,
+      afterValue:  item.after_value  ?? null,
+      assetName:   item.sw?.name     ?? null,
+      detail:      item.license?.license_key ?? null,
+      user:        item.changedBy?.profile?.name ?? item.changedBy?.email ?? null,
+    }))
+
+    const enterpriseRows = (data.enterprise ?? []).map((item) => ({
+      id:          `ent-${item.id}`,
+      no:          0,
+      assetType:   'PC',
+      requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
+      beforeValue: item.before_value ?? null,
+      afterValue:  item.after_value  ?? null,
+      assetName:   item.asset?.item_type?.name ?? null,
+      detail:      item.asset?.manufacturer    ?? null,
+      user:        item.changedBy?.profile?.name ?? item.changedBy?.email ?? null,
+    }))
+
+    // 날짜 내림차순 병합
+    const combined = [...swRows, ...enterpriseRows]
+      .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+      .map((row, i) => ({ ...row, no: i + 1 }))
+
+    return combined
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? '히스토리 조회에 실패했습니다.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DF 자산
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * DF 대시보드 조회
+ * Response: { total, projects: [{ id, name, total_count, by_type: [{ type_id, type_name, count }] }] }
+ */
+export const fetchDfDashboard = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.DASHBOARD_DF)
+    const raw = data.projects ?? []
+
+    const projectOptions = raw.map((p) => ({ id: p.id, name: p.name }))
+
+    const typeMap = new Map()
+    raw.forEach((proj) => {
+      ;(proj.by_type ?? []).forEach((t) => {
+        if (!typeMap.has(t.type_id)) {
+          typeMap.set(t.type_id, { id: t.type_id, name: t.type_name })
+        }
+      })
+    })
+
+    const projects = raw
+      .map((proj) => ({
+        id:    proj.id,
+        name:  proj.name,
+        total: proj.total_count ?? 0,
+        items: (proj.by_type ?? []).map((t) => ({
+          itemType: t.type_name,
+          quantity: t.count ?? 0,
+        })),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+
+    return { projects, projectOptions, typeOptions: [...typeMap.values()] }
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'DF 대시보드 조회에 실패했습니다.')
+  }
+}
 
 /**
  * DF 자산 조회
- * 응답 구조: { projects: [{ id, name, items: [...] }] }
- * @param {object} params - 쿼리 파라미터 (project_id, item_type_id, manufacturer, state, keyword)
- * @returns {Promise<{ rows: object[], projectSummaries: object[] }>}
+ * Response: { projects: [{ id, name, items: [{ id, item_type: { id, name, parent_id }, ... }] }] }
  */
 export const fetchDfAssets = async (params = {}) => {
   try {
@@ -297,7 +504,6 @@ export const fetchDfAssets = async (params = {}) => {
       Object.entries(params).filter(([, v]) => v !== '' && v != null)
     )
     const { data } = await api.get(ENDPOINTS.ASSETS.DF, { params: cleanParams })
-
     const projects = data.projects ?? []
 
     const projectSummaries = projects.map((proj) => ({
@@ -309,89 +515,74 @@ export const fetchDfAssets = async (params = {}) => {
     const rows = []
     projects.forEach((proj) => {
       ;(proj.items ?? []).forEach((item) => {
+        const isTopLevel = item.item_type?.parent_id == null
         rows.push({
-          id:               item.id,
-          projectId:        proj.id,
-          project:          proj.name,
-          doosanItemNumber: item.doosan_item_number ?? null,
-          itemTypeId:       item.item_type?.id      ?? null,
-          itemType:         item.item_type?.name     ?? null,
-          modelName:        item.model_name          ?? null,
-          manufacturer:     item.manufacturer        ?? null,
-          serialNumber:     item.serial_number       ?? null,
-          quantity:         item.quantity != null
-            ? `${item.quantity} ${item.quantity_unit ?? 'ea'}`
-            : null,
-          rentalStartDate:  item.rental_start_date
-            ? item.rental_start_date.slice(0, 10)
-            : null,
-          rentalEndDate:    item.rental_end_date
-            ? item.rental_end_date.slice(0, 10)
-            : null,
-          location:         item.location ?? null,
-          state:            item.state    ?? null,
-          remarks:          item.remarks  ?? null,
+          id:            item.id,
+          projectId:     proj.id,
+          projectName:   proj.name,
+          ownerOrg:      item.owner_organization ?? null,
+          equipmentNo:   item.equipment_number   ?? null,
+          majorCategory: isTopLevel ? (item.item_type?.name ?? null) : null,
+          minorCategory: isTopLevel ? null : (item.item_type?.name ?? null),
+          itemTypeId:    item.item_type?.id   ?? null,
+          modelName:     item.model_name      ?? null,
+          spec:          item.spec            ?? null,
+          manufacturer:  item.manufacturer    ?? null,
+          serialNumber:  item.serial_number   ?? null,
+          acquiredAt:    item.acquisition_date ? item.acquisition_date.slice(0, 10) : null,
+          returnedAt:    item.return_date      ? item.return_date.slice(0, 10)      : null,
+          location:      item.location ?? null,
+          state:         item.state    ?? null,
+          remarks:       item.remarks  ?? null,
         })
       })
     })
 
-    return { rows: rows.map((row, i) => ({ ...row, no: i + 1 })), projectSummaries }
+    return {
+      rows: rows.map((row, i) => ({ ...row, no: i + 1 })),
+      projectSummaries,
+    }
   } catch (error) {
-    const message = error.response?.data?.message ?? 'DF 자산 조회에 실패했습니다.'
-    throw new Error(message)
+    throw new Error(error.response?.data?.message ?? 'DF 자산 조회에 실패했습니다.')
   }
 }
 
-/**
- * DF 자산 등록
- * @param {{ project_id: number, is_existing: boolean, items: object[] }} body
- * @returns {Promise<object>}
- */
 export const registerDfAsset = async (body) => {
   try {
     const { data } = await api.post(ENDPOINTS.ASSETS.DF, body)
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'DF 자산 등록에 실패했습니다.'
-    throw new Error(message)
+    throw new Error(error.response?.data?.message ?? 'DF 자산 등록에 실패했습니다.')
   }
 }
 
-/**
- * DF 자산 이동
- * @param {{ item_ids: number[], location: string }} body
- * @returns {Promise<object>}
- */
+export const changeDfAssetState = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.DF_STATE, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'DF 자산 상태 변경에 실패했습니다.')
+  }
+}
+
 export const moveDfAssets = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.DF_MOVE, body)
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'DF 자산 이동에 실패했습니다.'
-    throw new Error(message)
+    throw new Error(error.response?.data?.message ?? 'DF 자산 이동에 실패했습니다.')
   }
 }
 
-/**
- * DF 자산 반납
- * @param {{ item_ids: number[] }} body
- * @returns {Promise<object>}
- */
 export const returnDfAssets = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.DF_RETURN, body)
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'DF 자산 반납에 실패했습니다.'
-    throw new Error(message)
+    throw new Error(error.response?.data?.message ?? 'DF 자산 반납에 실패했습니다.')
   }
 }
 
-/**
- * DF 자산 엑셀 Import
- * @param {File} file - .xlsx 파일
- * @returns {Promise<{ message: string, imported: number, failed: number, results: object[] }>}
- */
 export const importDfAssets = async (file) => {
   try {
     const formData = new FormData()
@@ -401,32 +592,23 @@ export const importDfAssets = async (file) => {
     })
     return data
   } catch (error) {
-    const message = error.response?.data?.message ?? 'Import에 실패했습니다.'
-    throw new Error(message)
+    throw new Error(error.response?.data?.message ?? '업로드에 실패했습니다.')
   }
 }
 
-/**
- * DF 자산 엑셀 Export (현재 필터 적용)
- * @param {object} params - 쿼리 파라미터 (project_id, item_type_id, manufacturer, state, keyword)
- * @returns {Promise<void>} - 브라우저 파일 다운로드 트리거
- */
 export const exportDfAssets = async (params = {}) => {
   const cleanParams = Object.fromEntries(
     Object.entries(params).filter(([, v]) => v !== '' && v != null)
   )
-
   const response = await api.get(ENDPOINTS.ASSETS.DF_EXPORT, {
     params: cleanParams,
     responseType: 'blob',
   })
-
-  // Content-Disposition 헤더에서 파일명 추출 (없으면 기본값)
   const disposition = response.headers['content-disposition'] ?? ''
   const match       = disposition.match(/filename="(.+)"/)
   const filename    = match
     ? match[1]
-    : `TAMS_DF_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`
+    : `TAMS_DF_DOWNLOAD_${new Date().toISOString().slice(0, 10)}.xlsx`
 
   const url  = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
@@ -436,4 +618,69 @@ export const exportDfAssets = async (params = {}) => {
   link.click()
   link.remove()
   window.URL.revokeObjectURL(url)
+}
+
+export const downloadDfTemplate = async () => {
+  try {
+    const response = await api.get(ENDPOINTS.ASSETS.DF_TEMPLATE, { responseType: 'blob' })
+    const disposition = response.headers['content-disposition'] ?? ''
+    const match       = disposition.match(/filename="(.+)"/)
+    const filename    = match ? match[1] : 'TAMS_DF_양식.xlsx'
+
+    const url  = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href  = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? '양식 다운로드에 실패했습니다.')
+  }
+}
+
+export const fetchDfHistory = async (params = {}) => {
+  try {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v != null)
+    )
+    const { data } = await api.get(ENDPOINTS.ASSETS.HISTORY_DF, { params: cleanParams })
+
+    const CHANGE_TYPE_LABEL = { register: '등록', returned: '반납', move: '이동', change: '상태 변경' }
+    const STATE_LABEL = { in_use: '사용중', stored: '보관중', rented: '대여중', returned: '반납됨' }
+
+    return (data.list ?? []).map((item, i) => {
+      const changeType = item.change_type
+      let prevLocation = null, nextLocation = null
+      let prevState    = null, nextState    = null
+
+      if (changeType === 'move') {
+        prevLocation = item.before_value ?? null
+        nextLocation = item.after_value  ?? null
+      } else if (changeType === 'change') {
+        prevState = STATE_LABEL[item.before_value] ?? item.before_value ?? null
+        nextState = STATE_LABEL[item.after_value]  ?? item.after_value  ?? null
+      }
+
+      return {
+        id:           item.id,
+        no:           i + 1,
+        requestedAt:  item.created_at ? item.created_at.slice(0, 10) : null,
+        user:         item.changedBy?.profile?.name ?? item.changedBy?.email ?? null,
+        requestType:  CHANGE_TYPE_LABEL[changeType] ?? changeType,
+        prevLocation,
+        nextLocation,
+        prevState,
+        nextState,
+        projectName:  item.project?.name         ?? null,
+        projectId:    item.project?.id           ?? null,
+        category:     item.item?.item_type?.name ?? null,
+        modelName:    item.item?.model_name      ?? null,
+        serialNumber: item.item?.serial_number   ?? null,
+      }
+    })
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'DF 히스토리 조회에 실패했습니다.')
+  }
 }
