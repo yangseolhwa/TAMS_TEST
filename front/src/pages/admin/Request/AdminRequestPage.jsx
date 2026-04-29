@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircleFill } from "react-bootstrap-icons";
 import toast from "react-hot-toast";
 import ActionButton from "../../../components/ActionButton/ActionButton";
@@ -12,8 +12,6 @@ import RequestFormFields, {
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import styles from "./AdminRequestPage.module.css";
 import {
-  fetchEnterpriseAssetsForForm,
-  fetchSwAssetsForForm,
   requestEnterpriseAsset,
   requestSwAsset,
 } from "../../../services/assetService";
@@ -31,21 +29,6 @@ const AdminRequestPage = () => {
   const [items,             setItems]             = useState([createInitialItem()]);
   const [showResetConfirm,  setShowResetConfirm]  = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-
-  // ── 데이터 조회 ────────────────────────────────────────────────────────────
-  const { data: enterpriseAssetsForForm = [] } = useQuery({
-    queryKey: ["enterpriseAssetsForForm"],
-    queryFn:  fetchEnterpriseAssetsForForm,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: swAssetsForForm = [] } = useQuery({
-    queryKey: ["swAssetsForForm"],
-    queryFn:  fetchSwAssetsForForm,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-  });
 
   // ── 폼 핸들러 ──────────────────────────────────────────────────────────────
 
@@ -133,11 +116,11 @@ const AdminRequestPage = () => {
             name:             swName,
             manufacturer,
             license_required: item.licenseRequired,
-            ...(version                 && { version }),
-            ...(item.acquisitionDateSw  && { acquisition_date: item.acquisitionDateSw }),
-            ...(item.swRemarks.trim()   && { remarks:          item.swRemarks.trim() }),
-            ...(item.relatedLink.trim() && { related_link:     item.relatedLink.trim() }),
-            ...(item.requestReason.trim() && { request_reason: item.requestReason.trim() }),
+            ...(version                   && { version }),
+            ...(item.acquisitionDateSw    && { acquisition_date: item.acquisitionDateSw }),
+            ...(item.swRemarks.trim()     && { remarks:          item.swRemarks.trim() }),
+            ...(item.relatedLink.trim()   && { related_link:     item.relatedLink.trim() }),
+            ...(item.requestReason.trim() && { request_reason:   item.requestReason.trim() }),
           };
 
           if (!item.licenseRequired) {
@@ -284,8 +267,6 @@ const AdminRequestPage = () => {
           >
             <RequestFormFields
               items={items}
-              enterpriseAssets={enterpriseAssetsForForm}
-              swAssets={swAssetsForForm}
               onAssetTypeChange={handleAssetTypeChange}
               onItemChange={handleItemChange}
               onRemoveItem={handleRemoveItem}

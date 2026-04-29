@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import PropTypes from "prop-types";
+import { useQuery } from "@tanstack/react-query";
 import { XCircleFill, ChevronDown, ChevronUp, PlusCircleFill } from "react-bootstrap-icons";
+import { fetchEnterpriseAssetsForForm, fetchSwAssetsForForm } from "../../services/assetService";
 import styles from "./RequestFormFields.module.css";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -119,6 +121,10 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                       onItemChange(index, {
                         keyType:         opt.value,
                         licensePassword: "",
+                        // 크리덴셜로 변경 시 라이선스 키를 1개로 초기화
+                        licenseKeys: opt.value === "credential"
+                          ? [{ id: crypto.randomUUID(), value: "" }]
+                          : item.licenseKeys,
                       })
                     }
                   />
@@ -143,6 +149,17 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                     value={k.value}
                     onChange={(e) => handleKeyChange(k.id, e.target.value)}
                   />
+                  {/* 삭제 버튼 (2개 이상일 때) */}
+                  {item.licenseKeys.length > 1 && (
+                    <button
+                      type="button"
+                      className={styles.removeKeyBtn}
+                      onClick={() => handleRemoveKey(k.id)}
+                      title="라이선스 키 삭제"
+                    >
+                      <XCircleFill size={14} />
+                    </button>
+                  )}
                   {/* 첫 번째 행: 플러스 버튼 고정 (시리얼 타입일 때만) */}
                   {idx === 0 && item.keyType !== "credential" ? (
                     <button
@@ -154,19 +171,8 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                       <PlusCircleFill size={14} />
                     </button>
                   ) : idx === 0 ? (
-                    // 크레덴셜일 때 첫 번째 행 버튼 자리 유지
                     <span />
-                  ) : (
-                    // 2번째 행부터 삭제 버튼
-                    <button
-                      type="button"
-                      className={styles.removeKeyBtn}
-                      onClick={() => handleRemoveKey(k.id)}
-                      title="라이선스 키 삭제"
-                    >
-                      <XCircleFill size={14} />
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -189,7 +195,7 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
             </div>
           )}
 
-          {/* 라이선스 타입 */}
+          {/* 라이선스 타입 (라디오버튼) */}
           <div className={styles.inputGroup}>
             <label className={styles.selectLabel}>라이선스 타입</label>
             <div className={styles.radioGroup}>
@@ -222,12 +228,29 @@ SwLicenseSection.propTypes = {
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 const RequestFormFields = ({
   items,
-  enterpriseAssets,
-  swAssets,
   onAssetTypeChange,
   onItemChange,
   onRemoveItem,
 }) => {
+  // 콤보박스 데이터 — 이 컴포넌트에서 직접 호출, select onFocus 시 갱신
+  const {
+    data: enterpriseAssets = [],
+    refetch: refetchEnterprise,
+  } = useQuery({
+    queryKey: ["enterpriseAssetsForForm"],
+    queryFn:  fetchEnterpriseAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: swAssets = [],
+    refetch: refetchSw,
+  } = useQuery({
+    queryKey: ["swAssetsForForm"],
+    queryFn:  fetchSwAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
+
   // PC: 카테고리 목록 (중복 제거)
   const pcCategories = useMemo(() => [
     ...new Map(
@@ -318,6 +341,7 @@ const RequestFormFields = ({
                   <select
                     className={styles.select}
                     value={item.categoryId}
+                    onFocus={() => refetchEnterprise()}
                     onChange={(e) => onItemChange(index, "categoryId", e.target.value)}
                   >
                     <option value="">선택</option>
@@ -344,6 +368,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.itemTypeId}
+                      onFocus={() => refetchEnterprise()}
                       onChange={(e) =>
                         onItemChange(index, {
                           itemTypeId:       e.target.value,
@@ -382,6 +407,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.manufacturer}
+                      onFocus={() => refetchEnterprise()}
                       onChange={(e) =>
                         onItemChange(index, {
                           manufacturer:     e.target.value,
@@ -480,6 +506,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.swName}
+                      onFocus={() => refetchSw()}
                       onChange={(e) => {
                         const selectedName = e.target.value;
                         if (selectedName === DIRECT_INPUT) {
@@ -522,6 +549,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.swManufacturer}
+                      onFocus={() => refetchSw()}
                       onChange={(e) =>
                         onItemChange(index, {
                           swManufacturer:     e.target.value,
@@ -556,6 +584,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.version}
+                      onFocus={() => refetchSw()}
                       onChange={(e) =>
                         onItemChange(index, {
                           version:     e.target.value,
@@ -679,8 +708,6 @@ const RequestFormFields = ({
 
 RequestFormFields.propTypes = {
   items:             PropTypes.array.isRequired,
-  enterpriseAssets:  PropTypes.array.isRequired,
-  swAssets:          PropTypes.array.isRequired,
   onAssetTypeChange: PropTypes.func.isRequired,
   onItemChange:      PropTypes.func.isRequired,
   onRemoveItem:      PropTypes.func,
