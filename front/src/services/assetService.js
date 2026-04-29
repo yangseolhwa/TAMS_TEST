@@ -102,14 +102,16 @@ export const fetchMyAssets = async () => {
   return { pcRows, swRows }
 }
 
+// 콤보박스 조회 API — Enterprise 등록용
 export const fetchEnterpriseAssetsForForm = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: 'enterprise' } })
-  return data.enterprise ?? []
+  const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE)
+  return data.list ?? []
 }
 
+// 콤보박스 조회 API — SW 등록용
 export const fetchSwAssetsForForm = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL, { params: { type: 'sw' } })
-  return data.sw ?? []
+  const { data } = await api.get(ENDPOINTS.ASSETS.SW_LIST_SIMPLE)
+  return data.list ?? []
 }
 
 export const returnEnterpriseAssets = async (body) => {

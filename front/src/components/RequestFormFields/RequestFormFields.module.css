@@ -88,6 +88,32 @@
 }
 
 /* =====================
+   체크박스
+   ===================== */
+.checkboxWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkboxLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* =====================
    셀렉트 영역
    ===================== */
 .selectRow {
@@ -210,10 +236,9 @@
   gap: 8px;
 }
 
-.licenseKeyHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.addKeyPlaceholder {
+  width: 22px;
+  flex-shrink: 0;
 }
 
 .addKeyBtn {
@@ -225,6 +250,8 @@
   cursor: pointer;
   color: var(--color-accent);
   transition: color var(--transition-fast), opacity var(--transition-fast);
+  width: 22px;
+  flex-shrink: 0;
 }
 
 .addKeyBtn:hover {
@@ -232,9 +259,15 @@
 }
 
 .licenseKeyRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 22px;
   align-items: center;
   gap: 8px;
+}
+
+.licenseKeyRow .input {
+  flex: 1;
+  min-width: 0;
 }
 
 .removeKeyBtn {
