@@ -36,12 +36,14 @@ const AdminRequestPage = () => {
   const { data: enterpriseAssetsForForm = [] } = useQuery({
     queryKey: ["enterpriseAssetsForForm"],
     queryFn:  fetchEnterpriseAssetsForForm,
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
 
   const { data: swAssetsForForm = [] } = useQuery({
     queryKey: ["swAssetsForForm"],
     queryFn:  fetchSwAssetsForForm,
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
 
@@ -85,12 +87,10 @@ const AdminRequestPage = () => {
 
   // ── 등록 Mutation ──────────────────────────────────────────────────────────
   // admin은 즉시 등록
-  // PC: 항상 신규 등록
-  // SW: swId가 실제 id면 기존 SW에 라이선스 추가, 아니면 신규 SW 등록
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const pcItems = items.filter((i) => i.assetType === "pc");
-      const swItems = items.filter((i) => i.assetType === "sw");
+      const pcItems = items.filter((item) => item.assetType === "pc");
+      const swItems = items.filter((item) => item.assetType === "sw");
 
       const tasks = [
         // PC — 신규 등록
@@ -98,64 +98,66 @@ const AdminRequestPage = () => {
           ? [{
               items: pcItems,
               promise: requestEnterpriseAsset({
-                assets: pcItems.map((i) => ({
-                  category_id: Number(i.categoryId),
-                  ...(i.itemTypeId && i.itemTypeId !== DIRECT_INPUT
-                    ? { item_type_id:   Number(i.itemTypeId) }
-                    : { item_type_name: i.itemTypeName.trim() }
+                assets: pcItems.map((item) => ({
+                  category_id: Number(item.categoryId),
+                  ...(item.itemTypeId && item.itemTypeId !== DIRECT_INPUT
+                    ? { item_type_id:   Number(item.itemTypeId) }
+                    : { item_type_name: item.itemTypeName.trim() }
                   ),
-                  manufacturer: i.manufacturer === DIRECT_INPUT
-                    ? i.manufacturerName.trim()
-                    : i.manufacturer,
-                  acquisition_date: i.acquisitionDate,
-                  ...(i.spec.trim()          && { spec:           i.spec.trim() }),
-                  ...(i.serialNumber.trim()  && { serial_number:  i.serialNumber.trim() }),
-                  ...(i.requestReason.trim() && { request_reason: i.requestReason.trim() }),
-                  ...(i.remarks.trim() && { remarks: i.remarks.trim() }),
+                  manufacturer: item.manufacturer === DIRECT_INPUT
+                    ? item.manufacturerName.trim()
+                    : item.manufacturer,
+                  acquisition_date: item.acquisitionDate,
+                  ...(item.spec.trim()          && { spec:           item.spec.trim() }),
+                  ...(item.serialNumber.trim()  && { serial_number:  item.serialNumber.trim() }),
+                  ...(item.requestReason.trim() && { request_reason: item.requestReason.trim() }),
+                  ...(item.remarks.trim()       && { remarks:        item.remarks.trim() }),
                 })),
               }),
             }]
           : []),
 
-        // SW — swId 유무로 기존/신규 분기
-        ...swItems.map((i) => {
-          const isExistingSw = i.swId && i.swId !== DIRECT_INPUT;
-          const manufacturer = i.swManufacturer === DIRECT_INPUT
-            ? i.swManufacturerName.trim()
-            : i.swManufacturer;
+        // SW — 신규 등록 (아이템별 개별 요청)
+        ...swItems.map((item) => {
+          const swName = item.swName === DIRECT_INPUT
+            ? item.swNameDirect.trim()
+            : item.swName.trim();
+          const manufacturer = item.swManufacturer === DIRECT_INPUT
+            ? item.swManufacturerName.trim()
+            : item.swManufacturer;
+          const version = item.version === DIRECT_INPUT
+            ? item.versionName.trim()
+            : item.version;
 
-          // 라이선스 공통 데이터
-          const licenseData = {
-            license_key:  i.licenseKey.trim(),
-            key_type:     i.keyType,
-            license_type: i.licenseType,
-            ...(i.licensePassword.trim() && { license_password: i.licensePassword.trim() }),
-            ...(i.relatedLink.trim()     && { related_link:     i.relatedLink.trim() }),
-            ...(i.requestReason.trim()   && { request_reason:   i.requestReason.trim() }),
+          const body = {
+            name:             swName,
+            manufacturer,
+            license_required: item.licenseRequired,
+            ...(version                 && { version }),
+            ...(item.acquisitionDateSw  && { acquisition_date: item.acquisitionDateSw }),
+            ...(item.swRemarks.trim()   && { remarks:          item.swRemarks.trim() }),
+            ...(item.relatedLink.trim() && { related_link:     item.relatedLink.trim() }),
+            ...(item.requestReason.trim() && { request_reason: item.requestReason.trim() }),
           };
 
+          if (!item.licenseRequired) {
+            // 구독형: 수량 전송
+            body.quantity = Number(item.quantity);
+          } else {
+            // 라이선스형: 라이선스 키 배열 전송 (빈 값 제외)
+            body.licenses = item.licenseKeys
+              .filter((k) => k.value.trim())
+              .map((k) => ({
+                license_key:  k.value.trim(),
+                key_type:     item.keyType,
+                license_type: item.licenseType,
+                ...(item.licensePassword.trim() && { license_password: item.licensePassword.trim() }),
+              }));
+          }
+
           return {
-            items: [i],
-            promise: requestSwAsset(
-              isExistingSw
-                ? {
-                    is_existing:  true,
-                    asset_sw_id:  Number(i.swId),
-                    licenses: [licenseData],
-                  }
-                : {
-                    name:         i.swName.trim(),
-                    manufacturer,
-                    ...((() => {
-                      const ver = i.version === DIRECT_INPUT ? i.versionName.trim() : i.version;
-                      return ver ? { version: ver } : {};
-                    })()),
-                    ...(i.acquisitionDateSw && { acquisition_date: i.acquisitionDateSw }),
-                    ...(i.quantity !== ""   && { quantity:         Number(i.quantity) }),
-                    ...(i.swRemarks.trim()  && { remarks:          i.swRemarks.trim() }),
-                    licenses: [licenseData],
-                  }
-            ),
+            items: [item],
+            promise: requestSwAsset(body),
           };
         }),
       ];
@@ -225,10 +227,11 @@ const AdminRequestPage = () => {
       }
 
       if (item.assetType === "sw") {
-        const isExistingSw = item.swId && item.swId !== DIRECT_INPUT;
-
-        if (!isExistingSw && !item.swName.trim()) {
-          toast.error("SW: 소프트웨어명은 필수 항목입니다.");
+        const swName = item.swName === DIRECT_INPUT
+          ? item.swNameDirect?.trim()
+          : item.swName.trim();
+        if (!swName) {
+          toast.error("SW: 소프트웨어명을 입력해주세요.");
           return;
         }
         const manufacturer = item.swManufacturer === DIRECT_INPUT
@@ -238,9 +241,20 @@ const AdminRequestPage = () => {
           toast.error("SW: 제조사를 선택하거나 직접 입력해주세요.");
           return;
         }
-        if (!item.acquisitionDateSw) {
-          toast.error("SW: 취득일은 필수 항목입니다.");
+        if (!item.licenseRequired && !item.quantity) {
+          toast.error("SW: 구독형은 수량을 입력해주세요.");
           return;
+        }
+        if (item.licenseRequired) {
+          if (!item.keyType) {
+            toast.error("SW: 키 유형을 선택해주세요.");
+            return;
+          }
+          const hasValidKey = item.licenseKeys.some((k) => k.value.trim());
+          if (!hasValidKey) {
+            toast.error("SW: 라이선스 키를 입력해주세요.");
+            return;
+          }
         }
       }
     }
