@@ -1028,12 +1028,8 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       await lockedLicense.save({ transaction: t });
  
       // SW state 재계산
-      const inUseCount = await AssetSwLicense.count({
-        where: { asset_sw_id: lockedLicense.asset_sw_id, state: 'in_use' },
-        transaction: t,
-      });
       await AssetSw.update(
-        { state: inUseCount > 0 ? 'in_use' : 'available' },
+        { state: 'in_use' },
         { where: { id: lockedLicense.asset_sw_id, state: { [Op.ne]: 'returned' } }, transaction: t }
       );
  
@@ -1824,8 +1820,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       where:      { state: 'available' },
       attributes: ['id', 'key_type', 'license_type'],
       required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
-    }],
-    order: [['name', 'ASC']],
+    }]
   });
  
   // ── 구독형: returned 아닌 SW 전체 ────────────────────────────────
@@ -1836,7 +1831,6 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       ...keywordWhere,
     },
     attributes: SW_ATTRS,
-    order: [['name', 'ASC']],
   });
  
   const result = [
