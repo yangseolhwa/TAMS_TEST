@@ -223,7 +223,7 @@ const UserRequestPage = () => {
           toast.error("SW: 제조사를 선택하거나 직접 입력해주세요.");
           return;
         }
-        if (!item.licenseRequired && !item.quantity) {
+        if (!item.licenseRequired && Number(item.quantity) < 1) {
           toast.error("SW: 구독형은 수량을 입력해주세요.");
           return;
         }
