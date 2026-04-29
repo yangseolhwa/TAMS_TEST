@@ -183,8 +183,8 @@ const importDf = async (req, res) => {
 
     // Carry-forward 대상 필드 (sheetType에 따라 분기)
     const CARRY_FIELDS = sheetType === 'PC'
-      ? ['item', 'manufacturer', 'dusan_item_no', 'product_name', 'model_number', 'acquisition_date', 'return_date']
-      : ['item', 'acquisition_date', 'return_date'];
+      ? ['item', 'manufacturer', 'dusan_item_no', 'product_name', 'model_number', 'acquisition_date']
+      : ['item', 'acquisition_date'];
 
     const last = {};
     const g = (r, key) => readCell(ws, r, colMap[key]);
