@@ -55,11 +55,6 @@
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.removeItemBtn:hover {
-  background-color: var(--color-error-ring);
-  border-color: var(--color-error-border);
-}
-
 /* =====================
    라디오
    ===================== */

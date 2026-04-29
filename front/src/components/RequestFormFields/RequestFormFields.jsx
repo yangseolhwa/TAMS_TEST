@@ -300,7 +300,6 @@ const RequestFormFields = ({
                 onClick={() => onRemoveItem(index)}
                 title="항목 삭제"
               >
-                <XCircleFill size={16} />
                 항목 삭제
               </button>
             )}
