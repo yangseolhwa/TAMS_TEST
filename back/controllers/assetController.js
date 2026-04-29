@@ -2023,35 +2023,73 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
 });
 
 // ─────────────────────────────────────────
-// Enterprise 목록 조회 (등록용 콤보박스 — is_existing)
+// Enterprise 목록 조회 (등록용 콤보박스 — 카테고리 계층형)
 // GET /api/assets/enterprise/list-simple
-// - returned 제외 전체
-// - 카테고리 / 자산종류 포함, 개인정보 미포함
+// 응답 구조:
+//   categories[]
+//     └ item_types[]
+//         └ manufacturers[] (중복 제거, null 제외)
+// - returned 제외
+// - 카테고리 → item_type → 제조사 순 정렬 (한국어)
 // ─────────────────────────────────────────
 exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
-  const { category_id, item_type_id, keyword } = req.query;
- 
-  const where = { state: { [Op.ne]: 'returned' } };
-  if (category_id)  where.category_id  = Number(category_id);
-  if (item_type_id) where.item_type_id = Number(item_type_id);
-  if (keyword) {
-    where[Op.or] = [
-      { manufacturer:  { [Op.like]: `%${keyword}%` } },
-      { serial_number: { [Op.like]: `%${keyword}%` } },
-    ];
-  }
- 
   const list = await AssetEnterprise.findAll({
-    where,
-    attributes: ['id', 'manufacturer', 'serial_number', 'state', 'acquisition_date'],
+    where: { state: { [Op.ne]: 'returned' } },
+    attributes: ['category_id', 'item_type_id', 'manufacturer'],
     include: [
       { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
       { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
     ],
-    order: [['id', 'ASC']],
   });
- 
-  res.status(200).json({ total: list.length, list });
+
+  // category_id 기준으로 집계
+  const categoryMap = {};
+
+  for (const asset of list) {
+    const cat  = asset.item_category;
+    const type = asset.item_type;
+    if (!cat || !type) continue;
+
+    if (!categoryMap[cat.id]) {
+      categoryMap[cat.id] = {
+        id:         cat.id,
+        name:       cat.name,
+        item_types: {},
+      };
+    }
+
+    const typeMap = categoryMap[cat.id].item_types;
+    if (!typeMap[type.id]) {
+      typeMap[type.id] = {
+        id:            type.id,
+        name:          type.name,
+        code:          type.code,
+        manufacturers: new Set(),
+      };
+    }
+
+    if (asset.manufacturer) {
+      typeMap[type.id].manufacturers.add(asset.manufacturer);
+    }
+  }
+
+  // Map → Array 변환 + 정렬
+  const categories = Object.values(categoryMap)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    .map((cat) => ({
+      id:   cat.id,
+      name: cat.name,
+      item_types: Object.values(cat.item_types)
+        .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+        .map((t) => ({
+          id:            t.id,
+          name:          t.name,
+          code:          t.code,
+          manufacturers: [...t.manufacturers].sort((a, b) => a.localeCompare(b, 'ko')),
+        })),
+    }));
+
+  res.status(200).json({ categories });
 });
 
 // ─────────────────────────────────────────
