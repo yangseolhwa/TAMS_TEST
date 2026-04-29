@@ -1470,6 +1470,7 @@ exports.returnDf = asyncWrapper(async (req, res) => {
       }, { transaction: t });
 
       item.state = 'returned';
+      item.return_date = new Date();
       await item.save({ transaction: t });
     }
   });
