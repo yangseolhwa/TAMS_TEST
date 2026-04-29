@@ -18,11 +18,6 @@ const KEY_TYPE_OPTIONS = [
   { value: "credential", label: "크리덴셜" },
 ];
 
-const LICENSE_TYPE_OPTIONS = [
-  { value: "per_seat", label: "개인 전용" },
-  { value: "shared",   label: "공유" },
-];
-
 // ─── 초기 아이템 ──────────────────────────────────────────────────────────────
 export const createInitialItem = () => ({
   id:        crypto.randomUUID(),
@@ -192,24 +187,6 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
             </div>
           )}
 
-          {/* 라이선스 타입 (라디오버튼) */}
-          <div className={styles.inputGroup}>
-            <label className={styles.selectLabel}>라이선스 타입</label>
-            <div className={styles.radioGroup}>
-              {LICENSE_TYPE_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name={`licenseType-${item.id}`}
-                    value={opt.value}
-                    checked={item.licenseType === opt.value}
-                    onChange={() => onItemChange(index, "licenseType", opt.value)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>
