@@ -9,13 +9,8 @@ const AssetSwLicense = sequelize.define('AssetSwLicense', {
   license_password: { type: DataTypes.STRING(255) },
   key_type: { type: DataTypes.ENUM('serial', 'credential') },
   license_type: { type: DataTypes.ENUM('per_seat', 'shared'), allowNull: false, defaultValue: 'per_seat' },
-  related_link: {
-    type: DataTypes.STRING(2048),
-    allowNull: true,
-  },
   state: { type: DataTypes.ENUM('in_use', 'available') },
   issue_date: { type: DataTypes.DATEONLY, allowNull: true },
-  remarks: { type: DataTypes.STRING(255), allowNull: true },
 }, {
   tableName: 'asset_sw_license',
   timestamps: true,
