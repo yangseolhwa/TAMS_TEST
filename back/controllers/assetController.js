@@ -443,33 +443,37 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
 
 // ─────────────────────────────────────────
 // SW 자산 등록
+// asset_sw_id 있음 → 기존 SW
+// asset_sw_id 없음 → 신규 SW
 // ─────────────────────────────────────────
 exports.registerSw = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   const {
-    is_existing,
     asset_sw_id,
     name, manufacturer, version, quantity, acquisition_date, remarks,
     related_link,
-    license_required,   // boolean: true=라이선스형, false=구독형
+    license_required,   // boolean: true=라이선스형(기본), false=구독형
     add_quantity,       // 구독형 기존 SW 수량 추가 시 사용
   } = req.body;
  
   let licenses = req.body.licenses ?? [];
   if (!Array.isArray(licenses)) licenses = [licenses];
  
+  const isExisting = !!asset_sw_id;
+ 
   // ── 입력 유효성 검사 ───────────────────────────────────────────────
-  if (is_existing) {
-    if (!asset_sw_id) {
-      return res.status(400).json({ message: '기존 SW ID를 입력해주세요.' });
-    }
-    const existingSw = await AssetSw.findByPk(asset_sw_id);
+  let existingSw = null;
+  if (isExisting) {
+    existingSw = await AssetSw.findByPk(asset_sw_id);
     if (!existingSw) {
       return res.status(404).json({ message: `ID ${asset_sw_id}에 해당하는 SW가 없습니다.` });
     }
+    if (existingSw.state === 'returned') {
+      return res.status(400).json({ message: '반납된 SW입니다.' });
+    }
  
-    // 구독형 수량 추가 플로우: 라이선스 없이 add_quantity만 필요
     if (!existingSw.license_required) {
+      // 구독형: add_quantity 필수
       const qty = Number(add_quantity);
       if (!add_quantity || isNaN(qty) || qty < 1) {
         return res.status(400).json({ message: '추가할 수량을 1 이상 입력해주세요.' });
@@ -481,10 +485,10 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       }
     }
   } else {
+    // 신규 SW
     if (!name || !manufacturer) {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
-    // 구독형 신규 SW: 수량 필수
     if (license_required === false) {
       const qty = Number(quantity);
       if (!quantity || isNaN(qty) || qty < 1) {
@@ -514,12 +518,12 @@ exports.registerSw = asyncWrapper(async (req, res) => {
   // ── 관리자 → 즉시 등록 ────────────────────────────────────────────
   if (role === 'admin') {
     const result = await sequelize.transaction(async (t) => {
-      let swId      = is_existing ? Number(asset_sw_id) : null;
-      let targetSw  = null;
+      let swId     = isExisting ? Number(asset_sw_id) : null;
+      let targetSw = existingSw ?? null;
  
       // 신규 SW 생성
-      if (!is_existing) {
-        const isLicenseRequired = license_required !== false; // 기본 true
+      if (!isExisting) {
+        const isLicenseRequired = license_required !== false;
         targetSw = await AssetSw.create({
           name,
           manufacturer,
@@ -532,31 +536,27 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           state:            'available',
         }, { transaction: t });
         swId = targetSw.id;
-      } else {
-        targetSw = await AssetSw.findByPk(swId, { transaction: t });
       }
  
-      // ── 구독형 수량 추가 (기존 SW) ────────────────────────────────
-      if (is_existing && !targetSw.license_required) {
+      // 구독형 수량 추가 (기존 SW)
+      if (isExisting && !targetSw.license_required) {
         const qty = Number(add_quantity);
         await targetSw.increment('quantity', { by: qty, transaction: t });
         await targetSw.reload({ transaction: t });
  
-        // state 재계산: quantity > 0이면 in_use 유지, 아니면 available
         const inUseCount = await AssetSwLicense.count({
           where: { asset_sw_id: swId, state: 'in_use' },
           transaction: t,
         });
-        const newState = inUseCount > 0 ? 'in_use' : 'available';
         await AssetSw.update(
-          { state: newState },
+          { state: inUseCount > 0 ? 'in_use' : 'available' },
           { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
         );
  
         return { sw: targetSw, licenses: [] };
       }
  
-      // ── 라이선스 등록 ─────────────────────────────────────────────
+      // 라이선스 등록
       const createdLicenses = [];
       for (const lic of licenses) {
         const license = await AssetSwLicense.create({
@@ -579,9 +579,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           after_value:  'in_use',
         }, { transaction: t });
  
-        // 라이선스형: 라이선스 1개 추가 시 quantity +1
         await AssetSw.increment('quantity', { by: 1, where: { id: swId }, transaction: t });
- 
         createdLicenses.push(license);
       }
  
@@ -602,15 +600,15 @@ exports.registerSw = asyncWrapper(async (req, res) => {
     });
  
     const message = licenses.length === 0
-      ? (is_existing ? '수량이 추가되었습니다.' : 'SW가 등록되었습니다.')
+      ? (isExisting ? '수량이 추가되었습니다.' : 'SW가 등록되었습니다.')
       : `SW 자산이 등록되었습니다. (라이선스 ${licenses.length}개)`;
  
     return res.status(201).json({ message, sw: result.sw, licenses: result.licenses });
   }
  
   // ── 일반 회원 → pending 요청 생성 ──────────────────────────────────
-  const isLicenseRequired = is_existing
-    ? (await AssetSw.findByPk(asset_sw_id))?.license_required ?? true
+  const isLicenseRequired = isExisting
+    ? existingSw.license_required
     : license_required !== false;
  
   let requestRows;
@@ -618,29 +616,29 @@ exports.registerSw = asyncWrapper(async (req, res) => {
   if (!isLicenseRequired) {
     // 구독형: 수량 추가 요청 1건
     requestRows = [{
-      asset_sw_id:       is_existing ? Number(asset_sw_id) : null,
+      asset_sw_id:       isExisting ? Number(asset_sw_id) : null,
       requester_id:      userId,
       status:            'pending',
       request_type:      'register',
       request_date:      new Date(),
-      required_quantity: is_existing ? Number(add_quantity) : Number(quantity),
+      required_quantity: isExisting ? Number(add_quantity) : Number(quantity),
       request_reason:    req.body.request_reason ?? null,
       new_asset_data: JSON.stringify({
-        ...(is_existing ? {} : {
+        ...(!isExisting ? {
           name, manufacturer,
           version:          version          ?? null,
           acquisition_date: acquisition_date ?? null,
           related_link:     related_link     ?? null,
           remarks:          remarks          ?? null,
           license_required: false,
-        }),
-        add_quantity: is_existing ? Number(add_quantity) : Number(quantity),
+        } : {}),
+        add_quantity: isExisting ? Number(add_quantity) : Number(quantity),
       }),
     }];
   } else if (licenses.length > 0) {
     // 라이선스형: 라이선스 수만큼 요청
     requestRows = licenses.map((lic) => ({
-      asset_sw_id:       is_existing ? Number(asset_sw_id) : null,
+      asset_sw_id:       isExisting ? Number(asset_sw_id) : null,
       requester_id:      userId,
       status:            'pending',
       request_type:      'register',
@@ -648,7 +646,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       required_quantity: 1,
       request_reason:    lic.request_reason ?? null,
       new_asset_data: JSON.stringify({
-        ...(is_existing ? {} : {
+        ...(!isExisting ? {
           name, manufacturer,
           version:          version          ?? null,
           quantity:         0,
@@ -656,7 +654,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           related_link:     related_link     ?? null,
           remarks:          remarks          ?? null,
           license_required: true,
-        }),
+        } : {}),
         license_key:      lic.license_key,
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
@@ -983,19 +981,19 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
  
-  if (!request.new_asset_data) {
-    return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
-  }
- 
-  let parsedData = {};
-  try {
-    parsedData = JSON.parse(request.new_asset_data) ?? {};
-  } catch {
-    return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
-  }
- 
   // ── assign 요청 분기 ──────────────────────────────────────────────
   if (request.request_type === 'assign') {
+    if (!request.new_asset_data) {
+      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    }
+ 
+    let parsedData = {};
+    try {
+      parsedData = JSON.parse(request.new_asset_data) ?? {};
+    } catch {
+      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    }
+ 
     const { license_id } = parsedData;
     if (!license_id) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
  
@@ -1030,12 +1028,8 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       await lockedLicense.save({ transaction: t });
  
       // SW state 재계산
-      const inUseCount = await AssetSwLicense.count({
-        where: { asset_sw_id: lockedLicense.asset_sw_id, state: 'in_use' },
-        transaction: t,
-      });
       await AssetSw.update(
-        { state: inUseCount > 0 ? 'in_use' : 'available' },
+        { state: 'in_use' },
         { where: { id: lockedLicense.asset_sw_id, state: { [Op.ne]: 'returned' } }, transaction: t }
       );
  
@@ -1060,9 +1054,21 @@ exports.approveSw = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
   }
  
+  if (!request.new_asset_data) {
+    return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+  }
+ 
+  let parsedData = {};
+  try {
+    parsedData = JSON.parse(request.new_asset_data) ?? {};
+  } catch {
+    return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+  }
+ 
   const { sw, license } = await sequelize.transaction(async (t) => {
     let swId = request.asset_sw_id ?? null;
  
+    // 신규 SW 생성 (asset_sw_id 없으면 신규)
     if (!swId) {
       const isLicenseRequired = parsedData.license_required !== false;
       const newSw = await AssetSw.create({
@@ -1096,7 +1102,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       return { sw: targetSw, license: null };
     }
  
-    // 라이선스 없는 SW 요청
+    // 라이선스 없는 SW 요청 (license_key: null)
     if (!parsedData.license_key) {
       request.status       = 'approved';
       request.processed_at = new Date();
@@ -1756,6 +1762,108 @@ exports.getSwList = asyncWrapper(async (req, res) => {
 });
 
 // ─────────────────────────────────────────
+// SW 목록 조회 (등록용 콤보박스)
+// GET /api/assets/sw/list-simple
+// - returned 제외 전체
+// - 라이선스 키/비밀번호 미포함
+// ─────────────────────────────────────────
+exports.getSwListSimple = asyncWrapper(async (req, res) => {
+  const { keyword } = req.query;
+ 
+  const where = { state: { [Op.ne]: 'returned' } };
+  if (keyword) {
+    where[Op.or] = [
+      { name:         { [Op.like]: `%${keyword}%` } },
+      { manufacturer: { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+ 
+  const list = await AssetSw.findAll({
+    where,
+    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'],
+    order: [['name', 'ASC']],
+  });
+ 
+  res.status(200).json({ total: list.length, list });
+});
+
+// ─────────────────────────────────────────
+// SW 할당 가능 목록 조회 (할당용 콤보박스)
+// GET /api/assets/sw/available
+// - 라이선스형: available 라이선스가 1개 이상 존재하는 SW (DB 레벨 INNER JOIN)
+// - 구독형: returned 아닌 SW (수량 관리이므로 SW 자체 표시)
+// 라이선스 키/비밀번호 미포함
+// ─────────────────────────────────────────
+exports.getSwAvailable = asyncWrapper(async (req, res) => {
+  const { keyword } = req.query;
+ 
+  const keywordWhere = keyword ? {
+    [Op.or]: [
+      { name:         { [Op.like]: `%${keyword}%` } },
+      { manufacturer: { [Op.like]: `%${keyword}%` } },
+    ],
+  } : {};
+ 
+  const SW_ATTRS = ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'];
+ 
+  // ── 라이선스형: available 라이선스 존재하는 SW만 (INNER JOIN) ───
+  const licenseTypeSw = await AssetSw.findAll({
+    where: {
+      state:            { [Op.ne]: 'returned' },
+      license_required: true,
+      ...keywordWhere,
+    },
+    attributes: SW_ATTRS,
+    include: [{
+      model:      AssetSwLicense,
+      as:         'licenses',
+      where:      { state: 'available' },
+      attributes: ['id', 'key_type', 'license_type'],
+      required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
+    }]
+  });
+ 
+  // ── 구독형: returned 아닌 SW 전체 ────────────────────────────────
+  const subscriptionSw = await AssetSw.findAll({
+    where: {
+      state:            { [Op.ne]: 'returned' },
+      license_required: false,
+      ...keywordWhere,
+    },
+    attributes: SW_ATTRS,
+  });
+ 
+  const result = [
+    ...licenseTypeSw.map(sw => ({
+      id:               sw.id,
+      name:             sw.name,
+      manufacturer:     sw.manufacturer,
+      version:          sw.version,
+      license_required: true,
+      state:            sw.state,
+      quantity:         sw.quantity,
+      available_licenses: sw.licenses.map(l => ({
+        id:           l.id,
+        key_type:     l.key_type,
+        license_type: l.license_type,
+      })),
+    })),
+    ...subscriptionSw.map(sw => ({
+      id:               sw.id,
+      name:             sw.name,
+      manufacturer:     sw.manufacturer,
+      version:          sw.version,
+      license_required: false,
+      state:            sw.state,
+      quantity:         sw.quantity,
+      available_licenses: [],
+    })),
+  ].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+ 
+  res.status(200).json({ total: result.length, list: result });
+});
+
+// ─────────────────────────────────────────
 // SW 라이선스 할당 (admin 전용)
 // PATCH /assets/sw/assign
 // body: { license_id, user_id }
@@ -1909,6 +2017,72 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
       },
     ],
     order: [['created_at', 'DESC']],
+  });
+ 
+  res.status(200).json({ total: list.length, list });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 목록 조회 (등록용 콤보박스 — is_existing)
+// GET /api/assets/enterprise/list-simple
+// - returned 제외 전체
+// - 카테고리 / 자산종류 포함, 개인정보 미포함
+// ─────────────────────────────────────────
+exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
+  const { category_id, item_type_id, keyword } = req.query;
+ 
+  const where = { state: { [Op.ne]: 'returned' } };
+  if (category_id)  where.category_id  = Number(category_id);
+  if (item_type_id) where.item_type_id = Number(item_type_id);
+  if (keyword) {
+    where[Op.or] = [
+      { manufacturer:  { [Op.like]: `%${keyword}%` } },
+      { serial_number: { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+ 
+  const list = await AssetEnterprise.findAll({
+    where,
+    attributes: ['id', 'manufacturer', 'serial_number', 'state', 'acquisition_date'],
+    include: [
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+      { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+    ],
+    order: [['id', 'ASC']],
+  });
+ 
+  res.status(200).json({ total: list.length, list });
+});
+
+// ─────────────────────────────────────────
+// Enterprise 할당 가능 목록 조회 (할당용 콤보박스)
+// GET /api/assets/enterprise/available
+// - state = 'stored' AND responsible_type = 'vacant'
+// ─────────────────────────────────────────
+exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
+  const { category_id, item_type_id, keyword } = req.query;
+ 
+  const where = {
+    state:            'stored',
+    responsible_type: 'vacant',
+  };
+  if (category_id)  where.category_id  = Number(category_id);
+  if (item_type_id) where.item_type_id = Number(item_type_id);
+  if (keyword) {
+    where[Op.or] = [
+      { manufacturer:  { [Op.like]: `%${keyword}%` } },
+      { serial_number: { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+ 
+  const list = await AssetEnterprise.findAll({
+    where,
+    attributes: ['id', 'manufacturer', 'serial_number', 'spec', 'location', 'acquisition_date'],
+    include: [
+      { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+      { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+    ],
+    order: [['id', 'ASC']],
   });
  
   res.status(200).json({ total: list.length, list });
