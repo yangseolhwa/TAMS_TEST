@@ -248,28 +248,22 @@ const RequestFormFields = ({
     refetchOnWindowFocus: false,
   });
 
-  // PC: 카테고리 목록 (중복 제거)
-  const pcCategories = useMemo(() => [
-    ...new Map(
-      (enterpriseAssets ?? [])
-        .filter((a) => a.item_category)
-        .map((a) => [a.item_category.id, a.item_category])
-    ).values(),
-  ], [enterpriseAssets]);
+  const pcCategories = useMemo(() => enterpriseAssets ?? [], [enterpriseAssets]);
 
-  // PC: item_type 목록 (중복 제거)
-  const pcItemTypes = useMemo(() => [
-    ...new Map(
-      (enterpriseAssets ?? [])
-        .filter((a) => a.item_type)
-        .map((a) => [a.item_type.id, a.item_type])
-    ).values(),
-  ], [enterpriseAssets]);
+  // PC: 선택된 카테고리의 item_type 목록
+  const getPcItemTypes = (categoryId) => {
+    if (!categoryId) return [];
+    const cat = pcCategories.find((c) => String(c.id) === String(categoryId));
+    return cat?.item_types ?? [];
+  };
 
-  // PC: 제조사 목록 (중복 제거)
-  const pcManufacturers = useMemo(() => [
-    ...new Set((enterpriseAssets ?? []).map((a) => a.manufacturer).filter(Boolean)),
-  ], [enterpriseAssets]);
+  // PC: 선택된 item_type의 제조사 목록
+  const getPcManufacturers = (categoryId, itemTypeId) => {
+    if (!categoryId || !itemTypeId) return [];
+    const itemTypes = getPcItemTypes(categoryId);
+    const type = itemTypes.find((t) => String(t.id) === String(itemTypeId));
+    return type?.manufacturers ?? [];
+  };
 
   // SW: 소프트웨어명 목록 (중복 제거)
   const swNames = useMemo(() => [
@@ -338,7 +332,15 @@ const RequestFormFields = ({
                     className={styles.select}
                     value={item.categoryId}
                     onFocus={() => refetchEnterprise()}
-                    onChange={(e) => onItemChange(index, "categoryId", e.target.value)}
+                    onChange={(e) =>
+                      onItemChange(index, {
+                        categoryId:       e.target.value,
+                        itemTypeId:       "",
+                        itemTypeName:     "",
+                        manufacturer:     "",
+                        manufacturerName: "",
+                      })
+                    }
                   >
                     <option value="">선택</option>
                     {pcCategories.map((cat) => (
@@ -364,7 +366,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.itemTypeId}
-                      onFocus={() => refetchEnterprise()}
+                      disabled={!item.categoryId}
                       onChange={(e) =>
                         onItemChange(index, {
                           itemTypeId:       e.target.value,
@@ -375,7 +377,7 @@ const RequestFormFields = ({
                       }
                     >
                       <option value="">선택</option>
-                      {pcItemTypes.map((type) => (
+                      {getPcItemTypes(item.categoryId).map((type) => (
                         <option key={type.id} value={type.id}>{type.name}</option>
                       ))}
                       <option value={DIRECT_INPUT}>직접 입력...</option>
@@ -403,7 +405,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.manufacturer}
-                      onFocus={() => refetchEnterprise()}
+                      disabled={!item.itemTypeId || item.itemTypeId === DIRECT_INPUT}
                       onChange={(e) =>
                         onItemChange(index, {
                           manufacturer:     e.target.value,
@@ -412,7 +414,7 @@ const RequestFormFields = ({
                       }
                     >
                       <option value="">선택</option>
-                      {pcManufacturers.map((mfr) => (
+                      {getPcManufacturers(item.categoryId, item.itemTypeId).map((mfr) => (
                         <option key={mfr} value={mfr}>{mfr}</option>
                       ))}
                       <option value={DIRECT_INPUT}>직접 입력...</option>
