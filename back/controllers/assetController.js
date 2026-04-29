@@ -2033,47 +2033,43 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
 // - 카테고리 → item_type → 제조사 순 정렬 (한국어)
 // ─────────────────────────────────────────
 exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
-  const list = await AssetEnterprise.findAll({
+  const rows = await AssetEnterprise.findAll({
     where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['category_id', 'item_type_id', 'manufacturer'],
+    attributes: [
+      'category_id',
+      'item_type_id',
+      'manufacturer',
+      [sequelize.fn('COUNT', sequelize.col('AssetEnterprise.id')), 'cnt'],
+    ],
     include: [
       { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
       { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
     ],
+    group: ['category_id', 'item_type_id', 'manufacturer'],
+    raw: false,
   });
 
-  // category_id 기준으로 집계
   const categoryMap = {};
 
-  for (const asset of list) {
-    const cat  = asset.item_category;
-    const type = asset.item_type;
+  for (const row of rows) {
+    const cat  = row.item_category;
+    const type = row.item_type;
     if (!cat || !type) continue;
 
     if (!categoryMap[cat.id]) {
-      categoryMap[cat.id] = {
-        id:         cat.id,
-        name:       cat.name,
-        item_types: {},
-      };
+      categoryMap[cat.id] = { id: cat.id, name: cat.name, item_types: {} };
     }
 
     const typeMap = categoryMap[cat.id].item_types;
     if (!typeMap[type.id]) {
-      typeMap[type.id] = {
-        id:            type.id,
-        name:          type.name,
-        code:          type.code,
-        manufacturers: new Set(),
-      };
+      typeMap[type.id] = { id: type.id, name: type.name, code: type.code, manufacturers: [] };
     }
 
-    if (asset.manufacturer) {
-      typeMap[type.id].manufacturers.add(asset.manufacturer);
+    if (row.manufacturer) {
+      typeMap[type.id].manufacturers.push(row.manufacturer);
     }
   }
 
-  // Map → Array 변환 + 정렬
   const categories = Object.values(categoryMap)
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
     .map((cat) => ({
@@ -2085,7 +2081,7 @@ exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
           id:            t.id,
           name:          t.name,
           code:          t.code,
-          manufacturers: [...t.manufacturers].sort((a, b) => a.localeCompare(b, 'ko')),
+          manufacturers: t.manufacturers.sort((a, b) => a.localeCompare(b, 'ko')),
         })),
     }));
 
