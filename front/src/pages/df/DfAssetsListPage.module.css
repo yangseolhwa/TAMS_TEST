@@ -1,0 +1,83 @@
+/* 공통 스타일은 AssetPage.common.module.css 참고 */
+
+/* =====================
+   액션 버튼 영역
+   ===================== */
+.tableActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* =====================
+   오른쪽 액션 버튼 그룹
+   ===================== */
+.actionButtons {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =====================
+   엑셀 다운로드 버튼
+   ===================== */
+.exportBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast);
+}
+
+.exportBtn:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.exportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =====================
+   모드 활성 시 인라인 입력
+   ===================== */
+.modeInput {
+  height: 36px;
+  width: 180px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  outline: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+.modeInput:focus {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.modeInput::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   모드 활성 시 상태 select
+   ===================== */
+.modeSelect {
+  border-color: var(--color-accent) !important;
+}

@@ -4,73 +4,98 @@
   gap: 12px;
 }
 
-.tableScroll {
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  max-height: 396px;
-  overflow-y: auto;
+/* =====================
+   테이블 래퍼
+   ===================== */
+.tableWrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-  color: var(--color-text);
+/* =====================
+   헤더 (스크롤 밖)
+   ===================== */
+.thead {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
-/* Header */
-.table thead tr {
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.th,
-.thCheckboxCell {
-  padding: 10px 14px;
-  text-align: left;
-  font-weight: 600;
-  color: var(--color-text);
+.th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-surface);
   white-space: nowrap;
-  background-color: var(--color-table-header-bg);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.thCheckboxCell {
-  width: 40px;
-  text-align: center;
+.thCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  flex-shrink: 0;
 }
 
-/* Body */
+/* =====================
+   본문 (스크롤 영역)
+   ===================== */
+.tbody {
+  overflow-y: auto;
+  max-height: 396px;
+}
+
+/* =====================
+   행
+   ===================== */
 .tr {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--color-border-light);
   transition: background-color var(--transition-fast);
 }
 
+.tr:last-child {
+  border-bottom: none;
+}
+
 .tr:hover {
-  background-color: var(--color-accent-bg);
+  background-color: var(--color-primary-tint);
 }
 
 .tr.selected {
   background-color: var(--color-accent-bg);
 }
 
+/* =====================
+   셀
+   ===================== */
 .td {
-  padding: 10px 14px;
-  vertical-align: middle;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text);
   white-space: nowrap;
-}
-
-/* Checkbox */
-.checkboxCell {
-  padding: 10px 14px;
-  width: 40px;
-  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
   vertical-align: middle;
 }
 
+.tdCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+/* =====================
+   체크박스
+   ===================== */
 .checkbox {
   width: 15px;
   height: 15px;
@@ -78,19 +103,26 @@
   cursor: pointer;
 }
 
-/* Empty */
-.emptyCell {
+/* =====================
+   빈 데이터
+   ===================== */
+.emptyRow {
   padding: 40px 14px;
   text-align: center;
   color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
-/* Dash */
+/* =====================
+   대시
+   ===================== */
 .dash {
   color: var(--color-text-secondary);
 }
 
-/* Badge base */
+/* =====================
+   뱃지 공통
+   ===================== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -102,7 +134,6 @@
   white-space: nowrap;
 }
 
-/* assetType badges */
 .assetType_PC {
   background-color: var(--color-badge-pc-bg);
   color: var(--color-badge-pc-text);
@@ -113,15 +144,44 @@
   color: var(--color-badge-sw-text);
 }
 
-/* status color variants */
 .status_yellow {
   background-color: var(--color-badge-yellow-bg);
   color: var(--color-badge-yellow);
 }
 
 .status_green {
-  background-color: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
+  background-color: var(--color-badge-green2-bg);
+  color: var(--color-badge-green2);
+}
+
+.status_blue {
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
+}
+
+.status_cyan {
+  background-color: var(--color-badge-cyan-bg);
+  color: var(--color-badge-cyan);
+}
+
+.status_purple {
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple);
+}
+
+.status_purple_red {
+  background-color: var(--color-badge-purple-bg);
+  color: var(--color-badge-red2);
+}
+
+.status_orange {
+  background-color: var(--color-badge-orange-bg);
+  color: var(--color-badge-orange);
+}
+
+.status_return {
+  background-color: var(--color-badge-return-bg);
+  color: var(--color-badge-red2);
 }
 
 .status_red {
@@ -129,17 +189,14 @@
   color: var(--color-error);
 }
 
-.status_blue {
-  background-color: var(--color-accent-bg);
-  color: var(--color-accent);
-}
-
 .status_gray {
   background-color: var(--color-badge-gray-bg);
   color: var(--color-text-secondary);
 }
 
-/* Total count */
+/* =====================
+   총 건수
+   ===================== */
 .totalCount {
   font-size: 0.8125rem;
   color: var(--color-text);
@@ -148,7 +205,9 @@
   padding-top: 10px;
 }
 
-/* Keyword highlight */
+/* =====================
+   키워드 하이라이트
+   ===================== */
 .highlight {
   background-color: #facc15;
   color: inherit;

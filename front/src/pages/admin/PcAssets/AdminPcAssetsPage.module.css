@@ -1,0 +1,37 @@
+/* 공통 스타일은 AssetPage.common.module.css 참고 */
+
+/* =====================
+   액션 버튼 영역
+   ===================== */
+.tableActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* =====================
+   이동 모드 위치 입력
+   ===================== */
+.modeInput {
+  height: 36px;
+  width: 180px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  outline: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+.modeInput:focus {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.modeInput::placeholder {
+  color: var(--color-text-secondary);
+}

@@ -29,8 +29,9 @@ const DataTable = ({
   columns,
   rows,
   statusMap,
-  selectedIds,
-  onSelectionChange,
+  selectable = true,
+  selectedIds = [],
+  onSelectionChange = () => {},
   totalCount,
   highlight,
 }) => {
@@ -58,12 +59,10 @@ const DataTable = ({
   };
 
   const renderCell = (col, row) => {
-    // 컬럼에 커스텀 렌더러가 있으면 우선 사용
     if (col.renderCell) return col.renderCell(row);
 
     const value = row[col.key];
 
-    // 뱃지 타입은 하이라이트 미적용
     if (col.type === "assetType") {
       if (!value) return <span className={styles.dash}>—</span>;
       return (
@@ -84,75 +83,74 @@ const DataTable = ({
       );
     }
 
-    // 빈 값 처리
     if (value == null || value === "") {
       return <span className={styles.dash}>—</span>;
     }
 
-    // 일반 텍스트 — 하이라이트 적용
-    return highlight
-      ? applyHighlight(value, highlight)
-      : value;
+    return highlight ? applyHighlight(value, highlight) : value;
   };
+
+  // 컬럼 너비 스타일 계산
+  const getColStyle = (col) => col.width ? { width: col.width, flexShrink: 0 } : { flex: 1 };
+  const checkboxColStyle = { width: '40px', flexShrink: 0 };
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tableScroll}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.thCheckboxCell}>
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={handleAllChange}
-                  className={styles.checkbox}
-                />
-              </th>
-              {columns.map((col) => (
-                <th key={col.key} className={styles.th}>
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className={styles.emptyCell}
-                >
-                  데이터가 없습니다.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={`${styles.tr} ${
-                    selectedIdSet.has(row.id) ? styles.selected : ""
-                  }`}
-                >
-                  <td className={styles.checkboxCell}>
+      <div className={styles.tableWrapper}>
+
+        {/* 헤더 — 스크롤 밖 */}
+        <div className={styles.thead}>
+          {selectable && (
+            <div className={styles.thCheckbox} style={checkboxColStyle}>
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={handleAllChange}
+                className={styles.checkbox}
+              />
+            </div>
+          )}
+          {columns.map((col) => (
+            <div key={col.key} className={styles.th} style={getColStyle(col)}>
+              {col.label}
+            </div>
+          ))}
+        </div>
+
+        {/* 본문 — 스크롤 영역 */}
+        <div className={styles.tbody}>
+          {rows.length === 0 ? (
+            <div className={styles.emptyRow}>
+              데이터가 없습니다.
+            </div>
+          ) : (
+            rows.map((row) => (
+              <div
+                key={row.id}
+                className={`${styles.tr} ${selectedIdSet.has(row.id) ? styles.selected : ""}`}
+              >
+                {selectable && (
+                  <div className={styles.tdCheckbox} style={checkboxColStyle}>
                     <input
                       type="checkbox"
                       checked={selectedIdSet.has(row.id)}
                       onChange={() => handleRowChange(row.id)}
                       className={styles.checkbox}
                     />
-                  </td>
-                  {columns.map((col) => (
-                    <td key={col.key} className={styles.td}>
-                      {renderCell(col, row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                )}
+                {columns.map((col) => (
+                  <div key={col.key} className={styles.td} style={getColStyle(col)}>
+                    {renderCell(col, row)}
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
       </div>
+
       {totalCount !== undefined && (
         <p className={styles.totalCount}>총 {totalCount}건</p>
       )}
@@ -166,6 +164,7 @@ DataTable.propTypes = {
       key:   PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
       type:  PropTypes.oneOf(["status", "assetType", "dash"]),
+      width: PropTypes.string,
     })
   ).isRequired,
   rows: PropTypes.arrayOf(
@@ -179,10 +178,11 @@ DataTable.propTypes = {
       color: PropTypes.string.isRequired,
     })
   ),
-  selectedIds:       PropTypes.array.isRequired,
-  onSelectionChange: PropTypes.func.isRequired,
+  selectable:        PropTypes.bool,
+  selectedIds:       PropTypes.array,
+  onSelectionChange: PropTypes.func,
   totalCount:        PropTypes.number,
   highlight:         PropTypes.string,
 };
 
-export default DataTable
+export default DataTable;
