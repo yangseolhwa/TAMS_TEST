@@ -22,6 +22,12 @@ router.get('/dashboard', assetController.getDashboard);
 router.get('/sw', assetController.getSwList);
 router.get('/enterprise', assetController.getEnterpriseList);
 
+// 콤보박스용 조회 (ALL) — 등록/할당 폼에서 사용
+router.get('/sw/list-simple',         assetController.getSwListSimple);
+router.get('/sw/available',           assetController.getSwAvailable);
+router.get('/enterprise/list-simple', assetController.getEnterpriseListSimple);
+router.get('/enterprise/available',   assetController.getEnterpriseAvailable);
+
 // df 조회 및 대시보드
 router.get('/df', assetController.getDfAssets);
 router.get('/dashboard/df', assetController.getDfDashboard);
