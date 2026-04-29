@@ -105,7 +105,7 @@ export const fetchMyAssets = async () => {
 // 콤보박스 조회 API — Enterprise 등록용
 export const fetchEnterpriseAssetsForForm = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE)
-  return data.list ?? []
+  return data.categories ?? []
 }
 
 // 콤보박스 조회 API — SW 등록용
@@ -206,49 +206,69 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
   }
 }
 
-const REQUEST_TYPE_LABEL = { register: '등록', return: '반납' }
+// ─── assetService.js 에서 아래 부분을 교체하세요 ───
+//
+// [삭제할 코드]
+// const REQUEST_TYPE_LABEL = { register: '등록', return: '반납' }
+// export const fetchAssetRequests = async () => { ... }
+//
+// [교체할 코드] ↓↓↓
 
 export const fetchAssetRequests = async () => {
-  const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
-  const enterpriseRows = (data.enterprise ?? []).map((item) => {
-    let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
-    return {
-      id:          `req-ent-${item.id}`,
-      assetType:   'PC',
-      assetName:   parsed.model_name ?? null,
-      spec:        parsed.spec       ?? null,
-      manufacturer: parsed.manufacturer  ?? null,
-      serialNumber: parsed.serial_number ?? null,
-      licenseKey:   null,
-      requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:   item.requester?.email ?? null,
-      requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
-      processedAt: item.processed_at ? item.processed_at.slice(0, 10) : null,
-      status:      item.status?.toUpperCase(),
-      reason:      item.admin_reason ?? null,
+  // item_type id→name 매핑을 위해 enterprise list-simple 병렬 조회
+  const [requestRes, listSimpleRes] = await Promise.all([
+    api.get(ENDPOINTS.ASSETS.REQUESTS),
+    api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE),
+  ])
+  const data = requestRes.data
+
+  // item_type_id → name 맵 생성
+  const itemTypeMap = {}
+  for (const cat of listSimpleRes.data.categories ?? []) {
+    for (const type of cat.item_types ?? []) {
+      itemTypeMap[type.id] = type.name
     }
-  })
-  const swRows = (data.sw ?? []).map((item) => {
-    let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
-    return {
-      id:          `req-sw-${item.id}`,
-      assetType:   'SW',
-      assetName:   parsed.name ?? item.sw?.name ?? null,
-      spec:        null,
-      manufacturer: parsed.manufacturer ?? null,
-      serialNumber: null,
-      licenseKey:   parsed.license_key   ?? null,
-      requestType: REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:   item.requester?.email ?? null,
-      requestedAt: item.request_date ? item.request_date.slice(0, 10) : null,
-      processedAt: item.processed_at ? item.processed_at.slice(0, 10) : null,
-      status:      item.status?.toUpperCase(),
-      reason:      item.admin_reason ?? null,
-    }
-  })
-  return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
+  }
+
+  const enterpriseRows = (data.enterprise ?? [])
+    .filter((item) => item.request_type === 'register')
+    .map((item) => {
+      let parsed = {}
+      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+      return {
+        id:              `req-ent-${item.id}`,
+        assetType:       'PC',
+        itemTypeName:    itemTypeMap[parsed.item_type_id] ?? null,
+        serialNumber:    parsed.serial_number ?? null,
+        manufacturer:    parsed.manufacturer  ?? null,
+        requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
+        status:          item.status?.toUpperCase(),
+        rejectionReason: item.rejection_reason ?? null,
+      }
+    })
+
+  const swRows = (data.sw ?? [])
+    .filter((item) => item.request_type === 'register')
+    .map((item) => {
+      let parsed = {}
+      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+      return {
+        id:              `req-sw-${item.id}`,
+        assetType:       'SW',
+        assetName:       parsed.name         ?? item.sw?.name ?? null,
+        manufacturer:    parsed.manufacturer ?? item.sw?.manufacturer ?? null,
+        licenseKey:      parsed.license_key      ?? null,
+        licensePassword: parsed.license_password ?? null,
+        requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
+        status:          item.status?.toUpperCase(),
+        rejectionReason: item.rejection_reason ?? null,
+      }
+    })
+
+  return {
+    enterpriseRows: enterpriseRows.map((row, i) => ({ ...row, no: i + 1 })),
+    swRows:         swRows.map((row, i) => ({ ...row, no: i + 1 })),
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
