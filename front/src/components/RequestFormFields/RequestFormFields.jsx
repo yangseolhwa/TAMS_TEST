@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useQuery } from "@tanstack/react-query";
-import { XCircleFill, ChevronDown, ChevronUp, PlusCircleFill } from "react-bootstrap-icons";
+import { XSquareFill, PlusSquareFill, ChevronDown, ChevronUp } from "react-bootstrap-icons";
 import { fetchEnterpriseAssetsForForm, fetchSwAssetsForForm } from "../../services/assetService";
 import styles from "./RequestFormFields.module.css";
 
@@ -149,30 +149,28 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                     value={k.value}
                     onChange={(e) => handleKeyChange(k.id, e.target.value)}
                   />
-                  {/* 삭제 버튼 (2개 이상일 때) */}
-                  {item.licenseKeys.length > 1 && (
+                  {/* 삭제 버튼 — 2행부터 표시, 2열 고정 */}
+                  {idx > 0 && (
                     <button
                       type="button"
                       className={styles.removeKeyBtn}
                       onClick={() => handleRemoveKey(k.id)}
                       title="라이선스 키 삭제"
                     >
-                      <XCircleFill size={14} />
+                      <XSquareFill size={20} />
                     </button>
                   )}
-                  {/* 첫 번째 행: 플러스 버튼 고정 (시리얼 타입일 때만) */}
-                  {idx === 0 && item.keyType !== "credential" ? (
+                  {/* 플러스 버튼 — 첫 번째 행 + 시리얼 타입일 때, 3열 고정 */}
+                  {idx === 0 && item.keyType !== "credential" && (
                     <button
                       type="button"
                       className={styles.addKeyBtn}
                       onClick={handleAddKey}
                       title="라이선스 키 추가"
                     >
-                      <PlusCircleFill size={14} />
+                      <PlusSquareFill size={20} />
                     </button>
-                  ) : idx === 0 ? (
-                    <span />
-                  ) : null}
+                  )}
                 </div>
               ))}
             </div>
@@ -190,7 +188,6 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                   value={item.licensePassword}
                   onChange={(e) => onItemChange(index, "licensePassword", e.target.value)}
                 />
-                <span />
               </div>
             </div>
           )}
@@ -303,7 +300,6 @@ const RequestFormFields = ({
                 onClick={() => onRemoveItem(index)}
                 title="항목 삭제"
               >
-                <XCircleFill size={16} />
                 항목 삭제
               </button>
             )}
