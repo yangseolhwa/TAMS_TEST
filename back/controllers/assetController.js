@@ -799,23 +799,122 @@ exports.getRequests = asyncWrapper(async (req, res) => {
     };
   };
 
+  const REQUESTER_INCLUDE = {
+    model: User,
+    as: 'requester',
+    attributes: ['id', 'email'],
+    include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+  };
+
   const [enterpriseRequests, swRequests] = await Promise.all([
     AssetEnterpriseRequest.findAll({
       where: buildWhere(),
-      include: [{ model: User, as: 'requester', attributes: ['id', 'email'] }],
+      include: [REQUESTER_INCLUDE],
       order: [['created_at', 'DESC']],
     }),
     AssetSwRequest.findAll({
       where: buildWhere(),
       include: [
-        { model: User,    as: 'requester', attributes: ['id', 'email'] },
-        { model: AssetSw, as: 'sw',        attributes: ['id', 'name', 'manufacturer'] },
+        REQUESTER_INCLUDE,
+        { model: AssetSw, as: 'sw', attributes: ['id', 'name', 'manufacturer'] },
       ],
       order: [['created_at', 'DESC']],
     }),
   ]);
 
-  res.status(200).json({ enterprise: enterpriseRequests, sw: swRequests });
+  // ── Enterprise 요청 보강 ──────────────────────────────────────────
+  // register: new_asset_data의 category_id / item_type_id → 이름으로 보강
+  // assign:   asset_id → 자산 카테고리 / 자산종류 보강
+  const categoryIds = new Set();
+  const itemTypeIds = new Set();
+
+  for (const r of enterpriseRequests) {
+    if (r.request_type === 'register' && r.new_asset_data) {
+      try {
+        const d = JSON.parse(r.new_asset_data);
+        if (d.category_id)  categoryIds.add(d.category_id);
+        if (d.item_type_id) itemTypeIds.add(d.item_type_id);
+      } catch {}
+    }
+  }
+
+  const [categories, itemTypes] = await Promise.all([
+    categoryIds.size > 0
+      ? AssetEnterpriseCategory.findAll({
+          where: { id: { [Op.in]: [...categoryIds] } },
+          attributes: ['id', 'name'],
+        })
+      : [],
+    itemTypeIds.size > 0
+      ? AssetEnterpriseItemType.findAll({
+          where: { id: { [Op.in]: [...itemTypeIds] } },
+          attributes: ['id', 'name', 'code'],
+        })
+      : [],
+  ]);
+
+  const catMap  = Object.fromEntries(categories.map(c => [c.id, c.toJSON()]));
+  const typeMap = Object.fromEntries(itemTypes.map(t => [t.id, t.toJSON()]));
+
+  const enterpriseResult = await Promise.all(
+    enterpriseRequests.map(async (r) => {
+      const plain = r.toJSON();
+
+      if (r.request_type === 'register' && plain.new_asset_data) {
+        try {
+          const d = JSON.parse(plain.new_asset_data);
+          plain.category  = d.category_id  ? (catMap[d.category_id]  ?? null) : null;
+          plain.item_type = d.item_type_id ? (typeMap[d.item_type_id] ?? null) : null;
+        } catch {
+          plain.category  = null;
+          plain.item_type = null;
+        }
+      }
+
+      if (r.request_type === 'assign' && r.asset_id) {
+        const asset = await AssetEnterprise.findByPk(r.asset_id, {
+          attributes: ['id', 'manufacturer', 'serial_number'],
+          include: [
+            { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+            { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+          ],
+        });
+        plain.category  = asset?.item_category ?? null;
+        plain.item_type = asset?.item_type     ?? null;
+        plain.asset     = asset
+          ? { id: asset.id, manufacturer: asset.manufacturer, serial_number: asset.serial_number }
+          : null;
+      }
+
+      return plain;
+    })
+  );
+
+  // ── SW 요청 보강 ──────────────────────────────────────────────────
+  // assign: new_asset_data의 license_id → 라이선스 상세 보강
+  const swResult = await Promise.all(
+    swRequests.map(async (r) => {
+      const plain = r.toJSON();
+
+      if (r.request_type === 'assign' && r.new_asset_data) {
+        try {
+          const d = JSON.parse(r.new_asset_data);
+          if (d.license_id) {
+            const license = await AssetSwLicense.findByPk(d.license_id, {
+              attributes: ['id', 'license_key', 'key_type', 'license_type', 'state'],
+            });
+            plain.license_detail = license ?? null;
+          }
+        } catch {
+          plain.license_detail = null;
+        }
+      }
+
+      return plain;
+    })
+  );
+
+  res.status(200).json({ enterprise: enterpriseResult, sw: swResult });
 });
 
 
@@ -1470,6 +1569,7 @@ exports.returnDf = asyncWrapper(async (req, res) => {
       }, { transaction: t });
 
       item.state = 'returned';
+      item.return_date = new Date();
       await item.save({ transaction: t });
     }
   });
