@@ -282,6 +282,29 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   res.status(200).json({ projects });
 });
 
+// ─────────────────────────────────────────
+// DF 자산 종류 계층 조회 (등록 폼용)
+// GET /api/assets/df/types
+// 응답: { types: [{ id, name, children: [{ id, name }] }] }
+// ─────────────────────────────────────────
+exports.getDfItemTypes = asyncWrapper(async (req, res) => {
+  const parents = await AssetProjectItemType.findAll({
+    where: { parent_id: null },
+    attributes: ['id', 'name'],
+    include: [{
+      model: AssetProjectItemType,
+      as: 'children',
+      attributes: ['id', 'name'],
+    }],
+    order: [
+      ['name', 'ASC'],
+      [{ model: AssetProjectItemType, as: 'children' }, 'name', 'ASC'],
+    ],
+  });
+
+  res.status(200).json({ types: parents });
+});
+
 
 // ─────────────────────────────────────────
 // Enterprise 자산 등록
