@@ -102,15 +102,15 @@
 }
 
 .status_green {
-  background-color: #16a34a;
+  background-color: var(--color-badge-state-register);
 }
 
 .status_blue {
-  background-color: #1d4eda;
+  background-color: var(--color-badge-state-move);
 }
 
 .status_gray {
-  background-color: #ababab;
+  background-color: var(--color-badge-state-grey);
 }
 
 /* =====================

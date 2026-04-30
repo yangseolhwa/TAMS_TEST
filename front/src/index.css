@@ -106,6 +106,7 @@ html, body {
 --color-badge-state-move:     #1d4eda;
 --color-badge-state-assign:   #6834d0;
 --color-badge-state-text:     #ffffff;
+--color-badge-state-grey:     #888888;
 
   /* Table */
   --color-table-header-bg: #f2f4f9;
