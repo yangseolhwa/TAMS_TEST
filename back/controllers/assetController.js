@@ -266,12 +266,15 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
         {
           model: AssetProjectItemType,
           as: 'item_type',
-          attributes: ['id', 'name', 'parent_id'],
-          include: [{
-            model: AssetProjectItemType,
-            as: 'parent',
-            attributes: ['id', 'name'],
-          }],
+          attributes: [
+            'id', 'name', 'parent_id',
+            [
+              sequelize.literal(
+                '(SELECT `name` FROM `asset_project_item_type` WHERE `id` = `item_type`.`parent_id`)'
+              ),
+              'parent_name',
+            ],
+          ],
         },
         { ...USER_INCLUDE, as: 'manager' },
       ],
