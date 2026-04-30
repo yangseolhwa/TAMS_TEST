@@ -266,15 +266,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
         {
           model: AssetProjectItemType,
           as: 'item_type',
-          attributes: [
-            'id', 'name', 'parent_id',
-            [
-              sequelize.literal(
-                '(SELECT `name` FROM `asset_project_item_type` WHERE `id` = `item_type`.`parent_id`)'
-              ),
-              'parent_name',
-            ],
-          ],
+          attributes: ['id', 'name', 'parent_id'],
         },
         { ...USER_INCLUDE, as: 'manager' },
       ],
@@ -775,11 +767,11 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     );
 
     const createdItems = await AssetProjectItem.bulkCreate(
-      items.map((item) => ({
+      resolvedItems.map((item) => ({
         project_id,
         user_id:            userId,
         item_number:        nextItemNumber++,
-        asset_type_id:      item.resolve,
+        asset_type_id:      item.resolved_type_id,
         owner_organization: item.owner_organization ?? null,
         equipment_number:   item.equipment_number   ?? null,
         manufacturer:       item.manufacturer       ?? null,
