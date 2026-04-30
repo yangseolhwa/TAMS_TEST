@@ -1746,7 +1746,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
   // ── SW 집계 ──────────────────────────────
   const swList = await AssetSw.findAll({
     where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state', 'related_link'],
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
@@ -1765,6 +1765,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     manufacturer:    s.manufacturer,
     quantity:        s.quantity,
     state:           s.state,
+    related_link:    s.related_link,
     in_use_count:    inUseCount,
     available_count: s.quantity - inUseCount,
     licenses: s.licenses.map((l) => ({
@@ -1905,7 +1906,7 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
  
   const list = await AssetSw.findAll({
     where,
-    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'],
+    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'related_link', 'quantity'],
     order: [['name', 'ASC']],
   });
  
