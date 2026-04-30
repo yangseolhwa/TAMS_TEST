@@ -282,6 +282,29 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   res.status(200).json({ projects });
 });
 
+// ─────────────────────────────────────────
+// DF 자산 종류 계층 조회 (등록 폼용)
+// GET /api/assets/df/types
+// 응답: { types: [{ id, name, children: [{ id, name }] }] }
+// ─────────────────────────────────────────
+exports.getDfItemTypes = asyncWrapper(async (req, res) => {
+  const parents = await AssetProjectItemType.findAll({
+    where: { parent_id: null },
+    attributes: ['id', 'name'],
+    include: [{
+      model: AssetProjectItemType,
+      as: 'children',
+      attributes: ['id', 'name'],
+    }],
+    order: [
+      ['name', 'ASC'],
+      [{ model: AssetProjectItemType, as: 'children' }, 'name', 'ASC'],
+    ],
+  });
+
+  res.status(200).json({ types: parents });
+});
+
 
 // ─────────────────────────────────────────
 // Enterprise 자산 등록
@@ -1723,7 +1746,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
   // ── SW 집계 ──────────────────────────────
   const swList = await AssetSw.findAll({
     where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state', 'related_link'],
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
@@ -1742,6 +1765,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     manufacturer:    s.manufacturer,
     quantity:        s.quantity,
     state:           s.state,
+    related_link:    s.related_link,
     in_use_count:    inUseCount,
     available_count: s.quantity - inUseCount,
     licenses: s.licenses.map((l) => ({
@@ -1842,6 +1866,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       quantity:        sw.quantity,
       acquisition_date: sw.acquisition_date,
       state:           sw.state,
+      related_link:    sw.related_link,
       remarks:         sw.remarks,
       in_use_count:    inUseCount,
       available_count: sw.quantity - inUseCount,
@@ -1881,7 +1906,7 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
  
   const list = await AssetSw.findAll({
     where,
-    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'],
+    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'related_link', 'quantity'],
     order: [['name', 'ASC']],
   });
  
