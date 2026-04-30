@@ -124,14 +124,13 @@
    뱃지 공통
    ===================== */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
+  color: var(--color-badge-state-text);
 }
 
 .assetType_PC {
@@ -145,53 +144,43 @@
 }
 
 .status_yellow {
-  background-color: var(--color-badge-yellow-bg);
-  color: var(--color-badge-yellow);
+  background-color: var(--color-badge-state-change);
 }
 
 .status_green {
-  background-color: var(--color-badge-green2-bg);
-  color: var(--color-badge-green2);
+  background-color: var(--color-badge-state-register);
 }
 
 .status_blue {
-  background-color: var(--color-badge-blue2-bg);
-  color: var(--color-badge-blue2);
+  background-color: var(--color-badge-state-move);
 }
 
 .status_cyan {
-  background-color: var(--color-badge-cyan-bg);
-  color: var(--color-badge-cyan);
+  background-color: var(--color-badge-state-move);
 }
 
 .status_purple {
-  background-color: var(--color-badge-purple-bg);
-  color: var(--color-badge-purple);
+  background-color: var(--color-badge-state-assign);
 }
 
 .status_purple_red {
-  background-color: var(--color-badge-purple-bg);
-  color: var(--color-badge-red2);
+  background-color: var(--color-badge-state-assign);
 }
 
 .status_orange {
-  background-color: var(--color-badge-orange-bg);
-  color: var(--color-badge-orange);
+  background-color: var(--color-badge-state-change);
 }
 
 .status_return {
-  background-color: var(--color-badge-return-bg);
-  color: var(--color-badge-red2);
+  background-color: var(--color-badge-state-return);
 }
 
 .status_red {
-  background-color: var(--color-badge-red-bg);
-  color: var(--color-error);
+  background-color: var(--color-badge-state-return);
 }
 
 .status_gray {
-  background-color: var(--color-badge-gray-bg);
-  color: var(--color-text-secondary);
+  background-color: var(--color-text-secondary);
 }
 
 /* =====================
