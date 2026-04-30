@@ -1,0 +1,104 @@
+/* =====================
+   공통 기본 스타일
+   ===================== */
+.btn {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =====================
+   사이즈
+   ===================== */
+.xxs {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.xs {
+  height: 30px;
+  padding: 0 12px;
+}
+
+.sm {
+  height: 36px;
+  padding: 0 16px;
+}
+
+.md {
+  height: 40px;
+  padding: 0 20px;
+}
+
+/* =====================
+   variant: blue (파랑)
+   ===================== */
+.blue {
+  color: var(--color-surface);
+  background-color: var(--color-submit);
+}
+
+.blue:hover:not(:disabled) {
+  background-color: var(--color-submit-hover);
+}
+
+/* =====================
+   variant: red (빨강)
+   ===================== */
+.red {
+  color: var(--color-surface);
+  background-color: var(--color-error);
+}
+
+.red:hover:not(:disabled) {
+  background-color: var(--color-error-hover);
+}
+
+/* =====================
+   variant: white (흰색)
+   ===================== */
+.white {
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.white:hover:not(:disabled) {
+  background-color: var(--color-bg);
+}
+
+/* =====================
+   variant: black (검정)
+   ===================== */
+.black {
+  color: var(--color-surface);
+  background-color: var(--color-dark);
+}
+
+.black:hover:not(:disabled) {
+  background-color: var(--color-dark-hover);
+}
+
+/* =====================
+   variant: outline (네이비 아웃라인)
+   ===================== */
+.outline {
+  color: var(--color-primary);
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.outline:hover:not(:disabled) {
+  background-color: var(--color-primary-tint);
+}

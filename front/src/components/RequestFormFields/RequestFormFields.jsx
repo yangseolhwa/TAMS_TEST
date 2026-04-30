@@ -1,80 +1,254 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { XCircleFill } from "react-bootstrap-icons";
+import { useQuery } from "@tanstack/react-query";
+import { XSquareFill, PlusSquareFill, ChevronDown, ChevronUp } from "react-bootstrap-icons";
+import { fetchEnterpriseAssetsForForm, fetchSwAssetsForForm } from "../../services/assetService";
 import styles from "./RequestFormFields.module.css";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
-export const ASSET_TYPES = [
-  { id: "sw", label: "SW" },
-  { id: "pc", label: "PC" },
-];
+const DIRECT_INPUT = "__direct__";
 
-const SW_TYPE_OPTIONS = [
-  { value: "dev",           label: "개발 (dev)" },
-  { value: "design",        label: "디자인 (design)" },
-  { value: "collaboration", label: "협업 (collaboration)" },
-  { value: "security",      label: "보안 (security)" },
-  { value: "other",         label: "기타 (other)" },
+export const ASSET_TYPES = [
+  { id: "pc", label: "PC" },
+  { id: "sw", label: "SW" },
 ];
 
 const KEY_TYPE_OPTIONS = [
   { value: "serial",     label: "시리얼" },
-  { value: "url",        label: "URL" },
   { value: "credential", label: "크리덴셜" },
-  { value: "other",      label: "기타" },
+];
+
+const LICENSE_TYPE_OPTIONS = [
+  { value: "per_seat", label: "개인 전용" },
+  { value: "shared",   label: "공유" },
 ];
 
 // ─── 초기 아이템 ──────────────────────────────────────────────────────────────
 export const createInitialItem = () => ({
-  id:           crypto.randomUUID(),
-  requestType:  "existing",  // "existing" | "new"
-  assetType:    "",          // "pc" | "sw"
+  id:        crypto.randomUUID(),
+  assetType: "",
 
-  // 기존 PC
-  selectedCategoryId: "",
-  selectedAssetId:    "",
-
-  // 기존 SW
-  selectedSwType: "",
-  selectedSwId:   "",
-
-  // 신규 PC
-  assetNumber:      "",
-  modelName:        "",
+  // PC
   categoryId:       "",
   itemTypeId:       "",
+  itemTypeName:     "",
   manufacturer:     "",
-  acquisitionDate:  "",
+  manufacturerName: "",
+  acquisitionDate:  new Date().toISOString().slice(0, 10),
   spec:             "",
   serialNumber:     "",
-  requiredQuantity: "",
+  remarks:          "",
 
-  // 신규 SW
-  swName:         "",
-  softwareType:   "",
-  swManufacturer: "",
-  isSubscription: "",
+  // SW 메타데이터
+  swName:             "",       // 콤보박스 선택값 또는 "__direct__"
+  swNameDirect:       "",       // 직접 입력값
+  swManufacturer:     "",       // 콤보박스 선택값 또는 "__direct__"
+  swManufacturerName: "",       // 직접 입력값
+  version:            "",       // 콤보박스 선택값 또는 "__direct__"
+  versionName:        "",       // 직접 입력값
+  acquisitionDateSw:  new Date().toISOString().slice(0, 10),
+  licenseRequired:    true,     // true: 라이선스형, false: 구독형
+  quantity:           "",       // 구독형일 때 사용
+  swRemarks:          "",
 
-  // SW 공통 (기존/신규)
-  licenseKey: "",
-  keyType:    "",
+  // SW 라이선스
+  licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],  // 라이선스 키 배열
+  keyType:         "serial",
+  licenseType:     "per_seat",
+  licensePassword: "",
+  relatedLink:     "",
 
-  // 공통 선택
+  // 공통
   requestReason: "",
 });
 
-// ─── 컴포넌트 ──────────────────────────────────────────────────────────────────
+// ─── SW 라이선스 섹션 (토글) ─────────────────────────────────────────────────
+const SwLicenseSection = ({ item, index, onItemChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleAddKey = () => {
+    onItemChange(index, {
+      licenseKeys: [
+        ...item.licenseKeys,
+        { id: crypto.randomUUID(), value: "" },
+      ],
+    });
+  };
+
+  const handleRemoveKey = (keyId) => {
+    onItemChange(index, {
+      licenseKeys: item.licenseKeys.filter((k) => k.id !== keyId),
+    });
+  };
+
+  const handleKeyChange = (keyId, value) => {
+    onItemChange(index, {
+      licenseKeys: item.licenseKeys.map((k) =>
+        k.id === keyId ? { ...k, value } : k
+      ),
+    });
+  };
+
+  return (
+    <div className={styles.licenseToggleWrapper}>
+      {/* 토글 버튼 */}
+      <button
+        type="button"
+        className={styles.licenseToggleBtn}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <span>라이선스 입력</span>
+        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+
+      {/* 라이선스 그룹 (토글 시 표시) */}
+      {isOpen && (
+        <div className={styles.licenseGroup}>
+          {/* 키 유형 (라디오버튼) */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>
+              키 유형 <span className={styles.required}>*</span>
+            </label>
+            <div className={styles.radioGroup}>
+              {KEY_TYPE_OPTIONS.map((opt) => (
+                <label key={opt.value} className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name={`keyType-${item.id}`}
+                    value={opt.value}
+                    checked={item.keyType === opt.value}
+                    onChange={() =>
+                      onItemChange(index, {
+                        keyType:         opt.value,
+                        licensePassword: "",
+                        // 크리덴셜로 변경 시 라이선스 키를 1개로 초기화
+                        licenseKeys: opt.value === "credential"
+                          ? [{ id: crypto.randomUUID(), value: "" }]
+                          : item.licenseKeys,
+                      })
+                    }
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 라이선스 키 목록 */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>
+              라이선스 키 <span className={styles.required}>*</span>
+            </label>
+            <div className={styles.licenseKeyGroup}>
+              {item.licenseKeys.map((k, idx) => (
+                <div key={k.id} className={styles.licenseKeyRow}>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="라이선스 키 입력"
+                    value={k.value}
+                    onChange={(e) => handleKeyChange(k.id, e.target.value)}
+                  />
+                  {/* 삭제 버튼 — 2행부터 표시, 2열 고정 */}
+                  {idx > 0 && (
+                    <button
+                      type="button"
+                      className={styles.removeKeyBtn}
+                      onClick={() => handleRemoveKey(k.id)}
+                      title="라이선스 키 삭제"
+                    >
+                      <XSquareFill size={20} />
+                    </button>
+                  )}
+                  {/* 플러스 버튼 — 첫 번째 행 + 시리얼 타입일 때, 3열 고정 */}
+                  {idx === 0 && item.keyType !== "credential" && (
+                    <button
+                      type="button"
+                      className={styles.addKeyBtn}
+                      onClick={handleAddKey}
+                      title="라이선스 키 추가"
+                    >
+                      <PlusSquareFill size={20} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 크리덴셜 선택 시 비밀번호 */}
+          {item.keyType === "credential" && (
+            <div className={styles.inputGroup}>
+              <label className={styles.selectLabel}>라이선스 비밀번호</label>
+              <div className={styles.licenseKeyRow}>
+                <input
+                  className={styles.input}
+                  type="text"
+                  placeholder="라이선스 비밀번호 입력"
+                  value={item.licensePassword}
+                  onChange={(e) => onItemChange(index, "licensePassword", e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 라이선스 타입 (라디오버튼) */}
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>라이선스 타입</label>
+            <div className={styles.radioGroup}>
+              {LICENSE_TYPE_OPTIONS.map((opt) => (
+                <label key={opt.value} className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name={`licenseType-${item.id}`}
+                    value={opt.value}
+                    checked={item.licenseType === opt.value}
+                    onChange={() => onItemChange(index, "licenseType", opt.value)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+SwLicenseSection.propTypes = {
+  item:         PropTypes.object.isRequired,
+  index:        PropTypes.number.isRequired,
+  onItemChange: PropTypes.func.isRequired,
+};
+
+// ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 const RequestFormFields = ({
   items,
-  enterpriseAssets,
-  swAssets,
   onAssetTypeChange,
   onItemChange,
   onRemoveItem,
 }) => {
-  // ── 루프 외부: enterpriseAssets / swAssets 가 바뀔 때만 재계산 ──────────────
+  // 콤보박스 데이터 — 이 컴포넌트에서 직접 호출, select onFocus 시 갱신
+  const {
+    data: enterpriseAssets = [],
+    refetch: refetchEnterprise,
+  } = useQuery({
+    queryKey: ["enterpriseAssetsForForm"],
+    queryFn:  fetchEnterpriseAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
 
-  // PC: 카테고리 목록 (item_category 중복 제거)
+  const {
+    data: swAssets = [],
+    refetch: refetchSw,
+  } = useQuery({
+    queryKey: ["swAssetsForForm"],
+    queryFn:  fetchSwAssetsForForm,
+    refetchOnWindowFocus: false,
+  });
+
+  // PC: 카테고리 목록 (중복 제거)
   const pcCategories = useMemo(() => [
     ...new Map(
       (enterpriseAssets ?? [])
@@ -92,523 +266,444 @@ const RequestFormFields = ({
     ).values(),
   ], [enterpriseAssets]);
 
-  // SW: 보유 유형 목록
-  const swTypesAvailable = useMemo(() => [
-    ...new Set((swAssets ?? []).map((s) => s.software_type).filter(Boolean)),
+  // PC: 제조사 목록 (중복 제거)
+  const pcManufacturers = useMemo(() => [
+    ...new Set((enterpriseAssets ?? []).map((a) => a.manufacturer).filter(Boolean)),
+  ], [enterpriseAssets]);
+
+  // SW: 소프트웨어명 목록 (중복 제거)
+  const swNames = useMemo(() => [
+    ...new Set((swAssets ?? []).map((s) => s.name).filter(Boolean)),
+  ], [swAssets]);
+
+  // SW: 제조사 목록 (중복 제거)
+  const swManufacturers = useMemo(() => [
+    ...new Set((swAssets ?? []).map((s) => s.manufacturer).filter(Boolean)),
+  ], [swAssets]);
+
+  // SW: 버전 목록 (중복 제거)
+  const swVersions = useMemo(() => [
+    ...new Set((swAssets ?? []).map((s) => s.version).filter(Boolean)),
   ], [swAssets]);
 
   return (
     <>
-      {items.map((item, index) => {
-        // ── Cascading 옵션 계산 ──────────────────────────────────────────────
+      {items.map((item, index) => (
+        <div key={item.id} className={styles.requestCard}>
 
-        // PC 기존: 카테고리로 필터링된 자산 목록
-        const pcAssetsFiltered = (enterpriseAssets ?? []).filter(
-          (a) => !item.selectedCategoryId || String(a.item_category?.id) === item.selectedCategoryId
-        );
-
-        // SW 기존: 유형으로 필터링된 SW 목록
-        const swAssetsFiltered = (swAssets ?? []).filter(
-          (s) => !item.selectedSwType || s.software_type === item.selectedSwType
-        );
-
-        return (
-          <div key={item.id} className={styles.requestCard}>
-
-            {/* ── 카드 헤더 ── */}
-            <div className={styles.requestCardHeader}>
-              <div className={styles.requestCardHeaderLeft}>
-                <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name={`requestType-${index}`}
-                      value="existing"
-                      checked={item.requestType === "existing"}
-                      onChange={(e) => onItemChange(index, "requestType", e.target.value)}
-                    />
-                    기존 자산
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name={`requestType-${index}`}
-                      value="new"
-                      checked={item.requestType === "new"}
-                      onChange={(e) => onItemChange(index, "requestType", e.target.value)}
-                    />
-                    신규 자산
-                  </label>
-                </div>
-              </div>
-              {onRemoveItem && items.length > 1 && (
-                <button
-                  className={styles.removeItemBtn}
-                  onClick={() => onRemoveItem(index)}
-                  title="항목 삭제"
-                >
-                  <XCircleFill size={16} />
-                  항목 삭제
-                </button>
-              )}
-            </div>
-
-            {/* ── 자산 유형 선택 ── */}
-            <div className={styles.selectRow}>
-              <div className={styles.selectGroup}>
-                <label className={styles.selectLabel}>
-                  자산 유형 <span className={styles.required}>*</span>
-                </label>
-                <select
-                  className={styles.select}
-                  value={item.assetType}
-                  onChange={(e) => onAssetTypeChange(index, e.target.value)}
-                >
-                  <option value="">선택</option>
-                  {ASSET_TYPES.map((type) => (
-                    <option key={type.id} value={type.id}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* ── 기존 PC ── */}
-            {item.assetType === "pc" && item.requestType === "existing" && (
-              <div className={styles.extraFields}>
-                {/* Cascading: 자산 종류 → 자산 */}
-                <div className={styles.selectRow}>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      자산 종류 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.selectedCategoryId}
-                      onChange={(e) =>
-                        onItemChange(index, { selectedCategoryId: e.target.value, selectedAssetId: "" })
-                      }
-                    >
-                      <option value="">선택</option>
-                      {pcCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      자산 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.selectedAssetId}
-                      disabled={!item.selectedCategoryId}
-                      onChange={(e) => onItemChange(index, "selectedAssetId", e.target.value)}
-                    >
-                      <option value="">
-                        {item.selectedCategoryId ? "선택" : "종류 먼저 선택"}
-                      </option>
-                      {pcAssetsFiltered.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.model_name} ({a.manufacturer})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* 취득일 + 선택 필드 */}
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      취득일 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="date"
-                      value={item.acquisitionDate}
-                      onChange={(e) => onItemChange(index, "acquisitionDate", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>규격</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="규격 입력"
-                      value={item.spec}
-                      onChange={(e) => onItemChange(index, "spec", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>시리얼 번호</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="시리얼 번호 입력"
-                      value={item.serialNumber}
-                      onChange={(e) => onItemChange(index, "serialNumber", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>수량</label>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      min="1"
-                      placeholder="0"
-                      value={item.requiredQuantity}
-                      onChange={(e) => onItemChange(index, "requiredQuantity", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>요청 사유</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="요청 사유 입력 (선택)"
-                      value={item.requestReason}
-                      onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
+          {/* ── 카드 헤더 ── */}
+          <div className={styles.requestCardHeader}>
+            <span className={styles.requestCardTitle}>요청 항목 {index + 1}</span>
+            {onRemoveItem && items.length > 1 && (
+              <button
+                className={styles.removeItemBtn}
+                onClick={() => onRemoveItem(index)}
+                title="항목 삭제"
+              >
+                항목 삭제
+              </button>
             )}
+          </div>
 
-            {/* ── 기존 SW ── */}
-            {item.assetType === "sw" && item.requestType === "existing" && (
-              <div className={styles.extraFields}>
-                {/* Cascading: SW 유형 → 소프트웨어 */}
-                <div className={styles.selectRow}>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      SW 유형 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.selectedSwType}
-                      onChange={(e) =>
-                        onItemChange(index, { selectedSwType: e.target.value, selectedSwId: "" })
-                      }
-                    >
-                      <option value="">선택</option>
-                      {swTypesAvailable.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      소프트웨어 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.selectedSwId}
-                      disabled={!item.selectedSwType}
-                      onChange={(e) => onItemChange(index, "selectedSwId", e.target.value)}
-                    >
-                      <option value="">
-                        {item.selectedSwType ? "선택" : "유형 먼저 선택"}
-                      </option>
-                      {swAssetsFiltered.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.manufacturer})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+          {/* ── 자산 유형 선택 ── */}
+          <div className={styles.selectRow}>
+            <div className={styles.selectGroup}>
+              <label className={styles.selectLabel}>
+                자산 유형 <span className={styles.required}>*</span>
+              </label>
+              <select
+                className={styles.select}
+                value={item.assetType}
+                onChange={(e) => onAssetTypeChange(index, e.target.value)}
+              >
+                <option value="">선택</option>
+                {ASSET_TYPES.map((type) => (
+                  <option key={type.id} value={type.id}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ── PC 폼 ── */}
+          {item.assetType === "pc" && (
+            <div className={styles.extraFields}>
+
+              {/* Row 1: 카테고리 + 자산 유형 */}
+              <div className={styles.selectRow}>
+                <div className={styles.selectGroup}>
+                  <label className={styles.selectLabel}>
+                    카테고리 <span className={styles.required}>*</span>
+                  </label>
+                  <select
+                    className={styles.select}
+                    value={item.categoryId}
+                    onFocus={() => refetchEnterprise()}
+                    onChange={(e) => onItemChange(index, "categoryId", e.target.value)}
+                  >
+                    <option value="">선택</option>
+                    {pcCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* 라이선스키 + 키 유형 */}
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      라이선스키 <span className={styles.required}>*</span>
-                    </label>
+                <div className={styles.selectGroup}>
+                  <label className={styles.selectLabel}>
+                    자산 유형 <span className={styles.required}>*</span>
+                  </label>
+                  {item.itemTypeId === DIRECT_INPUT ? (
                     <input
                       className={styles.input}
                       type="text"
-                      placeholder="라이선스키 입력"
-                      value={item.licenseKey}
-                      onChange={(e) => onItemChange(index, "licenseKey", e.target.value)}
+                      placeholder="자산 유형 직접 입력"
+                      value={item.itemTypeName}
+                      autoFocus
+                      onChange={(e) => onItemChange(index, "itemTypeName", e.target.value)}
                     />
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      키 유형 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.keyType}
-                      onChange={(e) => onItemChange(index, "keyType", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {KEY_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>요청 사유</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="요청 사유 입력 (선택)"
-                      value={item.requestReason}
-                      onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── 신규 PC ── */}
-            {item.assetType === "pc" && item.requestType === "new" && (
-              <div className={styles.extraFields}>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      자산 번호 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="자산 번호 입력"
-                      value={item.assetNumber}
-                      onChange={(e) => onItemChange(index, "assetNumber", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      자산 종류 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.categoryId}
-                      onChange={(e) => onItemChange(index, "categoryId", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {pcCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      자산 유형 <span className={styles.required}>*</span>
-                    </label>
+                  ) : (
                     <select
                       className={styles.select}
                       value={item.itemTypeId}
-                      onChange={(e) => onItemChange(index, "itemTypeId", e.target.value)}
+                      onFocus={() => refetchEnterprise()}
+                      onChange={(e) =>
+                        onItemChange(index, {
+                          itemTypeId:       e.target.value,
+                          itemTypeName:     "",
+                          manufacturer:     "",
+                          manufacturerName: "",
+                        })
+                      }
                     >
                       <option value="">선택</option>
                       {pcItemTypes.map((type) => (
                         <option key={type.id} value={type.id}>{type.name}</option>
                       ))}
+                      <option value={DIRECT_INPUT}>직접 입력...</option>
                     </select>
-                  </div>
+                  )}
                 </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      제조사 <span className={styles.required}>*</span>
-                    </label>
+              </div>
+
+              {/* Row 2: 제조사 + 취득일 */}
+              <div className={styles.inputRow}>
+                <div className={styles.selectGroup}>
+                  <label className={styles.selectLabel}>
+                    제조사 <span className={styles.required}>*</span>
+                  </label>
+                  {item.manufacturer === DIRECT_INPUT ? (
                     <input
                       className={styles.input}
                       type="text"
-                      placeholder="제조사 입력"
+                      placeholder="제조사 직접 입력"
+                      value={item.manufacturerName}
+                      autoFocus
+                      onChange={(e) => onItemChange(index, "manufacturerName", e.target.value)}
+                    />
+                  ) : (
+                    <select
+                      className={styles.select}
                       value={item.manufacturer}
-                      onChange={(e) => onItemChange(index, "manufacturer", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      모델명 <span className={styles.required}>*</span>
-                    </label>
+                      onFocus={() => refetchEnterprise()}
+                      onChange={(e) =>
+                        onItemChange(index, {
+                          manufacturer:     e.target.value,
+                          manufacturerName: "",
+                        })
+                      }
+                    >
+                      <option value="">선택</option>
+                      {pcManufacturers.map((mfr) => (
+                        <option key={mfr} value={mfr}>{mfr}</option>
+                      ))}
+                      <option value={DIRECT_INPUT}>직접 입력...</option>
+                    </select>
+                  )}
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>
+                    취득일 <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    type="date"
+                    value={item.acquisitionDate}
+                    onChange={(e) => onItemChange(index, "acquisitionDate", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: 규격 + 시리얼 번호 + 비고 + 요청 사유 */}
+              <div className={styles.inputRow}>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>규격</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="규격 입력"
+                    value={item.spec}
+                    onChange={(e) => onItemChange(index, "spec", e.target.value)}
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>시리얼 번호</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="시리얼 번호 입력"
+                    value={item.serialNumber}
+                    onChange={(e) => onItemChange(index, "serialNumber", e.target.value)}
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>비고</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="비고 입력"
+                    value={item.remarks}
+                    onChange={(e) => onItemChange(index, "remarks", e.target.value)}
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>요청 사유</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="요청 사유 입력"
+                    value={item.requestReason}
+                    onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SW 폼 ── */}
+          {item.assetType === "sw" && (
+            <div className={styles.extraFields}>
+
+              {/* Row 1: 소프트웨어명 + 제조사 */}
+              <div className={styles.selectRow}>
+                <div className={styles.selectGroup}>
+                  <label className={styles.selectLabel}>
+                    소프트웨어명 <span className={styles.required}>*</span>
+                  </label>
+                  {item.swName === DIRECT_INPUT ? (
                     <input
                       className={styles.input}
                       type="text"
-                      placeholder="모델명 입력"
-                      value={item.modelName}
-                      onChange={(e) => onItemChange(index, "modelName", e.target.value)}
+                      placeholder="소프트웨어명 직접 입력"
+                      value={item.swNameDirect}
+                      autoFocus
+                      onChange={(e) => onItemChange(index, "swNameDirect", e.target.value)}
                     />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      취득일 <span className={styles.required}>*</span>
-                    </label>
+                  ) : (
+                    <select
+                      className={styles.select}
+                      value={item.swName}
+                      onFocus={() => refetchSw()}
+                      onChange={(e) => {
+                        const selectedName = e.target.value;
+                        if (selectedName === DIRECT_INPUT) {
+                          onItemChange(index, { swName: DIRECT_INPUT, swNameDirect: "" });
+                          return;
+                        }
+                        // 선택한 SW명으로 제조사 자동 채움
+                        const matched = (swAssets ?? []).find((s) => s.name === selectedName);
+                        onItemChange(index, {
+                          swName:             selectedName,
+                          swNameDirect:       "",
+                          swManufacturer:     matched?.manufacturer ?? "",
+                          swManufacturerName: "",
+                        });
+                      }}
+                    >
+                      <option value="">선택</option>
+                      {swNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                      <option value={DIRECT_INPUT}>직접 입력...</option>
+                    </select>
+                  )}
+                </div>
+
+                <div className={styles.selectGroup}>
+                  <label className={styles.selectLabel}>
+                    제조사 <span className={styles.required}>*</span>
+                  </label>
+                  {item.swManufacturer === DIRECT_INPUT ? (
                     <input
                       className={styles.input}
-                      type="date"
-                      value={item.acquisitionDate}
-                      onChange={(e) => onItemChange(index, "acquisitionDate", e.target.value)}
+                      type="text"
+                      placeholder="제조사 직접 입력"
+                      value={item.swManufacturerName}
+                      autoFocus
+                      onChange={(e) => onItemChange(index, "swManufacturerName", e.target.value)}
                     />
+                  ) : (
+                    <select
+                      className={styles.select}
+                      value={item.swManufacturer}
+                      onFocus={() => refetchSw()}
+                      onChange={(e) =>
+                        onItemChange(index, {
+                          swManufacturer:     e.target.value,
+                          swManufacturerName: "",
+                        })
+                      }
+                    >
+                      <option value="">선택</option>
+                      {swManufacturers.map((mfr) => (
+                        <option key={mfr} value={mfr}>{mfr}</option>
+                      ))}
+                      <option value={DIRECT_INPUT}>직접 입력...</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: 버전 + 취득일 + 라이선스 필요 여부 */}
+              <div className={styles.inputRow}>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>버전</label>
+                  {item.version === DIRECT_INPUT ? (
+                    <input
+                      className={styles.input}
+                      type="text"
+                      placeholder="버전 직접 입력"
+                      value={item.versionName}
+                      autoFocus
+                      onChange={(e) => onItemChange(index, "versionName", e.target.value)}
+                    />
+                  ) : (
+                    <select
+                      className={styles.select}
+                      value={item.version}
+                      onFocus={() => refetchSw()}
+                      onChange={(e) =>
+                        onItemChange(index, {
+                          version:     e.target.value,
+                          versionName: "",
+                        })
+                      }
+                    >
+                      <option value="">선택</option>
+                      {swVersions.map((ver) => (
+                        <option key={ver} value={ver}>{ver}</option>
+                      ))}
+                      <option value={DIRECT_INPUT}>직접 입력...</option>
+                    </select>
+                  )}
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>취득일</label>
+                  <input
+                    className={styles.input}
+                    type="date"
+                    value={item.acquisitionDateSw}
+                    onChange={(e) => onItemChange(index, "acquisitionDateSw", e.target.value)}
+                  />
+                </div>
+
+                {/* 라이선스 필요 여부 체크박스 */}
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>라이선스 필요</label>
+                  <div className={styles.checkboxWrapper}>
+                    <input
+                      type="checkbox"
+                      id={`licenseRequired-${item.id}`}
+                      className={styles.checkbox}
+                      checked={item.licenseRequired}
+                      onChange={(e) =>
+                        onItemChange(index, {
+                          licenseRequired: e.target.checked,
+                          quantity:        "",
+                          licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
+                          licensePassword: "",
+                        })
+                      }
+                    />
+                    <label
+                      htmlFor={`licenseRequired-${item.id}`}
+                      className={styles.checkboxLabel}
+                    >
+                      {item.licenseRequired ? "라이선스형" : "구독형"}
+                    </label>
                   </div>
                 </div>
-                <div className={styles.inputRow}>
+              </div>
+
+              {/* Row 3: 구독형일 때 수량 / 공통 필드 */}
+              <div className={styles.inputRow}>
+                {!item.licenseRequired && (
                   <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>규격</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="규격 입력"
-                      value={item.spec}
-                      onChange={(e) => onItemChange(index, "spec", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>시리얼 번호</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="시리얼 번호 입력"
-                      value={item.serialNumber}
-                      onChange={(e) => onItemChange(index, "serialNumber", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>수량</label>
+                    <label className={styles.selectLabel}>
+                      수량 <span className={styles.required}>*</span>
+                    </label>
                     <input
                       className={styles.input}
                       type="number"
                       min="1"
-                      placeholder="0"
-                      value={item.requiredQuantity}
-                      onChange={(e) => onItemChange(index, "requiredQuantity", e.target.value)}
+                      placeholder="수량 입력"
+                      value={item.quantity}
+                      onChange={(e) => onItemChange(index, "quantity", e.target.value)}
                     />
                   </div>
+                )}
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>관련 링크</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="관련 링크 입력"
+                    value={item.relatedLink}
+                    onChange={(e) => onItemChange(index, "relatedLink", e.target.value)}
+                  />
                 </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>요청 사유</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="요청 사유 입력 (선택)"
-                      value={item.requestReason}
-                      onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
-                    />
-                  </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>비고</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="비고 입력"
+                    value={item.swRemarks}
+                    onChange={(e) => onItemChange(index, "swRemarks", e.target.value)}
+                  />
                 </div>
-              </div>
-            )}
-
-            {/* ── 신규 SW ── */}
-            {item.assetType === "sw" && item.requestType === "new" && (
-              <div className={styles.extraFields}>
-                <div className={styles.selectRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      소프트웨어명 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="소프트웨어명 입력"
-                      value={item.swName}
-                      onChange={(e) => onItemChange(index, "swName", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      SW 유형 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.softwareType}
-                      onChange={(e) => onItemChange(index, "softwareType", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {SW_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      제조사 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="제조사 입력"
-                      value={item.swManufacturer}
-                      onChange={(e) => onItemChange(index, "swManufacturer", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      라이선스키 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="라이선스키 입력"
-                      value={item.licenseKey}
-                      onChange={(e) => onItemChange(index, "licenseKey", e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>
-                      키 유형 <span className={styles.required}>*</span>
-                    </label>
-                    <select
-                      className={styles.select}
-                      value={item.keyType}
-                      onChange={(e) => onItemChange(index, "keyType", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {KEY_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.selectGroup}>
-                    <label className={styles.selectLabel}>구독여부</label>
-                    <select
-                      className={styles.select}
-                      value={item.isSubscription}
-                      onChange={(e) => onItemChange(index, "isSubscription", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      <option value="true">구독</option>
-                      <option value="false">비구독</option>
-                    </select>
-                  </div>
-                </div>
-                <div className={styles.inputRow}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>요청 사유</label>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="요청 사유 입력 (선택)"
-                      value={item.requestReason}
-                      onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
-                    />
-                  </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>요청 사유</label>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="요청 사유 입력"
+                    value={item.requestReason}
+                    onChange={(e) => onItemChange(index, "requestReason", e.target.value)}
+                  />
                 </div>
               </div>
-            )}
 
-          </div>
-        );
-      })}
+              {/* 라이선스형일 때만 라이선스 입력 토글 표시 */}
+              {item.licenseRequired && (
+                <SwLicenseSection
+                  item={item}
+                  index={index}
+                  onItemChange={onItemChange}
+                />
+              )}
+
+            </div>
+          )}
+
+        </div>
+      ))}
     </>
   );
 };
 
 RequestFormFields.propTypes = {
   items:             PropTypes.array.isRequired,
-  enterpriseAssets:  PropTypes.array.isRequired,
-  swAssets:          PropTypes.array.isRequired,
   onAssetTypeChange: PropTypes.func.isRequired,
   onItemChange:      PropTypes.func.isRequired,
   onRemoveItem:      PropTypes.func,

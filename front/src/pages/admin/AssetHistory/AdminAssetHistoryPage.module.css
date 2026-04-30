@@ -1,0 +1,166 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =====================
+   필터 영역
+   ===================== */
+.filterArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+
+.filterSelect:hover  { border-color: var(--color-border); }
+.filterSelect:focus  { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
+
+.filterDate {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.filterDate:hover { border-color: var(--color-border); }
+.filterDate:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
+
+.dateSeparator {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.filterSearchWrap {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.filterSearchWrap:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.filterInput {
+  width: 200px;
+  height: 36px;
+  padding: 0 12px;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.filterInput::placeholder { color: var(--color-text-secondary); }
+
+.filterSearchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-left: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.filterSearchBtn:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+/* =====================
+   테이블 헤더
+   ===================== */
+.tableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* =====================
+   뱃지 공통
+   ===================== */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+/* =====================
+   변경 컬럼 배지 (진한 톤)
+   ===================== */
+.badgeRegister {
+  background-color: #16a34a;
+}
+
+.badgeReturn {
+  background-color: #b91c1c;
+}
+
+.badgeStateChange {
+  background-color: #d97706;
+}
+
+.badgeMove {
+  background-color: #1d4eda;
+}
+
+.badgeAssign {
+  background-color: #6834d0;
+}
+
+
+/* =====================
+   대시 표시
+   ===================== */
+.dash {
+  color: var(--color-text-secondary);
+}

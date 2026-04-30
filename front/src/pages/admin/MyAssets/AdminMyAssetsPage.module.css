@@ -328,3 +328,239 @@
 .locationInput:focus {
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
+
+/* =====================
+   SW 현황 대시보드
+   ===================== */
+
+/* ── 타이틀 바 ── */
+.swDashboardTitleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.swDashboardTitleText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+}
+
+.swDashboardTitleRight {
+  display: flex;
+  align-items: center;
+  gap: 35px;
+}
+
+.swDashboardTitleCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface);
+}
+
+.swDashboardViewBtn {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.7);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+
+.swDashboardViewBtn:hover {
+  color: var(--color-surface);
+}
+
+/* ── 공통 grid ──
+   헤더 / 데이터행 / 라이선스행 완전히 동일한 구조
+   모든 텍스트 왼쪽 정렬로 통일 → 컬럼 간격 일정하게 유지
+   소프트웨어명: 1fr | 총수량: 100px | 사용중: 100px | 사용자: 160px | chevron: 40px
+   ──────────────────────────────────────────────────────────────── */
+.swDashboardHeader,
+.swDashboardRow,
+.swLicenseRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 160px 40px;
+  align-items: center;
+  padding: 10px 16px;
+  box-sizing: border-box;
+}
+
+/* ── 헤더 ── */
+.swDashboardHeader {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.swDashboardHeaderName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* 총수량 / 사용중 헤더: 왼쪽 정렬 + 왼쪽 여백으로 데이터와 맞춤 */
+.swDashboardHeaderCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+/* 사용자 헤더: 왼쪽 정렬 */
+.swDashboardHeaderUser {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+.swDashboardHeaderChevron {
+  /* 자리만 차지 */
+}
+
+/* ── 아코디언 목록 ── */
+.swDashboardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.swDashboardItem {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.swDashboardItem:last-child {
+  border-bottom: none;
+}
+
+/* ── 데이터 행 ── */
+.swDashboardRow {
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.swDashboardRow:hover {
+  background-color: var(--color-primary-tint);
+}
+
+.swDashboardRowOpen {
+  background-color: var(--color-accent-bg);
+}
+
+.swDashboardRowOpen:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.swDashboardName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: left;
+}
+
+/* 총수량 / 사용중 데이터: 헤더와 동일하게 왼쪽 정렬 */
+.swDashboardCount {
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.swDashboardChevron {
+  display: flex;
+  justify-content: flex-end;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.swDashboardChevronOpen {
+  color: var(--color-accent);
+}
+
+/* ── 라이선스 패널 ── */
+.swLicensePanel {
+  overflow: hidden;
+  background-color: var(--color-accent-bg);
+  transition: max-height 300ms ease-in-out;
+}
+
+.swLicensePanelOpen {
+  border-top: 1px solid var(--color-accent-border);
+}
+
+.swLicenseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.swLicenseRow {
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--color-accent-border);
+  background-color: var(--color-accent-bg);
+  transition: background-color var(--transition-fast);
+}
+
+.swLicenseRow:last-child {
+  border-bottom: none;
+}
+
+.swLicenseRow:hover {
+  background-color: var(--color-accent-border);
+}
+
+.swLicenseKey {
+  grid-column: 1;
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swLicensePassword {
+  color: var(--color-text-secondary);
+}
+
+/* 사용자: 헤더의 swDashboardHeaderUser와 동일하게 왼쪽 정렬 */
+.swLicenseUser {
+  grid-column: 4;
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: left;
+}
+
+/* ── 빈 상태 메시지 ── */
+.swLicenseEmpty {
+  margin: 0;
+  padding: 16px 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  background-color: var(--color-accent-bg);
+}
+
+/* =====================
+   PC 현황 대시보드
+   ===================== */
+.pcDashboardHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.pcDashboardRow {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+}
