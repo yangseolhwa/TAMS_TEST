@@ -125,13 +125,15 @@
    뱃지 공통
    ===================== */
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
-  color: #ffffff;
+  color: var(--color-white, #ffffff);
 }
 
 /* =====================
