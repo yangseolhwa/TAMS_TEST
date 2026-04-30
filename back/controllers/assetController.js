@@ -1865,6 +1865,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       quantity:        sw.quantity,
       acquisition_date: sw.acquisition_date,
       state:           sw.state,
+      related_link:    sw.related_link,
       remarks:         sw.remarks,
       in_use_count:    inUseCount,
       available_count: sw.quantity - inUseCount,
