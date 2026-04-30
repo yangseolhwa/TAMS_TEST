@@ -84,6 +84,13 @@ const USER_INCLUDE = {
   include: [{ model: Profile, as: 'profile', attributes: ['name']}]
 };
 
+// "office-A-123" 형태의 자산 번호 생성
+function buildItemNumber(plain) {
+  const cat  = plain.item_category?.name ?? null;
+  const code = plain.item_type?.code     ?? null;
+  return (cat && code && plain.id) ? `${cat}-${code}-${plain.id}` : null;
+}
+
 // ─────────────────────────────────────────
 // 공통 유틸
 // ─────────────────────────────────────────
@@ -222,7 +229,14 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
     });
   }
 
-  res.status(200).json({ enterprise, sw });
+  res.status(200).json({
+  enterprise: enterprise.map(e => {
+    const p = e.toJSON();
+    p.item_number = buildItemNumber(p);
+    return p;
+  }),
+  sw,
+});
 });
 
 
@@ -914,8 +928,13 @@ exports.getRequests = asyncWrapper(async (req, res) => {
         });
         plain.category  = asset?.item_category ?? null;
         plain.item_type = asset?.item_type     ?? null;
-        plain.asset     = asset
-          ? { id: asset.id, manufacturer: asset.manufacturer, serial_number: asset.serial_number }
+        plain.asset = asset
+          ? {
+              id:            asset.id,
+              manufacturer:  asset.manufacturer,
+              serial_number: asset.serial_number,
+              item_number:   buildItemNumber(asset.toJSON()),
+            }
           : null;
       }
 
@@ -2154,7 +2173,14 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
     order: [['created_at', 'DESC']],
   });
  
-  res.status(200).json({ total: list.length, list });
+  res.status(200).json({
+  total: list.length,
+  list: list.map(e => {
+    const p = e.toJSON();
+    p.item_number = buildItemNumber(p);
+    return p;
+  }),
+});
 });
 
 // ─────────────────────────────────────────
@@ -2254,7 +2280,14 @@ exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
     order: [['id', 'ASC']],
   });
  
-  res.status(200).json({ total: list.length, list });
+  res.status(200).json({
+    total: list.length,
+    list: list.map(e => {
+      const p = e.toJSON();
+      p.item_number = buildItemNumber(p);
+      return p;
+    }),
+  });
 });
 
 // ─────────────────────────────────────────
