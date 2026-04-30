@@ -46,6 +46,13 @@ function readCell(ws, r, col) {
   return String(v).trim();
 }
  
+// 병합된 slave 셀 여부 확인
+// ExcelJS ValueType.Merge = 1 : 병합 영역의 master가 아닌 셀
+function isMergedSlave(ws, r, col) {
+  if (!col) return false;
+  return ws.getCell(r, col).type === 1; // 1 = ExcelJS ValueType.Merge
+}
+
 function readXlsxCell(row, col) {
   const v = row[col];
   if (v == null) return null;
@@ -212,8 +219,18 @@ const importDf = async (req, res) => {
       for (const key of CARRY_FIELDS) {
         const raw = g(r, key);
         const val = raw instanceof Date ? raw : toFieldVal(raw);
-        if (val !== null) { last[key] = raw; row[key] = val; }
-        else { row[key] = last[key] instanceof Date ? last[key] : toFieldVal(last[key] ?? null); }
+        if (val !== null) {
+          // 값 있음 → last 갱신 후 사용
+          last[key] = raw;
+          row[key]  = val;
+        } else if (isMergedSlave(ws, r, colMap[key])) {
+          // 병합 slave 셀(값 없음) → carry-forward
+          row[key] = last[key] instanceof Date ? last[key] : toFieldVal(last[key] ?? null);
+        } else {
+          // 그냥 빈 셀 → null 저장 + last 초기화 (이후 행도 carry-forward 방지)
+          row[key]  = null;
+          last[key] = null;
+        }
       }
  
       // Carry-forward 비대상 필드 직접 읽기

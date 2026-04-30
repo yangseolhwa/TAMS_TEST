@@ -366,7 +366,11 @@ export const fetchSwList = async (params = {}) => {
 
     return {
       total: data.total ?? 0,
-      list:  data.list  ?? [],
+      list: (data.list ?? []).map((sw) => ({
+        ...sw,
+        related_link: sw.related_link ?? null,
+        remarks:      sw.remarks      ?? null,
+      })),
     }
   } catch (error) {
     throw new Error(error.response?.data?.message ?? 'SW 목록 조회에 실패했습니다.')

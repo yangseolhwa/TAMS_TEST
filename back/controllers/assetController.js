@@ -267,11 +267,6 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
           model: AssetProjectItemType,
           as: 'item_type',
           attributes: ['id', 'name', 'parent_id'],
-          include: [{
-            model: AssetProjectItemType,
-            as: 'parent',
-            attributes: ['id', 'name'],
-          }],
         },
         { ...USER_INCLUDE, as: 'manager' },
       ],
@@ -280,6 +275,29 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   });
 
   res.status(200).json({ projects });
+});
+
+// ─────────────────────────────────────────
+// DF 자산 종류 계층 조회 (등록 폼용)
+// GET /api/assets/df/types
+// 응답: { types: [{ id, name, children: [{ id, name }] }] }
+// ─────────────────────────────────────────
+exports.getDfItemTypes = asyncWrapper(async (req, res) => {
+  const parents = await AssetProjectItemType.findAll({
+    where: { parent_id: null },
+    attributes: ['id', 'name'],
+    include: [{
+      model: AssetProjectItemType,
+      as: 'children',
+      attributes: ['id', 'name'],
+    }],
+    order: [
+      ['name', 'ASC'],
+      [{ model: AssetProjectItemType, as: 'children' }, 'name', 'ASC'],
+    ],
+  });
+
+  res.status(200).json({ types: parents });
 });
 
 
@@ -714,8 +732,9 @@ exports.registerDf = asyncWrapper(async (req, res) => {
   }
 
   for (const item of items) {
-    if (!item.asset_type_id) {
-      return res.status(400).json({ message: '자산 종류를 선택해주세요.' });
+    const hasDirect = item.parent_type_id && item.sub_type_name?.trim();
+    if (!item.asset_type_id && !hasDirect) {
+      return res.status(400).json({ message: '자산 종류를 선택하거나 직접 입력해주세요.' });
     }
     if (!item.manufacturer || !item.model_number) {
       return res.status(400).json({ message: '제조사, 모델 번호는 필수 입력 항목입니다.' });
@@ -734,12 +753,25 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     });
     let nextItemNumber = lastItem ? lastItem.item_number + 1 : 1;
 
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.asset_type_id) return { ...item, resolved_type_id: Number(item.asset_type_id) };
+        // 직접 입력: parent_type_id의 자식으로 중분류 findOrCreate
+        const [child] = await AssetProjectItemType.findOrCreate({
+          where:    { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
+          defaults: { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
+          transaction: t,
+        });
+        return { ...item, resolved_type_id: child.id };
+      })
+    );
+
     const createdItems = await AssetProjectItem.bulkCreate(
-      items.map((item) => ({
+      resolvedItems.map((item) => ({
         project_id,
         user_id:            userId,
         item_number:        nextItemNumber++,
-        asset_type_id:      item.asset_type_id,
+        asset_type_id:      item.resolved_type_id,
         owner_organization: item.owner_organization ?? null,
         equipment_number:   item.equipment_number   ?? null,
         manufacturer:       item.manufacturer       ?? null,
@@ -1723,7 +1755,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
   // ── SW 집계 ──────────────────────────────
   const swList = await AssetSw.findAll({
     where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state'],
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state', 'related_link'],
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
@@ -1742,6 +1774,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     manufacturer:    s.manufacturer,
     quantity:        s.quantity,
     state:           s.state,
+    related_link:    s.related_link,
     in_use_count:    inUseCount,
     available_count: s.quantity - inUseCount,
     licenses: s.licenses.map((l) => ({
@@ -1842,6 +1875,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       quantity:        sw.quantity,
       acquisition_date: sw.acquisition_date,
       state:           sw.state,
+      related_link:    sw.related_link,
       remarks:         sw.remarks,
       in_use_count:    inUseCount,
       available_count: sw.quantity - inUseCount,
@@ -1881,7 +1915,7 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
  
   const list = await AssetSw.findAll({
     where,
-    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'],
+    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'related_link', 'quantity'],
     order: [['name', 'ASC']],
   });
  

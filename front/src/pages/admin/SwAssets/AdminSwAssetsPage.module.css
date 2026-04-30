@@ -1,1 +1,129 @@
-/* 공통 스타일은 AssetPage.common.module.css 참고 */
+/* ── grid 컬럼 비율 정의
+   No | 제품명 | 버전 | 제조사 | 사용수량 | 남은수량 | 라이선스 | 관련링크 | 사용자 | 비고 | 상태
+   ────────────────────────────────────────────────────────────────────────── */
+.thead,
+.tr {
+  display: grid;
+  grid-template-columns: 50px 1.5fr 80px 2fr 1.5fr 1fr 1fr 80px 80px 1fr 90px;
+  align-items: start;
+}
+
+/* =====================
+   테이블 래퍼
+   ===================== */
+.tableWrapper {
+  overflow-x: auto;
+}
+
+/* =====================
+   헤더
+   ===================== */
+.thead {
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  padding-right: 17px;
+}
+
+.th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+/* =====================
+   바디
+   ===================== */
+.tbody {
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+/* =====================
+   행
+   ===================== */
+.tr {
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color var(--transition-fast);
+}
+
+.tr:last-child {
+  border-bottom: none;
+}
+
+.tr:hover {
+  background-color: var(--color-primary-tint);
+}
+
+/* =====================
+   셀
+   ===================== */
+.td {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* =====================
+   멀티라인
+   ===================== */
+.multiLine {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.multiLine span {
+  display: block;
+  line-height: 1.5;
+}
+
+/* =====================
+   대시
+   ===================== */
+.dash {
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   상태 뱃지
+   ===================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status_green {
+  background-color: var(--color-badge-green2-bg);
+  color: var(--color-badge-green2);
+}
+
+.status_blue {
+  background-color: var(--color-badge-blue2-bg);
+  color: var(--color-badge-blue2);
+}
+
+.status_gray {
+  background-color: var(--color-badge-gray-bg);
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   총 건수
+   ===================== */
+.totalCount {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 600;
+  margin: 0;
+  padding-top: 10px;
+}
