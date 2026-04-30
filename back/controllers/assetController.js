@@ -740,8 +740,9 @@ exports.registerDf = asyncWrapper(async (req, res) => {
   }
 
   for (const item of items) {
-    if (!item.asset_type_id) {
-      return res.status(400).json({ message: '자산 종류를 선택해주세요.' });
+    const hasDirect = item.parent_type_id && item.sub_type_name?.trim();
+    if (!item.asset_type_id && !hasDirect) {
+      return res.status(400).json({ message: '자산 종류를 선택하거나 직접 입력해주세요.' });
     }
     if (!item.manufacturer || !item.model_number) {
       return res.status(400).json({ message: '제조사, 모델 번호는 필수 입력 항목입니다.' });
@@ -760,12 +761,25 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     });
     let nextItemNumber = lastItem ? lastItem.item_number + 1 : 1;
 
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.asset_type_id) return { ...item, resolved_type_id: Number(item.asset_type_id) };
+        // 직접 입력: parent_type_id의 자식으로 중분류 findOrCreate
+        const [child] = await AssetProjectItemType.findOrCreate({
+          where:    { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
+          defaults: { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
+          transaction: t,
+        });
+        return { ...item, resolved_type_id: child.id };
+      })
+    );
+
     const createdItems = await AssetProjectItem.bulkCreate(
       items.map((item) => ({
         project_id,
         user_id:            userId,
         item_number:        nextItemNumber++,
-        asset_type_id:      item.asset_type_id,
+        asset_type_id:      item.resolve,
         owner_organization: item.owner_organization ?? null,
         equipment_number:   item.equipment_number   ?? null,
         manufacturer:       item.manufacturer       ?? null,
