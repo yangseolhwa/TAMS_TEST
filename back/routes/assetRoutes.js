@@ -29,6 +29,7 @@ router.get('/enterprise/list-simple', assetController.getEnterpriseListSimple);
 router.get('/enterprise/available',   assetController.getEnterpriseAvailable);
 
 // df 조회 및 대시보드
+router.get('/df/types', assetController.getDfItemTypes);
 router.get('/df', assetController.getDfAssets);
 router.get('/dashboard/df', assetController.getDfDashboard);
 
