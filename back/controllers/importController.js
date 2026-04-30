@@ -2,7 +2,7 @@
  
 const ExcelJS = require('exceljs');
 const XLSX    = require('xlsx');
- 
+const { PLC_ITEM_KEYWORDS } = require('../config/dfConfig');
 const sequelize = require('../config/db');
 const {
   AssetProject, AssetProjectItem, AssetProjectItemType, AssetProjectHistory,
@@ -112,16 +112,6 @@ const PC_KEYWORD_MAP = {
   remarks:          ['remark', 'remarks', '비고'],
 };
  
-// PLC 헤더 키워드 매핑
-const PLC_KEYWORD_MAP = {
-  item:             ['item'],
-  serial_number:    ['serial number', 'serial no', 'serialnumber', 'serial_number'],
-  quantity:         ['qty'],
-  acquisition_date: ['rental_date', '대여일', '취득일', '취득일자'],
-  return_date:      ['return_date', '반납일'],
-  remarks:          ['remark', 'remarks', '비고'],
-};
- 
 function detectDfColumns(ws) {
   for (let r = 1; r <= 10; r++) {
     const row = [];
@@ -129,19 +119,14 @@ function detectDfColumns(ws) {
       const v = ws.getCell(r, c).value;
       row.push(v != null ? String(v).trim() : '');
     }
- 
-    // 'Item' 키워드가 있는 행을 헤더로 판단
+
     const rowLower = row.map(v => v.toLowerCase());
     const hasItem  = rowLower.some(v => v === 'item');
     if (!hasItem) continue;
- 
-    // PC vs PLC 판별: 'Model Number' 또는 'Product Name' 존재 여부
-    const isPC      = rowLower.some(v => v === 'model number' || v === 'product name');
-    const sheetType = isPC ? 'PC' : 'PLC';
-    const KEYWORD_MAP = isPC ? PC_KEYWORD_MAP : PLC_KEYWORD_MAP;
- 
+
+    // 항상 PC_KEYWORD_MAP(통합 컬럼셋) 사용
     const colMap = {};
-    for (const [key, keywords] of Object.entries(KEYWORD_MAP)) {
+    for (const [key, keywords] of Object.entries(PC_KEYWORD_MAP)) {
       colMap[key] = null;
       for (let c = 0; c < rowLower.length; c++) {
         if (keywords.some(kw => rowLower[c] === kw)) {
@@ -150,8 +135,24 @@ function detectDfColumns(ws) {
         }
       }
     }
- 
-    return { colMap, dataStartRow: r + 1, sheetType };
+
+    const dataStartRow = r + 1;
+
+    // 데이터 행의 Item값으로 PC/PLC 판별
+    let sheetType = 'PC';
+    if (colMap.item) {
+      for (let dr = dataStartRow; dr <= ws.rowCount; dr++) {
+        const raw = ws.getCell(dr, colMap.item).value;
+        if (raw == null) continue;
+        const itemStr = String(raw).trim();
+        if (PLC_ITEM_KEYWORDS.has(itemStr)) {
+          sheetType = 'PLC';
+          break;
+        }
+      }
+    }
+
+    return { colMap, dataStartRow, sheetType };
   }
   return null;
 }
@@ -175,160 +176,152 @@ const importDf = async (req, res) => {
   existingTypes.forEach(t => { typeCache[`${t.parent_id ?? 'ROOT'}::${t.name}`] = t.id; });
  
   for (const ws of projectSheets) {
-    const detected = detectDfColumns(ws);
-    if (!detected) {
-      results.push({ sheet: ws.name, status: 'skipped', reason: '헤더 감지 실패' });
-      continue;
-    }
-    const { colMap, dataStartRow, sheetType } = detected;
- 
-    if (!projectCache[ws.name]) {
-      const [proj] = await AssetProject.findOrCreate({ where: { name: ws.name }, defaults: { name: ws.name } });
-      projectCache[ws.name] = proj.id;
-    }
-    const project_id = projectCache[ws.name];
- 
-    // Carry-forward 대상 필드 (sheetType에 따라 분기)
-    const CARRY_FIELDS = sheetType === 'PC'
+  const detected = detectDfColumns(ws);
+  if (!detected) {
+    results.push({ sheet: ws.name, status: 'skipped', reason: '헤더 감지 실패' });
+    continue;
+  }
+  const { colMap, dataStartRow, sheetType } = detected;
 
-      ? ['item', 'manufacturer', 'dusan_item_no', 'product_name', 'model_number', 'acquisition_date']
-      : ['item', 'acquisition_date'];
-    const last = {};
-    const g = (r, key) => readCell(ws, r, colMap[key]);
- 
-    for (let r = dataStartRow; r <= ws.rowCount; r++) {
- 
-      // ── 빈 행 스킵 ────────────────────────────────────────────
-      // item, model_number, manufacturer, product_name, serial_number, quantity, acquisition_date
-      // 모두 비어있으면 스킵
-      const chkItem    = toFieldVal(g(r, 'item'));
-      const chkModel   = sheetType === 'PC' ? toFieldVal(g(r, 'model_number'))  : null;
-      const chkMfr     = sheetType === 'PC' ? toFieldVal(g(r, 'manufacturer'))  : null;
-      const chkProduct = sheetType === 'PC' ? toFieldVal(g(r, 'product_name'))  : null;
-      const chkSerial  = toFieldVal(g(r, 'serial_number'));
-      const chkQty     = parseQty(g(r, 'quantity'));
-      const chkAcq     = g(r, 'acquisition_date');
- 
-      // 모든 셀이 비어있으면 데이터 끝으로 판단 → 다음 시트로
-      const isAllEmpty = !chkItem && !chkModel && !chkMfr && !chkProduct && !chkSerial && chkQty === null && !chkAcq
-        && !toFieldVal(g(r, 'return_date')) && !toFieldVal(g(r, 'remarks'));
-      if (isAllEmpty) break;
- 
-      // ── Carry-forward 처리 ────────────────────────────────────
-      const row = {};
-      for (const key of CARRY_FIELDS) {
-        const raw = g(r, key);
-        const val = raw instanceof Date ? raw : toFieldVal(raw);
-        if (val !== null) {
-          // 값 있음 → last 갱신 후 사용
-          last[key] = raw;
-          row[key]  = val;
-        } else if (isMergedSlave(ws, r, colMap[key])) {
-          // 병합 slave 셀(값 없음) → carry-forward
-          row[key] = last[key] instanceof Date ? last[key] : toFieldVal(last[key] ?? null);
-        } else {
-          // 그냥 빈 셀 → null 저장 + last 초기화 (이후 행도 carry-forward 방지)
-          row[key]  = null;
-          last[key] = null;
-        }
+  if (!projectCache[ws.name]) {
+    const [proj] = await AssetProject.findOrCreate({
+      where: { name: ws.name }, defaults: { name: ws.name },
+    });
+    projectCache[ws.name] = proj.id;
+  }
+  const project_id = projectCache[ws.name];
+
+  // 항상 통합 carry-forward 필드 사용
+  const CARRY_FIELDS = [
+    'item', 'manufacturer', 'dusan_item_no',
+    'product_name', 'model_number', 'acquisition_date',
+  ];
+  const last = {};
+  const g = (r, key) => readCell(ws, r, colMap[key]);
+
+  for (let r = dataStartRow; r <= ws.rowCount; r++) {
+
+    // ── 빈 행 스킵 ──────────────────────────────────────────────
+    const chkItem    = toFieldVal(g(r, 'item'));
+    const chkModel   = toFieldVal(g(r, 'model_number'));
+    const chkMfr     = toFieldVal(g(r, 'manufacturer'));
+    const chkProduct = toFieldVal(g(r, 'product_name'));
+    const chkSerial  = toFieldVal(g(r, 'serial_number'));
+    const chkQty     = parseQty(g(r, 'quantity'));
+    const chkAcq     = g(r, 'acquisition_date');
+
+    const isAllEmpty = !chkItem && !chkModel && !chkMfr && !chkProduct
+      && !chkSerial && chkQty === null && !chkAcq
+      && !toFieldVal(g(r, 'return_date')) && !toFieldVal(g(r, 'remarks'));
+    if (isAllEmpty) break;
+
+    // ── Carry-forward 처리 ──────────────────────────────────────
+    const row = {};
+    for (const key of CARRY_FIELDS) {
+      const raw = g(r, key);
+      const val = raw instanceof Date ? raw : toFieldVal(raw);
+      if (val !== null) {
+        last[key] = raw;
+        row[key]  = val;
+      } else if (isMergedSlave(ws, r, colMap[key])) {
+        row[key] = last[key] instanceof Date ? last[key] : toFieldVal(last[key] ?? null);
+      } else {
+        row[key]  = null;
+        last[key] = null;
       }
- 
-      // Carry-forward 비대상 필드 직접 읽기
-      row.serial_number = toFieldVal(g(r, 'serial_number'));
-      row.quantity      = parseQty(g(r, 'quantity'));
-      row.remarks       = toFieldVal(g(r, 'remarks'));
- 
-      // acquisition_date / return_date: carry-forward 결과가 있으면 사용, 없으면 현재 행 직접 읽기
-      if (!row.acquisition_date) row.acquisition_date = g(r, 'acquisition_date');
-      if (!row.return_date)      row.return_date      = g(r, 'return_date');
- 
-      // ── 두산 Item No 처리 (PC 전용) ───────────────────────────
-      // colMap에 dusan_item_no가 존재하면 owner_organization = '두산' 고정,
-      // equipment_number = 두산 Item No 셀 값
-      let ownerOrg     = null;
-      let equipmentNum = null;
-      if (sheetType === 'PC' && colMap.dusan_item_no) {
-        const dusanVal = typeof row.dusan_item_no === 'string' ? row.dusan_item_no : null;
-        if (dusanVal) {
-          ownerOrg     = '두산';
-          equipmentNum = dusanVal;
-        }
+    }
+
+    row.serial_number = toFieldVal(g(r, 'serial_number'));
+    row.quantity      = parseQty(g(r, 'quantity'));
+    row.remarks       = toFieldVal(g(r, 'remarks'));
+
+    if (!row.acquisition_date) row.acquisition_date = g(r, 'acquisition_date');
+    if (!row.return_date)      row.return_date      = g(r, 'return_date');
+
+    // ── 두산 Item No 처리 (sheetType 조건 제거) ────────────────
+    let ownerOrg     = null;
+    let equipmentNum = null;
+    if (colMap.dusan_item_no) {
+      const dusanVal = typeof row.dusan_item_no === 'string' ? row.dusan_item_no : null;
+      if (dusanVal) {
+        ownerOrg     = '두산';
+        equipmentNum = dusanVal;
       }
- 
-      // ── 대분류(parent_type) = PC / PLC 자동 결정 ─────────────
-      const parentTypeName = sheetType;
-      const pk = `ROOT::${parentTypeName}`;
-      if (!typeCache[pk]) {
-        const [pt] = await AssetProjectItemType.findOrCreate({
-          where:    { name: parentTypeName, parent_id: null },
-          defaults: { name: parentTypeName, parent_id: null },
+    }
+
+    // ── 대분류(parent_type): sheetType 기반으로 자동 결정 ──────
+    const parentTypeName = sheetType;
+    const pk = `ROOT::${parentTypeName}`;
+    if (!typeCache[pk]) {
+      const [pt] = await AssetProjectItemType.findOrCreate({
+        where:    { name: parentTypeName, parent_id: null },
+        defaults: { name: parentTypeName, parent_id: null },
+      });
+      typeCache[pk] = pt.id;
+    }
+    const parentId = typeCache[pk];
+
+    // ── 중분류(sub_type) ────────────────────────────────────────
+    const subTypeName = typeof row.item === 'string' ? row.item : null;
+    let assetTypeId = null;
+    if (subTypeName) {
+      const sk = `${parentId}::${subTypeName}`;
+      if (!typeCache[sk]) {
+        const [st] = await AssetProjectItemType.findOrCreate({
+          where:    { name: subTypeName, parent_id: parentId },
+          defaults: { name: subTypeName, parent_id: parentId },
         });
-        typeCache[pk] = pt.id;
+        typeCache[sk] = st.id;
       }
-      const parentId = typeCache[pk];
- 
-      // ── 중분류(sub_type) = Item 컬럼 값
-      // Item 값이 없으면 asset_type_id = null (중분류 미지정)
-      const subTypeName = typeof row.item === 'string' ? row.item : null;
-      let assetTypeId = null;
-      if (subTypeName) {
-        const sk = `${parentId}::${subTypeName}`;
-        if (!typeCache[sk]) {
-          const [st] = await AssetProjectItemType.findOrCreate({
-            where:    { name: subTypeName, parent_id: parentId },
-            defaults: { name: subTypeName, parent_id: parentId },
-          });
-          typeCache[sk] = st.id;
-        }
-        assetTypeId = typeCache[sk];
-      }
- 
-      const acqDate = row.acquisition_date instanceof Date ? row.acquisition_date : parseDate(row.acquisition_date);
-      const retDate = row.return_date      instanceof Date ? row.return_date      : parseDate(row.return_date);
-      const state   = retDate ? 'returned' : 'in_use';
- 
-      const t = await sequelize.transaction();
-      try {
-        const lastItem = await AssetProjectItem.findOne({
-          where: { project_id }, order: [['item_number', 'DESC']],
-          lock: t.LOCK.UPDATE, transaction: t,
-        });
- 
-        const item = await AssetProjectItem.create({
-          user_id:            req.user.userId,
-          project_id,
-          item_number:        (lastItem?.item_number ?? 0) + 1,
-          asset_type_id:      assetTypeId,
-          owner_organization: ownerOrg,
-          equipment_number:   equipmentNum,
-          manufacturer:       sheetType === 'PC' ? (row.manufacturer  || null) : null,
-          product_name:       sheetType === 'PC' ? (row.product_name  || null) : null,
-          model_number:       sheetType === 'PC' ? (row.model_number  || null) : null,
-          serial_number:      row.serial_number  || null,
-          quantity:           row.quantity,
-          acquisition_date:   acqDate            || null,
-          return_date:        retDate            || null,
-          state,
-          location:           null,
-          remarks:            row.remarks        || null,
-        }, { transaction: t });
- 
-        await AssetProjectHistory.create({
-          asset_project_item_id: item.id, project_id,
-          user_id: req.user.userId, change_type: 'register',
-          before_value: null, after_value: state,
-        }, { transaction: t });
- 
-        await t.commit();
-        results.push({ sheet: ws.name, row: r, status: 'success', item_id: item.id });
-        imported++;
-      } catch (err) {
-        await t.rollback();
-        results.push({ sheet: ws.name, row: r, status: 'failed', reason: err.message });
-        failed++;
-      }
+      assetTypeId = typeCache[sk];
+    }
+
+    const acqDate = row.acquisition_date instanceof Date ? row.acquisition_date : parseDate(row.acquisition_date);
+    const retDate = row.return_date      instanceof Date ? row.return_date      : parseDate(row.return_date);
+    const state   = retDate ? 'returned' : 'in_use';
+
+    const t = await sequelize.transaction();
+    try {
+      const lastItem = await AssetProjectItem.findOne({
+        where: { project_id }, order: [['item_number', 'DESC']],
+        lock: t.LOCK.UPDATE, transaction: t,
+      });
+
+      const item = await AssetProjectItem.create({
+        user_id:            req.user.userId,
+        project_id,
+        item_number:        (lastItem?.item_number ?? 0) + 1,
+        asset_type_id:      assetTypeId,
+        owner_organization: ownerOrg,
+        equipment_number:   equipmentNum,
+        manufacturer:       row.manufacturer  || null,   // sheetType 조건 제거
+        product_name:       row.product_name  || null,   // sheetType 조건 제거
+        model_number:       row.model_number  || null,   // sheetType 조건 제거
+        serial_number:      row.serial_number || null,
+        quantity:           row.quantity,
+        acquisition_date:   acqDate           || null,
+        return_date:        retDate           || null,
+        state,
+        location:           null,
+        remarks:            row.remarks       || null,
+      }, { transaction: t });
+
+      await AssetProjectHistory.create({
+        asset_project_item_id: item.id, project_id,
+        user_id: req.user.userId, change_type: 'register',
+        before_value: null, after_value: state,
+      }, { transaction: t });
+
+      await t.commit();
+      results.push({ sheet: ws.name, row: r, status: 'success', item_id: item.id });
+      imported++;
+    } catch (err) {
+      await t.rollback();
+      results.push({ sheet: ws.name, row: r, status: 'failed', reason: err.message });
+      failed++;
     }
   }
+}
  
   return res.status(200).json({ message: `DF Import 완료: ${imported}건 성공, ${failed}건 실패`, imported, failed, results });
 };
@@ -337,6 +330,10 @@ const importDf = async (req, res) => {
 // DF 양식 다운로드 (PC / PLC 시트 분리)
 // 구조: 타이틀(시트명) → 컬럼명 → 빈 데이터 행 1줄
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// DF 양식 다운로드 — 단일 시트, 통합 컬럼셋 (PC/PLC 공통)
+// 구조: 타이틀(Row1) → 컬럼명(Row2) → 빈 데이터 행 1줄(Row3)
+// ─────────────────────────────────────────────────────────────────
 const TMPL_THIN  = { top:{style:'thin'}, left:{style:'thin'}, bottom:{style:'thin'}, right:{style:'thin'} };
 const TMPL_TITLE_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1F3864' } };
 const TMPL_HEADER_FILL = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD9E1F2' } };
@@ -344,57 +341,45 @@ const TMPL_FONT_BASE   = { name:'맑은 고딕', size:11 };
 const TMPL_FONT_HEADER = { name:'맑은 고딕', size:11, bold:true };
 const TMPL_FONT_TITLE  = { name:'맑은 고딕', size:12, bold:true, color:{ argb:'FFFFFFFF' } };
  
-const TMPL_SHEETS = [
-  {
-    name:      'PC',
-    headers:   ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'],
-    colWidths: [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20],
-  },
-  {
-    name:      'PLC',
-    headers:   ['No', 'Item', 'Serial Number', 'QTY', '대여일', '반납일', '비고'],
-    colWidths: [8, 16, 22, 8, 14, 14, 20],
-  },
-];
+const TMPL_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
+const TMPL_COL_WIDTHS = [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20];
  
 const downloadDfTemplate = async (req, res) => {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'TAMS';
  
-  for (const { name, headers, colWidths } of TMPL_SHEETS) {
-    const ws      = wb.addWorksheet(name);
-    const lastCol = headers.length + 2 - 1; // col 2 ~ lastCol
+  const ws      = wb.addWorksheet('DF_IMPORT');
+  const lastCol = TMPL_HEADERS.length + 2 - 1;
  
-    ws.getColumn(1).width = 4;
-    headers.forEach((_, i) => { ws.getColumn(i + 2).width = colWidths[i]; });
+  ws.getColumn(1).width = 4;
+  TMPL_HEADERS.forEach((_, i) => { ws.getColumn(i + 2).width = TMPL_COL_WIDTHS[i]; });
  
-    // Row 1: 타이틀 (시트명 병합)
-    ws.mergeCells(1, 2, 1, lastCol);
-    const titleCell     = ws.getRow(1).getCell(2);
-    titleCell.value     = name;
-    titleCell.font      = TMPL_FONT_TITLE;
-    titleCell.fill      = TMPL_TITLE_FILL;
-    titleCell.border    = TMPL_THIN;
-    titleCell.alignment = { horizontal:'center', vertical:'middle' };
-    ws.getRow(1).height = 28;
+  // Row 1: 타이틀
+  ws.mergeCells(1, 2, 1, lastCol);
+  const titleCell     = ws.getRow(1).getCell(2);
+  titleCell.value     = 'DF 자산 등록 양식';
+  titleCell.font      = TMPL_FONT_TITLE;
+  titleCell.fill      = TMPL_TITLE_FILL;
+  titleCell.border    = TMPL_THIN;
+  titleCell.alignment = { horizontal:'center', vertical:'middle' };
+  ws.getRow(1).height = 28;
  
-    // Row 2: 컬럼명
-    headers.forEach((h, i) => {
-      const cell     = ws.getRow(2).getCell(i + 2);
-      cell.value     = h;
-      cell.font      = TMPL_FONT_HEADER;
-      cell.fill      = TMPL_HEADER_FILL;
-      cell.border    = TMPL_THIN;
-      cell.alignment = { horizontal:'center', vertical:'middle' };
-    });
-    ws.getRow(2).height = 30;
+  // Row 2: 컬럼명
+  TMPL_HEADERS.forEach((h, i) => {
+    const cell     = ws.getRow(2).getCell(i + 2);
+    cell.value     = h;
+    cell.font      = TMPL_FONT_HEADER;
+    cell.fill      = TMPL_HEADER_FILL;
+    cell.border    = TMPL_THIN;
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+  });
+  ws.getRow(2).height = 30;
  
-    // Row 3: 빈 데이터 행 (테두리만)
-    headers.forEach((_, i) => {
-      ws.getRow(3).getCell(i + 2).border = TMPL_THIN;
-    });
-    ws.getRow(3).height = 25;
-  }
+  // Row 3: 빈 데이터 행 (테두리만)
+  TMPL_HEADERS.forEach((_, i) => {
+    ws.getRow(3).getCell(i + 2).border = TMPL_THIN;
+  });
+  ws.getRow(3).height = 25;
  
   res.setHeader('Content-Disposition', 'attachment; filename="DF_IMPORT_TEMPLATE.xlsx"');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
