@@ -295,57 +295,56 @@ export const fetchEnterpriseList = async (params = {}) => {
     )
     const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST, { params: cleanParams })
 
-    // 카테고리명 영어 → 한글 매핑
-const CATEGORY_NAME_MAP = {
-  office:     '사무',
-  furniture:  '가구',
-  industrial: '산업',
-  electrical: '전기',
-}
-
-// item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
-const convertItemNumber = (itemNumber) => {
-  if (!itemNumber) return null
-  const parts = itemNumber.split('-')
-  const korName = CATEGORY_NAME_MAP[parts[0]]
-  if (!korName) return itemNumber
-  parts[0] = korName
-  return parts.join('-')
-}
-
-return {
-  total: data.total ?? 0,
-  rows: (data.list ?? []).map((item, i) => {
-  // item_number 형식: "office-A-1" → 카테고리 부분만 한글로 변환
-  const CATEGORY_MAP = {
-    office:      '사무',
-    furniture:   '가구',
-    industrial:  '산업',
-    electrical:  '전기',
-  }
-  const itemNumber = (() => {
-    if (!item.item_number) return null
-    const parts = item.item_number.split('-')
-    parts[0] = CATEGORY_MAP[parts[0]] ?? parts[0]
-    return parts.join('-')
-  })()
-
-  return {
-    id:             item.id,
-    no:             i + 1,
-    itemNumber,
-    itemTypeName:   item.item_type?.name     ?? null,
-    manufacturer:   item.manufacturer        ?? null,
-    spec:           item.spec                ?? null,
-    serialNumber:   item.serial_number       ?? null,
-    location:       item.location            ?? null,
-    acquiredAt:     item.acquisition_date    ?? null,
-    state:          item.state,
-    userName:       item.User?.profile?.name ?? item.User?.email ?? null,
-    departmentName: item.User?.profile?.department?.name ?? null,
-    remarks:        item.remarks ?? null,
-  }
-}),
+    const CATEGORY_NAME_MAP = {
+      office:     '사무',
+      furniture:  '가구',
+      industrial: '산업',
+      electrical: '전기',
+    }
+    
+    // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
+    const convertItemNumber = (itemNumber) => {
+      if (!itemNumber) return null
+      const parts = itemNumber.split('-')
+      const korName = CATEGORY_NAME_MAP[parts[0]]
+      if (!korName) return itemNumber
+      parts[0] = korName
+      return parts.join('-')
+    }
+    
+    return {
+      total: data.total ?? 0,
+      rows: (data.list ?? []).map((item, i) => {
+      // item_number 형식: "office-A-1" → 카테고리 부분만 한글로 변환
+      const CATEGORY_MAP = {
+        office:      '사무',
+        furniture:   '가구',
+        industrial:  '산업',
+        electrical:  '전기',
+      }
+      const itemNumber = (() => {
+        if (!item.item_number) return null
+        const parts = item.item_number.split('-')
+        parts[0] = CATEGORY_MAP[parts[0]] ?? parts[0]
+        return parts.join('-')
+      })()
+    
+      return {
+        id:             item.id,
+        no:             i + 1,
+        itemNumber,
+        itemTypeName:   item.item_type?.name     ?? null,
+        manufacturer:   item.manufacturer        ?? null,
+        spec:           item.spec                ?? null,
+        serialNumber:   item.serial_number       ?? null,
+        location:       item.location            ?? null,
+        acquiredAt:     item.acquisition_date    ?? null,
+        state:          item.state,
+        userName:       item.User?.profile?.name ?? item.User?.email ?? null,
+        departmentName: item.User?.profile?.department?.name ?? null,
+        remarks:        item.remarks ?? null,
+      }
+    }),
       // 필터용 메타 (중복 제거)
       categories: (() => {
         const map = new Map()
