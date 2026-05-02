@@ -223,7 +223,7 @@ export const fetchAssetRequests = async () => {
 
   const enterpriseRows = (data.enterprise ?? []).map((item) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) {console.err(e)}
 
     const assetName    = item.item_type?.name        ?? null
     const manufacturer = item.asset?.manufacturer    ?? parsed.manufacturer    ?? null
@@ -248,7 +248,7 @@ export const fetchAssetRequests = async () => {
 
   const swRows = (data.sw ?? []).map((item) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { console.err(e) }
 
     return {
       id:           `req-sw-${item.id}`,
@@ -286,7 +286,7 @@ export const fetchDashboard = async () => {
 // ═══════════════════════════════════════════════════════════════
 //  Admin — PC 전체 조회
 // ═══════════════════════════════════════════════════════════════
-
+// 코드 블록 닫기 에러
 export const fetchEnterpriseList = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -294,23 +294,41 @@ export const fetchEnterpriseList = async (params = {}) => {
     )
     const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST, { params: cleanParams })
 
+    const CATEGORY_NAME_MAP = {
+      office:     '사무',
+      furniture:  '가구',
+      industrial: '산업',
+      electrical: '전기',
+    }
+    
+    // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
+    const convertItemNumber = (itemNumber) => {
+      if (!itemNumber) return null
+      const parts = itemNumber.split('-')
+      const korName = CATEGORY_NAME_MAP[parts[0]]
+      if (!korName) return itemNumber
+      parts[0] = korName
+      return parts.join('-')
+    }
+    
     return {
       total: data.total ?? 0,
       rows: (data.list ?? []).map((item, i) => ({
-        id:           item.id,
-        no:           i + 1,
-        categoryName: item.item_category?.name ?? null,
-        itemTypeName: item.item_type?.name     ?? null,
-        manufacturer: item.manufacturer        ?? null,
-        spec:         item.spec                ?? null,
-        serialNumber: item.serial_number       ?? null,
-        location:     item.location            ?? null,
-        acquiredAt:   item.acquisition_date    ?? null,
-        state:        item.state,
-        userName:     item.User?.profile?.name ?? item.User?.email ?? null,
+        id:             item.id,
+        no:             i + 1,
+        itemNumber:     convertItemNumber(item.item_number),
+        itemTypeName:   item.item_type?.name     ?? null,
+        manufacturer:   item.manufacturer        ?? null,
+        spec:           item.spec                ?? null,
+        serialNumber:   item.serial_number       ?? null,
+        location:       item.location            ?? null,
+        acquiredAt:     item.acquisition_date    ?? null,
+        state:          item.state,
+        userName:       item.User?.profile?.name ?? item.User?.email ?? null,
         departmentName: item.User?.profile?.department?.name ?? null,
-        remarks:      item.remarks ?? null,
+        remarks:        item.remarks ?? null,
       })),
+
       categories: (() => {
         const map = new Map()
         ;(data.list ?? []).forEach((item) => {
