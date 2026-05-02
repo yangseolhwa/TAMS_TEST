@@ -21,7 +21,6 @@ export const ENDPOINTS = {
     SW_LIST:        '/assets/sw',
     SW_LIST_SIMPLE: '/assets/sw/list-simple',
     SW_RETURN:      '/assets/sw/return',
-    SW_MOVE:        '/assets/sw/move',
     SW_STATE:       '/assets/sw/state',
     SW_APPROVE:     '/assets/sw/approve',
     SW_REJECT:      '/assets/sw/reject',
@@ -33,6 +32,7 @@ export const ENDPOINTS = {
     DASHBOARD_DF: '/assets/dashboard/df',
     // DF
     DF:          '/assets/df',
+    DF_TYPES:    '/assets/df/types',
     DF_RETURN:   '/assets/df/return',
     DF_MOVE:     '/assets/df/move',
     DF_STATE:    '/assets/df/state',

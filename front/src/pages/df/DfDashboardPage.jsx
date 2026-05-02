@@ -34,8 +34,9 @@ const DfDashboardPage = ({ role }) => {
   const totalItemTypes = allItemTypes.length
 
   const handleAllView     = () => navigate(`/${role}/df-assets/list`)
+  // [DF-5 수정] state 대신 URL query param 사용 (새로고침 시에도 유지됨)
   const handleProjectView = (projectId) =>
-    navigate(`/${role}/df-assets/by-project`, { state: { projectId } })
+    navigate(`/${role}/df-assets/by-project?project_id=${projectId}`)
 
   if (isLoading) {
     return (
@@ -94,7 +95,6 @@ const DfDashboardPage = ({ role }) => {
 
         {/* 프로젝트별 카드 */}
         {projects.map((project) => {
-          // 장비 리스트 이름 오름차순 정렬
           const sortedItems = [...(project.items ?? [])].sort(
             (a, b) => a.itemType.localeCompare(b.itemType, 'ko')
           )

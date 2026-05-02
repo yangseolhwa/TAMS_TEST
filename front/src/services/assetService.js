@@ -61,10 +61,6 @@ export const fetchPersonalAssets = async (params = {}) => {
   return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
 }
 
-/**
- * 개인 자산 조회 (UserMyAssetsPage 용 — 원본 구조 유지)
- * Response: { enterprise: [...], sw: [{ ..., licenses: [...] }] }
- */
 export const fetchMyAssets = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.PERSONAL)
 
@@ -102,10 +98,30 @@ export const fetchMyAssets = async () => {
   return { pcRows, swRows }
 }
 
+// ─────────────────────────────────────────────────────────────────
 // 콤보박스 조회 API — Enterprise 등록용
+// ─────────────────────────────────────────────────────────────────
 export const fetchEnterpriseAssetsForForm = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE)
-  return data.categories ?? []
+  const categories = data.categories ?? []
+
+  return categories.flatMap((cat) =>
+    cat.item_types?.length > 0
+      ? cat.item_types.flatMap((type) =>
+          type.manufacturers?.length > 0
+            ? type.manufacturers.map((mfr) => ({
+                item_category: { id: cat.id, name: cat.name },
+                item_type:     { id: type.id, name: type.name, code: type.code },
+                manufacturer:  mfr,
+              }))
+            : [{
+                item_category: { id: cat.id, name: cat.name },
+                item_type:     { id: type.id, name: type.name, code: type.code },
+                manufacturer:  null,
+              }]
+        )
+      : [{ item_category: { id: cat.id, name: cat.name }, item_type: null, manufacturer: null }]
+  )
 }
 
 // 콤보박스 조회 API — SW 등록용
@@ -138,15 +154,6 @@ export const moveEnterpriseAssets = async (body) => {
     return data
   } catch (error) {
     throw new Error(error.response?.data?.message ?? 'PC 자산 이동에 실패했습니다.')
-  }
-}
-
-export const moveSwAssets = async (body) => {
-  try {
-    const { data } = await api.patch(ENDPOINTS.ASSETS.SW_MOVE, body)
-    return data
-  } catch (error) {
-    throw new Error(error.response?.data?.message ?? 'SW 자산 이동에 실패했습니다.')
   }
 }
 
@@ -205,72 +212,69 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
     throw new Error(error.response?.data?.message ?? 'SW 요청 반려에 실패했습니다.')
   }
 }
+
+
+// ─────────────────────────────────────────────────────────────────
+// 요청 목록 조회 
+// ─────────────────────────────────────────────────────────────────
+const REQUEST_TYPE_LABEL = { register: '등록', return: '반납', assign: '할당' }
+
 export const fetchAssetRequests = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
 
-  const enterpriseRows = (data.enterprise ?? [])
-    .filter((item) => item.request_type === 'register')
-    .map((item) => {
-      let parsed = {}
-      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { }
-      return {
-        id:              `req-ent-${item.id}`,
-        assetType:       'PC',
-        itemTypeName:    item.item_type?.name ?? parsed.item_type_name ?? null,
-        manufacturer:    parsed.manufacturer  ?? null,
-        spec:            parsed.spec          ?? null,
-        serialNumber:    parsed.serial_number ?? null,
-        userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
-        requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
-        status:          item.status?.toUpperCase(),
-        rejectionReason: item.rejection_reason ?? null,
-      }
-    })
+  const enterpriseRows = (data.enterprise ?? []).map((item) => {
+    let parsed = {}
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
 
-  const swRows = (data.sw ?? [])
-    .filter((item) => item.request_type === 'register')
-    .map((item) => {
-      let parsed = {}
-      try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { }
-      return {
-        id:              `req-sw-${item.id}`,
-        assetType:       'SW',
-        assetName:       parsed.name         ?? item.sw?.name         ?? null,
-        manufacturer:    parsed.manufacturer ?? item.sw?.manufacturer ?? null,
-        version:         parsed.version      ?? item.sw?.version      ?? null,
-        licenseKey:      parsed.license_key      ?? null,
-        licensePassword: parsed.license_password ?? null,
-        userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
-        requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
-        status:          item.status?.toUpperCase(),
-        rejectionReason: item.rejection_reason ?? null,
-      }
-    })
+    const assetName    = item.item_type?.name        ?? null
+    const manufacturer = item.asset?.manufacturer    ?? parsed.manufacturer    ?? null
+    const serialNumber = item.asset?.serial_number   ?? parsed.serial_number   ?? null
 
-  return {
-    enterpriseRows: enterpriseRows.map((row, i) => ({ ...row, no: i + 1 })),
-    swRows:         swRows.map((row, i) => ({ ...row, no: i + 1 })),
-  }
+    return {
+      id:           `req-ent-${item.id}`,
+      assetType:    'PC',
+      assetName,
+      spec:         parsed.spec ?? null,
+      manufacturer,
+      serialNumber,
+      licenseKey:   null,
+      requestType:  REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requester:    item.requester?.profile?.name ?? item.requester?.email ?? null,
+      requestedAt:  item.request_date ? item.request_date.slice(0, 10) : null,
+      processedAt:  item.processed_at ? item.processed_at.slice(0, 10) : null,
+      status:       item.status?.toUpperCase(),
+      reason:       item.rejection_reason ?? null,
+    }
+  })
+
+  const swRows = (data.sw ?? []).map((item) => {
+    let parsed = {}
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+
+    return {
+      id:           `req-sw-${item.id}`,
+      assetType:    'SW',
+      assetName:    item.sw?.name             ?? parsed.name         ?? null,
+      spec:         null,
+      manufacturer: item.sw?.manufacturer     ?? parsed.manufacturer ?? null,
+      serialNumber: null,
+      licenseKey:   parsed.license_key        ?? null,
+      requestType:  REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
+      requester:    item.requester?.profile?.name ?? item.requester?.email ?? null,
+      requestedAt:  item.request_date ? item.request_date.slice(0, 10) : null,
+      processedAt:  item.processed_at ? item.processed_at.slice(0, 10) : null,
+      status:       item.status?.toUpperCase(),
+      reason:       item.rejection_reason ?? null,
+    }
+  })
+
+  return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  Admin 대시보드
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * SW + PC 집계 대시보드 (admin 전용)
- * Response: {
- *   sw: {
- *     total_sw_count, total_license_count, total_in_use,
- *     list: [{ id, name, quantity, in_use_count, available_count,
- *              licenses: [{ id, license_key, state, user: { id, email, name } }] }]
- *   },
- *   enterprise: {
- *     total_count,
- *     by_item_type: [{ id, code, name, count }]
- *   }
- * }
- */
 export const fetchDashboard = async () => {
   try {
     const { data } = await api.get(ENDPOINTS.ASSETS.DASHBOARD)
@@ -284,10 +288,6 @@ export const fetchDashboard = async () => {
 //  Admin — PC 전체 조회
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * PC(Enterprise) 전체 조회 (admin 전용)
- * Response: { total, list: [{ id, item_category, item_type, User, ... }] }
- */
 export const fetchEnterpriseList = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -342,10 +342,8 @@ export const fetchEnterpriseList = async (params = {}) => {
         state:          item.state,
         userName:       item.User?.profile?.name ?? item.User?.email ?? null,
         departmentName: item.User?.profile?.department?.name ?? null,
-        remarks:        item.remarks ?? null,
-      }
-    }),
-      // 필터용 메타 (중복 제거)
+        remarks:      item.remarks ?? null,
+      })),
       categories: (() => {
         const map = new Map()
         ;(data.list ?? []).forEach((item) => {
@@ -368,10 +366,6 @@ export const fetchEnterpriseList = async (params = {}) => {
   }
 }
 
-/**
- * PC 상태 변경 (admin/user)
- * @param {{ asset_ids: number[], state: 'in_use'|'stored' }} body
- */
 export const changeEnterpriseState = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_STATE, body)
@@ -385,11 +379,6 @@ export const changeEnterpriseState = async (body) => {
 //  Admin — SW 전체 조회
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * SW 전체 조회 (admin 전용)
- * Response: { total, list: [{ id, name, version, manufacturer, quantity,
- *              in_use_count, available_count, licenses: [...] }] }
- */
 export const fetchSwList = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -410,10 +399,6 @@ export const fetchSwList = async (params = {}) => {
   }
 }
 
-/**
- * SW 라이선스 할당 (admin 전용)
- * @param {{ license_id: number, user_id: number }} body
- */
 export const assignSwLicense = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.SW_ASSIGN, body)
@@ -427,18 +412,6 @@ export const assignSwLicense = async (body) => {
 //  히스토리
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * 개인 자산 히스토리 조회 (SW + PC)
- * Response: {
- *   sw: [{ id, asset_sw_id, change_type, before_value, after_value, created_at,
- *          sw: { id, name, version, manufacturer },
- *          license: { id, license_key, key_type },
- *          changedBy: { id, email, profile: { name } } }],
- *   enterprise: [{ id, asset_enterprise_id, change_type, before_value, after_value, created_at,
- *                  asset: { id, manufacturer, state, item_type: { id, name } },
- *                  changedBy: { ... } }]
- * }
- */
 export const fetchPersonalHistory = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -480,7 +453,6 @@ export const fetchPersonalHistory = async (params = {}) => {
       user:        item.changedBy?.profile?.name ?? item.changedBy?.email ?? null,
     }))
 
-    // 날짜 내림차순 병합
     const combined = [...swRows, ...enterpriseRows]
       .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
       .map((row, i) => ({ ...row, no: i + 1 }))
@@ -495,16 +467,12 @@ export const fetchPersonalHistory = async (params = {}) => {
 //  DF 자산
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * DF 대시보드 조회
- * Response: { total, projects: [{ id, name, total_count, by_type: [{ type_id, type_name, count }] }] }
- */
 export const fetchDfDashboard = async () => {
   try {
     const { data } = await api.get(ENDPOINTS.ASSETS.DASHBOARD_DF)
     const raw = data.projects ?? []
 
-    const projectOptions = raw.map((p) => ({ id: p.id, name: p.name }))
+    const projectOptions = raw.map((p) => ({ id: p.id, name: p.name, typeIds: (p.by_type ?? []).map((t) => t.type_id) }))
 
     const typeMap = new Map()
     raw.forEach((proj) => {
@@ -533,10 +501,25 @@ export const fetchDfDashboard = async () => {
   }
 }
 
-/**
- * DF 자산 조회
- * Response: { projects: [{ id, name, items: [{ id, item_type: { id, name, parent_id }, ... }] }] }
- */
+// ─────────────────────────────────────────────────────────────────
+// DF 자산 종류 계층 조회 (등록 폼용)
+// ─────────────────────────────────────────────────────────────────
+export const fetchDfItemTypes = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.DF_TYPES)
+    return (data.types ?? []).filter((g) => g.children?.length > 0)
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'DF 자산 종류 조회에 실패했습니다.')
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DF 자산 조회
+// rows 필드:
+//   parentCategoryName — 대분류 ('PC' | 'PLC' | null)  ← PC/PLC 분기용
+//   subCategoryName    — 중분류 ('CPU' | 'RACK' | ...)  ← null이면 대분류 직접 item
+//   quantity, productName 추가
+// ─────────────────────────────────────────────────────────────────
 export const fetchDfAssets = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -554,25 +537,44 @@ export const fetchDfAssets = async (params = {}) => {
     const rows = []
     projects.forEach((proj) => {
       ;(proj.items ?? []).forEach((item) => {
-        const isTopLevel = item.item_type?.parent_id == null
+        const itemType    = item.item_type
+        const isTopLevel  = itemType?.parent_id == null
+
+        // parentCategoryName 추출:
+        //   - isTopLevel: 대분류(PC/PLC) 자체 → parentCategoryName = 자기 이름
+        //   - child:      중분류(CPU 등)      → parentCategoryName = parent.name (null이면 컴포넌트의 typeInfoMap이 보정)
+        let parentCategoryName, subCategoryName
+        if (!itemType) {
+          parentCategoryName = null
+          subCategoryName    = null
+        } else if (isTopLevel) {
+          parentCategoryName = itemType.name ?? null
+          subCategoryName    = null
+        } else {
+          subCategoryName    = itemType.name ?? null
+          parentCategoryName = itemType.parent?.name ?? null  // null이면 typeInfoMap으로 보정
+        }
+
         rows.push({
-          id:            item.id,
-          projectId:     proj.id,
-          projectName:   proj.name,
-          ownerOrg:      item.owner_organization ?? null,
-          equipmentNo:   item.equipment_number   ?? null,
-          majorCategory: isTopLevel ? (item.item_type?.name ?? null) : null,
-          minorCategory: isTopLevel ? null : (item.item_type?.name ?? null),
-          itemTypeId:    item.item_type?.id   ?? null,
-          modelName:     item.model_name      ?? null,
-          spec:          item.spec            ?? null,
-          manufacturer:  item.manufacturer    ?? null,
-          serialNumber:  item.serial_number   ?? null,
-          acquiredAt:    item.acquisition_date ? item.acquisition_date.slice(0, 10) : null,
-          returnedAt:    item.return_date      ? item.return_date.slice(0, 10)      : null,
-          location:      item.location ?? null,
-          state:         item.state    ?? null,
-          remarks:       item.remarks  ?? null,
+          id:                  item.id,
+          projectId:           proj.id,
+          projectName:         proj.name,
+          parentCategoryName,  // 'PC' | 'PLC' | null — 분기 기준
+          subCategoryName,     // 중분류명 — 컬럼 표시용
+          ownerOrg:            item.owner_organization ?? null,
+          equipmentNo:         item.equipment_number   ?? null,
+          itemTypeId:          item.item_type?.id      ?? null,
+          productName:         item.product_name       ?? null,
+          modelName:           item.model_number       ?? null,
+          spec:                item.spec               ?? null,
+          manufacturer:        item.manufacturer       ?? null,
+          serialNumber:        item.serial_number      ?? null,
+          quantity:            item.quantity           ?? null,
+          acquiredAt:          item.acquisition_date ? item.acquisition_date.slice(0, 10) : null,
+          returnedAt:          item.return_date      ? item.return_date.slice(0, 10)      : null,
+          location:            item.location ?? null,
+          state:               item.state    ?? null,
+          remarks:             item.remarks  ?? null,
         })
       })
     })
@@ -712,11 +714,11 @@ export const fetchDfHistory = async (params = {}) => {
         nextLocation,
         prevState,
         nextState,
-        projectName:  item.project?.name         ?? null,
-        projectId:    item.project?.id           ?? null,
-        category:     item.item?.item_type?.name ?? null,
-        modelName:    item.item?.model_name      ?? null,
-        serialNumber: item.item?.serial_number   ?? null,
+        projectName:  item.project?.name              ?? null,
+        projectId:    item.project?.id                ?? null,
+        category:     item.item?.item_type?.name      ?? null,
+        modelName:    item.item?.model_number         ?? null,
+        serialNumber: item.item?.serial_number        ?? null,
       }
     })
   } catch (error) {

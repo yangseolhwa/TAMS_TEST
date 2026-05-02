@@ -10,6 +10,7 @@ import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import {
   fetchDfDashboard,
+  fetchDfItemTypes,
   fetchDfAssets,
   changeDfAssetState,
   moveDfAssets,
@@ -19,21 +20,32 @@ import {
 import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsListPage.module.css'
 
-// ── 상수 ────────────────────────────────────────────────────────────────────
+// ── 컬럼 정의 ────────────────────────────────────────────────────────────────
+// 전체 조회: No, 프로젝트명, 자산 종류(대+중분류), 소유 기관, 장비 번호,
+//            제조사, 시리얼 번호, 수량, 위치, 대여일, 반납일, 비고
 const COLUMNS = [
-  { key: 'no',            label: 'No'        },
-  { key: 'projectName',   label: '프로젝트명',  type: 'dash' },
-  { key: 'ownerOrg',      label: '소유 기관',   type: 'dash' },
-  { key: 'majorCategory', label: '자산 대분류', type: 'dash' },
-  { key: 'minorCategory', label: '자산 중분류', type: 'dash' },
-  { key: 'modelName',     label: '모델명',      type: 'dash' },
-  { key: 'spec',          label: '규격',        type: 'dash' },
-  { key: 'manufacturer',  label: '제조사',      type: 'dash' },
-  { key: 'serialNumber',  label: '시리얼 번호', type: 'dash' },
-  { key: 'acquiredAt',    label: '취득일',      type: 'dash' },
-  { key: 'returnedAt',    label: '반납일',      type: 'dash' },
-  { key: 'location',      label: '위치',        type: 'dash' },
-  { key: 'state',         label: '상태',        type: 'status' },
+  { key: 'no',          label: 'No',       width: '48px' },
+  { key: 'projectName', label: '프로젝트명', type: 'dash' },
+  {
+    key: 'categoryLabel',
+    label: '자산 종류',
+    renderCell: (row) => {
+      const parent = row.parentCategoryName
+      const sub    = row.subCategoryName
+      if (!parent) return <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
+      if (!sub)    return <span>{parent}</span>
+      return <span>{parent} - {sub}</span>
+    },
+  },
+  { key: 'ownerOrg',     label: '소유 기관',   type: 'dash' },
+  { key: 'equipmentNo',  label: '장비 번호',   type: 'dash' },
+  { key: 'manufacturer', label: '제조사',      type: 'dash' },
+  { key: 'serialNumber', label: '시리얼 번호', type: 'dash' },
+  { key: 'quantity',     label: '수량',        type: 'dash' },
+  { key: 'location',     label: '위치',        type: 'dash' },
+  { key: 'acquiredAt',   label: '대여일',      type: 'dash' },
+  { key: 'returnedAt',   label: '반납일',      type: 'dash' },
+  { key: 'state',        label: '상태',        type: 'status' },
 ]
 
 const STATUS_MAP = {
@@ -43,10 +55,17 @@ const STATUS_MAP = {
   returned: { label: '반납됨', color: 'return' },
 }
 
-const STATE_OPTIONS = [
+const STATE_CHANGE_OPTIONS = [
   { value: 'in_use',  label: '사용중' },
   { value: 'stored',  label: '보관중' },
   { value: 'rented',  label: '대여중' },
+]
+
+const STATE_FILTER_OPTIONS = [
+  { value: 'in_use',   label: '사용중' },
+  { value: 'stored',   label: '보관중' },
+  { value: 'rented',   label: '대여중' },
+  { value: 'returned', label: '반납됨' },
 ]
 
 const EMPTY_FILTER = {
@@ -60,20 +79,15 @@ const EMPTY_FILTER = {
 const DfAssetsListPage = ({ role }) => {
   const queryClient = useQueryClient()
 
-  // ── 필터 ──────────────────────────────────────────────────────────────────
   const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
-  // ── 모드: null | 'stateChange' | 'move' | 'return' ────────────────────────
-  const [activeMode,    setActiveMode]    = useState(null)
-  const [selectedIds,   setSelectedIds]   = useState([])
-  const [stateTarget,   setStateTarget]   = useState('stored')   // 상태변경 대상 상태
-  const [moveLocation,  setMoveLocation]  = useState('')         // 이동 목적지
+  const [activeMode,   setActiveMode]   = useState(null)
+  const [selectedIds,  setSelectedIds]  = useState([])
+  const [stateTarget,  setStateTarget]  = useState('stored')
+  const [moveLocation, setMoveLocation] = useState('')
+  const [showConfirm,  setShowConfirm]  = useState(false)
 
-  // ── 확인 모달 ──────────────────────────────────────────────────────────────
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  // ── 대시보드 (필터 옵션용) ─────────────────────────────────────────────────
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
@@ -82,15 +96,45 @@ const DfAssetsListPage = ({ role }) => {
   const projectOptions = dashboard?.projectOptions ?? []
   const typeOptions    = dashboard?.typeOptions    ?? []
 
-  // ── 자산 조회 ──────────────────────────────────────────────────────────────
+  // ── 자산 종류 계층 — parentCategoryName/subCategoryName 보정용 ───────────
+  const { data: typeGroups = [] } = useQuery({
+    queryKey: ['dfItemTypes'],
+    queryFn:  fetchDfItemTypes,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  })
+
+  const typeInfoMap = useMemo(() => {
+    const map = {}
+    typeGroups.forEach((group) => {
+      map[group.id] = { parentName: group.name, childName: null }
+      group.children?.forEach((child) => {
+        map[child.id] = { parentName: group.name, childName: child.name }
+      })
+    })
+    return map
+  }, [typeGroups])
+
   const { data: assetData, isLoading } = useQuery({
     queryKey: ['dfAssets', appliedFilters],
     queryFn:  () => fetchDfAssets(appliedFilters),
     refetchOnWindowFocus: false,
   })
-  const rows = assetData?.rows ?? []
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정
+  const rows = useMemo(() => {
+    return (assetData?.rows ?? []).map((row) => {
+      const info = typeInfoMap[row.itemTypeId]
+      return {
+        ...row,
+        parentCategoryName: row.parentCategoryName ?? info?.parentName ?? null,
+        subCategoryName:    row.subCategoryName    ?? info?.childName  ?? null,
+      }
+    })
+  }, [assetData, typeInfoMap])
+
+  const isReturnedFilter = appliedFilters.state === 'returned'
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['dfAssets'] })
     queryClient.invalidateQueries({ queryKey: ['dfDashboard'] })
@@ -98,49 +142,38 @@ const DfAssetsListPage = ({ role }) => {
 
   const stateMutation = useMutation({
     mutationFn: () => changeDfAssetState({ item_ids: selectedIds, state: stateTarget }),
-    onSuccess:  (res) => {
-      toast.success(res?.message ?? '상태가 변경되었습니다.')
-      invalidate()
-      resetMode()
-    },
-    onError: (err) => toast.error(err.message),
+    onSuccess:  (res) => { toast.success(res?.message ?? '상태가 변경되었습니다.'); invalidate(); resetMode() },
+    onError:    (err) => toast.error(err.message),
   })
 
   const moveMutation = useMutation({
     mutationFn: () => moveDfAssets({ item_ids: selectedIds, location: moveLocation }),
-    onSuccess:  (res) => {
-      toast.success(res?.message ?? '자산이 이동되었습니다.')
-      invalidate()
-      resetMode()
-    },
-    onError: (err) => toast.error(err.message),
+    onSuccess:  (res) => { toast.success(res?.message ?? '자산이 이동되었습니다.'); invalidate(); resetMode() },
+    onError:    (err) => toast.error(err.message),
   })
 
   const returnMutation = useMutation({
     mutationFn: () => returnDfAssets({ item_ids: selectedIds }),
-    onSuccess:  (res) => {
-      toast.success(res?.message ?? '자산이 반납되었습니다.')
-      invalidate()
-      resetMode()
-    },
-    onError: (err) => toast.error(err.message),
+    onSuccess:  (res) => { toast.success(res?.message ?? '자산이 반납되었습니다.'); invalidate(); resetMode() },
+    onError:    (err) => toast.error(err.message),
   })
 
-  const isMutating =
-    stateMutation.isPending || moveMutation.isPending || returnMutation.isPending
+  const isMutating = stateMutation.isPending || moveMutation.isPending || returnMutation.isPending
 
-  // ── 필터 핸들러 ────────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
+    resetMode()
   }
 
-  const handleSearch = () => setAppliedFilters(filterForm)
+  const handleSearch = () => {
+    setAppliedFilters(filterForm)
+    resetMode()
+  }
 
-  // ── 모드 핸들러 ────────────────────────────────────────────────────────────
   const handleModeEnter = (mode) => {
     setSelectedIds([])
     setActiveMode(mode)
@@ -155,14 +188,8 @@ const DfAssetsListPage = ({ role }) => {
   }
 
   const handleConfirmClick = () => {
-    if (selectedIds.length === 0) {
-      toast.error('자산을 선택해주세요.')
-      return
-    }
-    if (activeMode === 'move' && !moveLocation.trim()) {
-      toast.error('이동할 위치를 입력해주세요.')
-      return
-    }
+    if (selectedIds.length === 0) { toast.error('자산을 선택해주세요.'); return }
+    if (activeMode === 'move' && !moveLocation.trim()) { toast.error('이동할 위치를 입력해주세요.'); return }
     setShowConfirm(true)
   }
 
@@ -172,7 +199,6 @@ const DfAssetsListPage = ({ role }) => {
     else if (activeMode === 'return') returnMutation.mutate()
   }
 
-  // ── 엑셀 다운로드 ─────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       await exportDfAssets(appliedFilters)
@@ -181,20 +207,15 @@ const DfAssetsListPage = ({ role }) => {
     }
   }
 
-  // ── 모달 타이틀 / 설명 ────────────────────────────────────────────────────
   const confirmTitle = useMemo(() => {
     if (activeMode === 'stateChange') {
-      const label = STATE_OPTIONS.find((o) => o.value === stateTarget)?.label ?? stateTarget
+      const label = STATE_CHANGE_OPTIONS.find((o) => o.value === stateTarget)?.label ?? stateTarget
       return `선택한 자산 ${selectedIds.length}개를 "${label}" 상태로 변경할까요?`
     }
     if (activeMode === 'move')   return `선택한 자산 ${selectedIds.length}개를 "${moveLocation}"으로 이동할까요?`
     if (activeMode === 'return') return `선택한 자산 ${selectedIds.length}개를 반납할까요?`
     return ''
   }, [activeMode, selectedIds, stateTarget, moveLocation])
-
-  const confirmDesc = activeMode === 'return'
-    ? '반납된 자산은 목록에서 제외됩니다.'
-    : undefined
 
   return (
     <div className={common.page}>
@@ -224,8 +245,12 @@ const DfAssetsListPage = ({ role }) => {
               onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
-              {typeOptions.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+              {typeGroups.map((group) => (
+                <optgroup key={group.id} label={group.name}>
+                  {group.children.map((child) => (
+                    <option key={child.id} value={child.id}>{child.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 
@@ -235,7 +260,7 @@ const DfAssetsListPage = ({ role }) => {
               onChange={(e) => handleFilterChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
-              {STATE_OPTIONS.map((opt) => (
+              {STATE_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
@@ -259,7 +284,6 @@ const DfAssetsListPage = ({ role }) => {
 
           {/* 액션 버튼 영역 */}
           <div className={styles.tableActions}>
-            {/* 엑셀 다운로드: 항상 왼쪽 고정 */}
             <button
               type="button"
               className={styles.exportBtn}
@@ -270,65 +294,53 @@ const DfAssetsListPage = ({ role }) => {
               엑셀 다운로드
             </button>
 
-            <div className={styles.actionButtons}>
-              {activeMode === null ? (
-                <>
-                  <ActionButton variant="black" size="sm" label="상태 변경" onClick={() => handleModeEnter('stateChange')} />
-                  <ActionButton variant="blue"  size="sm" label="자산 이동" onClick={() => handleModeEnter('move')} />
-                  <ActionButton variant="red"   size="sm" label="반납"      onClick={() => handleModeEnter('return')} />
-                </>
-              ) : (
-                <>
-                  {/* 상태 변경 모드: 대상 상태 select */}
-                  {activeMode === 'stateChange' && (
-                    <select
-                      className={`${common.filterSelect} ${styles.modeSelect}`}
-                      value={stateTarget}
-                      onChange={(e) => setStateTarget(e.target.value)}
-                    >
-                      {STATE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* 이동 모드: 위치 입력 */}
-                  {activeMode === 'move' && (
-                    <input
-                      className={styles.modeInput}
-                      type="text"
-                      placeholder="이동할 위치 입력"
-                      value={moveLocation}
-                      onChange={(e) => setMoveLocation(e.target.value)}
-                    />
-                  )}
-
-                  <ActionButton variant="white" size="sm" label="취소" onClick={resetMode} disabled={isMutating} />
-
-                  {activeMode === 'stateChange' && (
-                    <ActionButton
-                      variant="black" size="sm" label="저장"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                  {activeMode === 'move' && (
-                    <ActionButton
-                      variant="blue" size="sm" label="저장"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                  {activeMode === 'return' && (
-                    <ActionButton
-                      variant="red" size="sm" label="확인"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+            {!isReturnedFilter && (
+              <div className={styles.actionButtons}>
+                {activeMode === null ? (
+                  <>
+                    <ActionButton variant="black" size="sm" label="상태 변경" onClick={() => handleModeEnter('stateChange')} />
+                    <ActionButton variant="blue"  size="sm" label="자산 이동" onClick={() => handleModeEnter('move')} />
+                    <ActionButton variant="red"   size="sm" label="반납"      onClick={() => handleModeEnter('return')} />
+                  </>
+                ) : (
+                  <>
+                    {activeMode === 'stateChange' && (
+                      <select
+                        className={`${common.filterSelect} ${styles.modeSelect}`}
+                        value={stateTarget}
+                        onChange={(e) => setStateTarget(e.target.value)}
+                      >
+                        {STATE_CHANGE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    )}
+                    {activeMode === 'move' && (
+                      <input
+                        className={styles.modeInput}
+                        type="text"
+                        placeholder="이동할 위치 입력"
+                        value={moveLocation}
+                        onChange={(e) => setMoveLocation(e.target.value)}
+                      />
+                    )}
+                    <ActionButton variant="white" size="sm" label="취소" onClick={resetMode} disabled={isMutating} />
+                    {activeMode === 'stateChange' && (
+                      <ActionButton variant="black" size="sm" label="저장"
+                        onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+                    )}
+                    {activeMode === 'move' && (
+                      <ActionButton variant="blue" size="sm" label="저장"
+                        onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+                    )}
+                    {activeMode === 'return' && (
+                      <ActionButton variant="red" size="sm" label="확인"
+                        onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <DataTable
@@ -347,7 +359,7 @@ const DfAssetsListPage = ({ role }) => {
       <ConfirmModal
         isOpen={showConfirm}
         title={confirmTitle}
-        desc={confirmDesc}
+        desc={activeMode === 'return' ? '반납된 자산은 목록에서 제외됩니다.' : undefined}
         confirmLabel={
           activeMode === 'stateChange' ? '변경' :
           activeMode === 'move'        ? '이동' : '반납'
