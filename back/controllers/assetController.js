@@ -1267,7 +1267,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
     const createdLicense = await AssetSwLicense.create({
       asset_sw_id:      swId,
       user_id:          request.requester_id,
-      user_note:        parsedData.user_note        >> null,
+      user_note:        parsedData.user_note        ?? null,
       license_key:      parsedData.license_key,
       license_password: parsedData.license_password ?? null,
       key_type:         parsedData.key_type,
@@ -1909,7 +1909,7 @@ exports.getSwList = asyncWrapper(async (req, res) => {
         license_key:      l.license_key,
         license_password: l.license_password,
         key_type:         l.key_type,
-        license_type:     l.locense_type,
+        license_type:     l.license_type,
         user_note:        l.user_note,
         state:            l.state,
         issue_date:       l.issue_date,
