@@ -595,6 +595,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         const license = await AssetSwLicense.create({
           asset_sw_id:      swId,
           user_id:          userId,
+          user_note:        lic.user_note        ?? null,
           license_key:      lic.license_key,
           license_password: lic.license_password ?? null,
           key_type:         lic.key_type,
@@ -1266,6 +1267,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
     const createdLicense = await AssetSwLicense.create({
       asset_sw_id:      swId,
       user_id:          request.requester_id,
+      user_note:        parsedData.user_note        ?? null,
       license_key:      parsedData.license_key,
       license_password: parsedData.license_password ?? null,
       key_type:         parsedData.key_type,
@@ -1778,7 +1780,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
-      attributes: ['id', 'license_key', 'license_password', 'key_type', 'state', 'user_id'],
+      attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type', 'user_note', 'state', 'user_id'],
       include: [USER_INCLUDE],
     }],
     order: [['name', 'ASC']],
@@ -1801,6 +1803,8 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
       license_key:      l.license_key,
       license_password: l.license_password,
       key_type:         l.key_type,
+      license_type:     l.license_type,
+      user_note:        l.user_note,
       state:            l.state,
       user: l.User ? {
         id:    l.User.id,
@@ -1905,6 +1909,8 @@ exports.getSwList = asyncWrapper(async (req, res) => {
         license_key:      l.license_key,
         license_password: l.license_password,
         key_type:         l.key_type,
+        license_type:     l.license_type,
+        user_note:        l.user_note,
         state:            l.state,
         issue_date:       l.issue_date,
         user: l.User ? { id: l.User.id, email: l.User.email, role: l.User.role, name: l.User.profile?.name } : null,
