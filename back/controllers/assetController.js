@@ -1778,7 +1778,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
-      attributes: ['id', 'license_key', 'license_password', 'key_type', 'state', 'user_id'],
+      attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type', 'state', 'user_id'],
       include: [USER_INCLUDE],
     }],
     order: [['name', 'ASC']],
@@ -1801,6 +1801,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
       license_key:      l.license_key,
       license_password: l.license_password,
       key_type:         l.key_type,
+      license_type:     l.license_type,
       state:            l.state,
       user: l.User ? {
         id:    l.User.id,
