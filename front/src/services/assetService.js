@@ -213,8 +213,9 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
   }
 }
 
+
 // ─────────────────────────────────────────────────────────────────
-// 요청 목록 조회 — Rev7 응답 구조 반영
+// 요청 목록 조회 
 // ─────────────────────────────────────────────────────────────────
 const REQUEST_TYPE_LABEL = { register: '등록', return: '반납', assign: '할당' }
 
@@ -373,7 +374,11 @@ export const fetchSwList = async (params = {}) => {
 
     return {
       total: data.total ?? 0,
-      list:  data.list  ?? [],
+      list: (data.list ?? []).map((sw) => ({
+        ...sw,
+        related_link: sw.related_link ?? null,
+        remarks:      sw.remarks      ?? null,
+      })),
     }
   } catch (error) {
     throw new Error(error.response?.data?.message ?? 'SW 목록 조회에 실패했습니다.')

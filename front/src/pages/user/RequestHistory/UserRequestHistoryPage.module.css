@@ -4,10 +4,125 @@
   gap: 20px;
 }
 
+/* =====================
+   섹션 래퍼
+   ===================== */
 .section {
   display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* =====================
+   요약 카드 (SW/PC 라벨 + 건수)
+   ===================== */
+.summaryWrap {
+  width: 110px;
+  flex-shrink: 0;
+  position: relative;
+  padding-top: 18px;
+}
+
+.summaryLabel {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  padding: 4px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  color: var(--color-surface);
+}
+
+.labelSw { background-color: var(--color-label-sw); }
+.labelPc { background-color: var(--color-label-pc); }
+
+.summaryCard {
+  display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 16px 16px !important;
+}
+
+.summaryCount {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.summaryUnit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   테이블 카드
+   ===================== */
+.tableCard {
+  flex: 1;
+  min-width: 0;
+}
+
+/* =====================
+   테이블
+   ===================== */
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead tr {
+  background-color: var(--color-primary);
+}
+
+.table thead tr th:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.table thead tr th:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+.table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 10px 12px;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background-color: var(--color-primary-tint);
+}
+
+/* =====================
+   빈 데이터
+   ===================== */
+.empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 /* =====================
@@ -19,25 +134,10 @@
   border-radius: 3px;
   font-size: 12px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-surface);
   white-space: nowrap;
 }
 
-.status_PENDING {
-  background-color: var(--color-status-pending);
-}
-
-.status_APPROVED {
-  background-color: var(--color-status-approved);
-}
-
-.status_REJECTED {
-  background-color: var(--color-status-rejected);
-}
-
-/* =====================
-   대시
-   ===================== */
-.dash {
-  color: var(--color-text-secondary);
-}
+.status_PENDING  { background-color: var(--color-status-pending);  }
+.status_APPROVED { background-color: var(--color-status-approved); }
+.status_REJECTED { background-color: var(--color-status-rejected); }
