@@ -554,8 +554,14 @@ const importSwOriginal = async (req, res) => {
           });
         }
 
-        const inUseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
-        await sw.update({ state: inUseCount > 0 ? 'in_use' : 'available' });
+        const totalLicenseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id } });
+        const inUseCount        = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
+        await sw.reload(); // 현재 quantity 재로드
+        const newQuantity = Math.max(sw.quantity, totalLicenseCount); // 엑셀 수량과 실제 라이선스 수 중 큰 값
+        await sw.update({
+          quantity: newQuantity,
+          state:    inUseCount > 0 ? 'in_use' : 'available',
+        });
 
         results.push({ row: r, status: 'success', sw_id: sw.id, new_sw: isNewSw, name, note: '구독형' });
         imported++;
