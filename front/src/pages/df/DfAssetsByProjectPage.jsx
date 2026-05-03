@@ -29,10 +29,10 @@ const STATUS_MAP = {
   returned: { label: '반납됨', color: 'return' },
 }
 
-// PC 컬럼: No, 중분류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+// PC 컬럼: No, 자산 종류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '중분류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '자산 종류',      type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'manufacturer',    label: '제조사',      type: 'dash'  },
@@ -48,10 +48,10 @@ const PC_COLUMNS = [
   { key: 'state',           label: '상태',        type: 'status'},
 ]
 
-// PLC 컬럼: No, 중분류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+// PLC 컬럼: No, 자산 종류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PLC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '중분류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '자산 종류',      type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'serialNumber',    label: '시리얼 번호', type: 'dash'  },
