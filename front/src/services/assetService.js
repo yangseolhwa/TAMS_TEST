@@ -224,7 +224,7 @@ export const fetchAssetRequests = async () => {
 
   const enterpriseRows = (data.enterprise ?? []).map((item) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) {console.err(e)}
 
     const assetName    = item.item_type?.name        ?? null
     const manufacturer = item.asset?.manufacturer    ?? parsed.manufacturer    ?? null
@@ -249,7 +249,7 @@ export const fetchAssetRequests = async () => {
 
   const swRows = (data.sw ?? []).map((item) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { /* noop */ }
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { console.err(e) }
 
     return {
       id:           `req-sw-${item.id}`,
@@ -287,7 +287,7 @@ export const fetchDashboard = async () => {
 // ═══════════════════════════════════════════════════════════════
 //  Admin — PC 전체 조회
 // ═══════════════════════════════════════════════════════════════
-
+// 코드 블록 닫기 에러
 export const fetchEnterpriseList = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -314,25 +314,10 @@ export const fetchEnterpriseList = async (params = {}) => {
     
     return {
       total: data.total ?? 0,
-      rows: (data.list ?? []).map((item, i) => {
-      // item_number 형식: "office-A-1" → 카테고리 부분만 한글로 변환
-      const CATEGORY_MAP = {
-        office:      '사무',
-        furniture:   '가구',
-        industrial:  '산업',
-        electrical:  '전기',
-      }
-      const itemNumber = (() => {
-        if (!item.item_number) return null
-        const parts = item.item_number.split('-')
-        parts[0] = CATEGORY_MAP[parts[0]] ?? parts[0]
-        return parts.join('-')
-      })()
-    
-      return {
+      rows: (data.list ?? []).map((item, i) => ({
         id:             item.id,
         no:             i + 1,
-        itemNumber,
+        itemNumber:     convertItemNumber(item.item_number),
         itemTypeName:   item.item_type?.name     ?? null,
         manufacturer:   item.manufacturer        ?? null,
         spec:           item.spec                ?? null,
@@ -342,8 +327,9 @@ export const fetchEnterpriseList = async (params = {}) => {
         state:          item.state,
         userName:       item.User?.profile?.name ?? item.User?.email ?? null,
         departmentName: item.User?.profile?.department?.name ?? null,
-        remarks:      item.remarks ?? null,
+        remarks:        item.remarks ?? null,
       })),
+
       categories: (() => {
         const map = new Map()
         ;(data.list ?? []).forEach((item) => {
