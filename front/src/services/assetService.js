@@ -103,25 +103,7 @@ export const fetchMyAssets = async () => {
 // ─────────────────────────────────────────────────────────────────
 export const fetchEnterpriseAssetsForForm = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST_SIMPLE)
-  const categories = data.categories ?? []
-
-  return categories.flatMap((cat) =>
-    cat.item_types?.length > 0
-      ? cat.item_types.flatMap((type) =>
-          type.manufacturers?.length > 0
-            ? type.manufacturers.map((mfr) => ({
-                item_category: { id: cat.id, name: cat.name },
-                item_type:     { id: type.id, name: type.name, code: type.code },
-                manufacturer:  mfr,
-              }))
-            : [{
-                item_category: { id: cat.id, name: cat.name },
-                item_type:     { id: type.id, name: type.name, code: type.code },
-                manufacturer:  null,
-              }]
-        )
-      : [{ item_category: { id: cat.id, name: cat.name }, item_type: null, manufacturer: null }]
-  )
+  return data.categories ?? []
 }
 
 // 콤보박스 조회 API — SW 등록용
