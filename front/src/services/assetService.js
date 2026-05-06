@@ -321,7 +321,7 @@ export const fetchEnterpriseList = async (params = {}) => {
     rows.sort((a, b) => {
       const [aKor, aAlpha, aNum] = parseItemNumber(a.itemNumber)
       const [bKor, bAlpha, bNum] = parseItemNumber(b.itemNumber)
-      return aKor.localeCompare(bKor, 'ko') || aAlpha.localeCompare(bAlpha) || aNum - bNum
+      return aKor.localeCompare(bKor, 'ko') || aAlpha.localeCompare(bAlpha, 'en') || aNum - bNum
     })
 
     return {
