@@ -294,15 +294,18 @@ export const fetchEnterpriseList = async (params = {}) => {
       return parts.join('-')
     }
 
-    const categoryKeys = Object.keys(CATEGORY_NAME_MAP)
+    // 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
+    const categoryOrderMap = new Map(
+      Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
+    )
 
     return {
       total: data.total ?? 0,
       rows: (data.list ?? [])
         .sort((a, b) => {
           // 1순위: CATEGORY_NAME_MAP 키 순서 (가구 > 사무 > 산업 > 전기)
-          const catA = categoryKeys.indexOf(a.item_number?.split('-')[0])
-          const catB = categoryKeys.indexOf(b.item_number?.split('-')[0])
+          const catA = categoryOrderMap.get(a.item_number?.split('-')?.[0])
+          const catB = categoryOrderMap.get(b.item_number?.split('-')?.[0])
           if (catA !== catB) return catA - catB
 
           // 2순위: item_type.code 알파벳 오름차순
