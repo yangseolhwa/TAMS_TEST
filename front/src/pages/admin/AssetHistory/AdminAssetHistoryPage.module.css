@@ -125,36 +125,38 @@
    뱃지 공통
    ===================== */
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
-  color: #ffffff;
+  color: var(--color-white, #ffffff);
 }
 
 /* =====================
    변경 컬럼 배지 (진한 톤)
    ===================== */
 .badgeRegister {
-  background-color: #16a34a;
+  background-color: var(--color-badge-state-register);
 }
 
 .badgeReturn {
-  background-color: #b91c1c;
+  background-color: var(--color-badge-state-return);
 }
 
 .badgeStateChange {
-  background-color: #d97706;
+  background-color: var(--color-badge-state-change);
 }
 
 .badgeMove {
-  background-color: #1d4eda;
+  background-color: var(--color-badge-state-move);
 }
 
 .badgeAssign {
-  background-color: #6834d0;
+  background-color: var(--color-badge-state-assign);
 }
 
 

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Download } from 'react-bootstrap-icons'
 import toast from 'react-hot-toast'
@@ -11,6 +11,7 @@ import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import {
   fetchDfDashboard,
+  fetchDfItemTypes,
   fetchDfAssets,
   changeDfAssetState,
   moveDfAssets,
@@ -21,22 +22,6 @@ import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsByProjectPage.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const COLUMNS = [
-  { key: 'no',            label: 'No'        },
-  { key: 'ownerOrg',      label: '소유 기관',  type: 'dash' },
-  { key: 'equipmentNo',   label: '장비 번호',  type: 'dash' },
-  { key: 'majorCategory', label: '자산 대분류', type: 'dash' },
-  { key: 'minorCategory', label: '자산 중분류', type: 'dash' },
-  { key: 'modelName',     label: '모델명',     type: 'dash' },
-  { key: 'spec',          label: '규격',       type: 'dash' },
-  { key: 'manufacturer',  label: '제조사',     type: 'dash' },
-  { key: 'serialNumber',  label: '시리얼 번호', type: 'dash' },
-  { key: 'acquiredAt',    label: '취득일',     type: 'dash' },
-  { key: 'returnedAt',    label: '반납일',     type: 'dash' },
-  { key: 'location',      label: '위치',       type: 'dash' },
-  { key: 'state',         label: '상태',       type: 'status' },
-]
-
 const STATUS_MAP = {
   in_use:   { label: '사용중', color: 'green'  },
   stored:   { label: '보관중', color: 'blue'   },
@@ -44,10 +29,52 @@ const STATUS_MAP = {
   returned: { label: '반납됨', color: 'return' },
 }
 
-const STATE_OPTIONS = [
-  { value: 'in_use', label: '사용중' },
-  { value: 'stored', label: '보관중' },
-  { value: 'rented', label: '대여중' },
+// PC 컬럼: No, 중분류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+const PC_COLUMNS = [
+  { key: 'no',              label: 'No',          width: '48px' },
+  { key: 'subCategoryName', label: '중분류',      type: 'dash'  },
+  { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
+  { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
+  { key: 'manufacturer',    label: '제조사',      type: 'dash'  },
+  { key: 'productName',     label: '제품명',      type: 'dash'  },
+  { key: 'modelName',       label: '모델명',      type: 'dash'  },
+  { key: 'serialNumber',    label: '시리얼 번호', type: 'dash'  },
+  { key: 'quantity',        label: '수량',        type: 'dash'  },
+  { key: 'spec',            label: '규격',        type: 'dash'  },
+  { key: 'location',        label: '위치',        type: 'dash'  },
+  { key: 'acquiredAt',      label: '대여일',      type: 'dash'  },
+  { key: 'returnedAt',      label: '반납일',      type: 'dash'  },
+  { key: 'remarks',         label: '비고',        type: 'dash'  },
+  { key: 'state',           label: '상태',        type: 'status'},
+]
+
+// PLC 컬럼: No, 중분류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+const PLC_COLUMNS = [
+  { key: 'no',              label: 'No',          width: '48px' },
+  { key: 'subCategoryName', label: '중분류',      type: 'dash'  },
+  { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
+  { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
+  { key: 'serialNumber',    label: '시리얼 번호', type: 'dash'  },
+  { key: 'quantity',        label: '수량',        type: 'dash'  },
+  { key: 'spec',            label: '규격',        type: 'dash'  },
+  { key: 'location',        label: '위치',        type: 'dash'  },
+  { key: 'acquiredAt',      label: '대여일',      type: 'dash'  },
+  { key: 'returnedAt',      label: '반납일',      type: 'dash'  },
+  { key: 'remarks',         label: '비고',        type: 'dash'  },
+  { key: 'state',           label: '상태',        type: 'status'},
+]
+
+const STATE_CHANGE_OPTIONS = [
+  { value: 'in_use',  label: '사용중' },
+  { value: 'stored',  label: '보관중' },
+  { value: 'rented',  label: '대여중' },
+]
+
+const STATE_FILTER_OPTIONS = [
+  { value: 'in_use',   label: '사용중' },
+  { value: 'stored',   label: '보관중' },
+  { value: 'rented',   label: '대여중' },
+  { value: 'returned', label: '반납됨' },
 ]
 
 const EMPTY_FILTER = {
@@ -59,23 +86,19 @@ const EMPTY_FILTER = {
 
 const DfAssetsByProjectPage = ({ role }) => {
   const queryClient = useQueryClient()
-  const { state: routeState } = useLocation()
-  const projectId = routeState?.projectId ?? null
 
-  // ── 필터 ─────────────────────────────────────────────────────────────────
+  const [searchParams] = useSearchParams()
+  const projectId = searchParams.get('project_id') ? Number(searchParams.get('project_id')) : null
+
   const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
-  // ── 모드: null | 'stateChange' | 'move' | 'return' ───────────────────────
   const [activeMode,   setActiveMode]   = useState(null)
   const [selectedIds,  setSelectedIds]  = useState([])
   const [stateTarget,  setStateTarget]  = useState('stored')
   const [moveLocation, setMoveLocation] = useState('')
+  const [showConfirm,  setShowConfirm]  = useState(false)
 
-  // ── 확인 모달 ─────────────────────────────────────────────────────────────
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  // ── 자산 종류 옵션 (대시보드에서 flat list) ────────────────────────────────
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
@@ -83,14 +106,33 @@ const DfAssetsByProjectPage = ({ role }) => {
   })
   const typeOptions = dashboard?.typeOptions ?? []
 
-  // ── 프로젝트명 표시 (대시보드의 projectOptions에서 찾기) ─────────────────
+  // ── 자산 종류 계층 — parentCategoryName 보정용 ──────────────────────────────
+  // API 응답에서 item_type.parent 가 null 인 경우를 대비해
+  // typeGroups(typeId -> {parentName, childName}) 맵으로 보정한다
+  const { data: typeGroups = [] } = useQuery({
+    queryKey: ['dfItemTypes'],
+    queryFn:  fetchDfItemTypes,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  })
+
+  const typeInfoMap = useMemo(() => {
+    const map = {}
+    typeGroups.forEach((group) => {
+      map[group.id] = { parentName: group.name, childName: null }
+      group.children?.forEach((child) => {
+        map[child.id] = { parentName: group.name, childName: child.name }
+      })
+    })
+    return map
+  }, [typeGroups])
+
   const projectName = useMemo(() => {
     if (!projectId) return '프로젝트별 자산 조회'
     return dashboard?.projectOptions?.find((p) => p.id === projectId)?.name
       ?? `프로젝트 #${projectId}`
   }, [dashboard, projectId])
 
-  // ── 자산 조회 (project_id 고정) ──────────────────────────────────────────
   const queryParams = useMemo(() => ({
     ...(projectId ? { project_id: projectId } : {}),
     ...appliedFilters,
@@ -101,9 +143,52 @@ const DfAssetsByProjectPage = ({ role }) => {
     queryFn:  () => fetchDfAssets(queryParams),
     refetchOnWindowFocus: false,
   })
-  const rows = assetData?.rows ?? []
+  const allRows = assetData?.rows ?? []
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
+  // ── API 응답 보정 ─────────────────────────────────────────────────────────
+  // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정
+  const resolvedRows = useMemo(() => allRows.map((row) => {
+    const info = typeInfoMap[row.itemTypeId]
+    return {
+      ...row,
+      parentCategoryName: row.parentCategoryName ?? info?.parentName ?? null,
+      subCategoryName:    row.subCategoryName    ?? info?.childName  ?? null,
+    }
+  }), [allRows, typeInfoMap])
+
+  // ── PC / PLC 분리 — resolvedRows 기준 ────────────────────────────────────
+  const pcRows  = useMemo(
+    () => resolvedRows.filter((r) => r.parentCategoryName === 'PC')
+                      .map((r, i) => ({ ...r, no: i + 1 })),
+    [resolvedRows]
+  )
+  const plcRows = useMemo(
+    () => resolvedRows.filter((r) => r.parentCategoryName === 'PLC')
+                      .map((r, i) => ({ ...r, no: i + 1 })),
+    [resolvedRows]
+  )
+  const etcRows = useMemo(
+    () => resolvedRows.filter((r) => r.parentCategoryName !== 'PC' && r.parentCategoryName !== 'PLC')
+                      .map((r, i) => ({ ...r, no: i + 1 })),
+    [resolvedRows]
+  )
+
+  // ── 프로젝트가 보유한 카테고리 파악 ─────────────────────────────────────
+  // 필터 결과와 무관하게 "이 프로젝트에 PC가 있으면 PC 테이블 항상 표시"
+  const projectCategories = useMemo(() => {
+    if (!projectId) return new Set(['PC', 'PLC'])
+    const selectedProject = dashboard?.projectOptions?.find((p) => p.id === projectId)
+    if (!selectedProject?.typeIds?.length) return new Set(['PC', 'PLC'])
+    const cats = new Set()
+    selectedProject.typeIds.forEach((tid) => {
+      const info = typeInfoMap[tid]
+      if (info?.parentName) cats.add(info.parentName)
+    })
+    return cats.size > 0 ? cats : new Set(['PC', 'PLC'])
+  }, [projectId, dashboard, typeInfoMap])
+
+  const isReturnedFilter = appliedFilters.state === 'returned'
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['dfAssets'] })
     queryClient.invalidateQueries({ queryKey: ['dfDashboard'] })
@@ -127,21 +212,22 @@ const DfAssetsByProjectPage = ({ role }) => {
     onError:    (err) => toast.error(err.message),
   })
 
-  const isMutating =
-    stateMutation.isPending || moveMutation.isPending || returnMutation.isPending
+  const isMutating = stateMutation.isPending || moveMutation.isPending || returnMutation.isPending
 
-  // ── 필터 핸들러 ───────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
+    resetMode()
   }
 
-  const handleSearch = () => setAppliedFilters(filterForm)
+  const handleSearch = () => {
+    setAppliedFilters(filterForm)
+    resetMode()
+  }
 
-  // ── 모드 핸들러 ───────────────────────────────────────────────────────────
   const handleModeEnter = (mode) => {
     setSelectedIds([])
     setActiveMode(mode)
@@ -167,7 +253,6 @@ const DfAssetsByProjectPage = ({ role }) => {
     else if (activeMode === 'return') returnMutation.mutate()
   }
 
-  // ── 엑셀 다운로드 ─────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       await exportDfAssets(queryParams)
@@ -176,16 +261,64 @@ const DfAssetsByProjectPage = ({ role }) => {
     }
   }
 
-  // ── 모달 타이틀 ───────────────────────────────────────────────────────────
   const confirmTitle = useMemo(() => {
     if (activeMode === 'stateChange') {
-      const label = STATE_OPTIONS.find((o) => o.value === stateTarget)?.label ?? stateTarget
+      const label = STATE_CHANGE_OPTIONS.find((o) => o.value === stateTarget)?.label ?? stateTarget
       return `선택한 자산 ${selectedIds.length}개를 "${label}" 상태로 변경할까요?`
     }
     if (activeMode === 'move')   return `선택한 자산 ${selectedIds.length}개를 "${moveLocation}"으로 이동할까요?`
     if (activeMode === 'return') return `선택한 자산 ${selectedIds.length}개를 반납할까요?`
     return ''
   }, [activeMode, selectedIds, stateTarget, moveLocation])
+
+  // ── 액션 버튼 영역 (PC/PLC 두 테이블 공통) ────────────────────────────────
+  const renderActions = () => {
+    if (isReturnedFilter) return null
+    if (activeMode === null) return (
+      <>
+        <ActionButton variant="black" size="sm" label="상태 변경" onClick={() => handleModeEnter('stateChange')} />
+        <ActionButton variant="blue"  size="sm" label="자산 이동" onClick={() => handleModeEnter('move')} />
+        <ActionButton variant="red"   size="sm" label="반납"      onClick={() => handleModeEnter('return')} />
+      </>
+    )
+    return (
+      <>
+        {activeMode === 'stateChange' && (
+          <select
+            className={`${common.filterSelect} ${styles.modeSelect}`}
+            value={stateTarget}
+            onChange={(e) => setStateTarget(e.target.value)}
+          >
+            {STATE_CHANGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        )}
+        {activeMode === 'move' && (
+          <input
+            className={styles.modeInput}
+            type="text"
+            placeholder="이동할 위치 입력"
+            value={moveLocation}
+            onChange={(e) => setMoveLocation(e.target.value)}
+          />
+        )}
+        <ActionButton variant="white" size="sm" label="취소" onClick={resetMode} disabled={isMutating} />
+        {activeMode === 'stateChange' && (
+          <ActionButton variant="black" size="sm" label="저장"
+            onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+        )}
+        {activeMode === 'move' && (
+          <ActionButton variant="blue" size="sm" label="저장"
+            onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+        )}
+        {activeMode === 'return' && (
+          <ActionButton variant="red" size="sm" label="확인"
+            onClick={handleConfirmClick} disabled={isMutating || selectedIds.length === 0} />
+        )}
+      </>
+    )
+  }
 
   return (
     <div className={common.page}>
@@ -215,7 +348,7 @@ const DfAssetsByProjectPage = ({ role }) => {
               onChange={(e) => handleFilterChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
-              {STATE_OPTIONS.map((opt) => (
+              {STATE_FILTER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
@@ -237,7 +370,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             </div>
           </div>
 
-          {/* 액션 버튼 영역 */}
+          {/* 액션 버튼 + 엑셀 */}
           <div className={styles.tableActions}>
             <button
               type="button"
@@ -248,76 +381,79 @@ const DfAssetsByProjectPage = ({ role }) => {
               <Download size={13} />
               엑셀 다운로드
             </button>
-
             <div className={styles.actionButtons}>
-              {activeMode === null ? (
-                <>
-                  <ActionButton variant="black" size="sm" label="상태 변경" onClick={() => handleModeEnter('stateChange')} />
-                  <ActionButton variant="blue"  size="sm" label="자산 이동" onClick={() => handleModeEnter('move')} />
-                  <ActionButton variant="red"   size="sm" label="반납"      onClick={() => handleModeEnter('return')} />
-                </>
-              ) : (
-                <>
-                  {activeMode === 'stateChange' && (
-                    <select
-                      className={`${common.filterSelect} ${styles.modeSelect}`}
-                      value={stateTarget}
-                      onChange={(e) => setStateTarget(e.target.value)}
-                    >
-                      {STATE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {activeMode === 'move' && (
-                    <input
-                      className={styles.modeInput}
-                      type="text"
-                      placeholder="이동할 위치 입력"
-                      value={moveLocation}
-                      onChange={(e) => setMoveLocation(e.target.value)}
-                    />
-                  )}
-
-                  <ActionButton variant="white" size="sm" label="취소" onClick={resetMode} disabled={isMutating} />
-
-                  {activeMode === 'stateChange' && (
-                    <ActionButton
-                      variant="black" size="sm" label="저장"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                  {activeMode === 'move' && (
-                    <ActionButton
-                      variant="blue" size="sm" label="저장"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                  {activeMode === 'return' && (
-                    <ActionButton
-                      variant="red" size="sm" label="확인"
-                      onClick={handleConfirmClick}
-                      disabled={isMutating || selectedIds.length === 0}
-                    />
-                  )}
-                </>
-              )}
+              {renderActions()}
             </div>
           </div>
 
-          <DataTable
-            columns={COLUMNS}
-            rows={isLoading ? [] : rows}
-            statusMap={STATUS_MAP}
-            selectable={activeMode !== null}
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-            totalCount={rows.length}
-            highlight={appliedFilters.keyword}
-          />
+          {/* PC 테이블 — 프로젝트에 PC 자산이 있으면 항상 표시 (필터 결과 0건이어도) */}
+          {projectCategories.has('PC') && (
+            <div className={styles.tableSection}>
+              <p className={styles.tableSectionLabel}>PC</p>
+              <DataTable
+                columns={PC_COLUMNS}
+                rows={isLoading ? [] : pcRows}
+                statusMap={STATUS_MAP}
+                selectable={activeMode !== null}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                totalCount={isLoading ? 0 : pcRows.length}
+                highlight={appliedFilters.keyword}
+              />
+            </div>
+          )}
+
+          {/* PLC 테이블 — 프로젝트에 PLC 자산이 있으면 항상 표시 */}
+          {projectCategories.has('PLC') && (
+            <div className={styles.tableSection}>
+              <p className={styles.tableSectionLabel}>PLC</p>
+              <DataTable
+                columns={PLC_COLUMNS}
+                rows={isLoading ? [] : plcRows}
+                statusMap={STATUS_MAP}
+                selectable={activeMode !== null}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                totalCount={isLoading ? 0 : plcRows.length}
+                highlight={appliedFilters.keyword}
+              />
+            </div>
+          )}
+
+          {/* 기타 (PC/PLC 미분류) — 데이터 있을 때만 표시 */}
+          {etcRows.length > 0 && (
+            <div className={styles.tableSection}>
+              <p className={styles.tableSectionLabel}>기타</p>
+              <DataTable
+                columns={PLC_COLUMNS}
+                rows={etcRows}
+                statusMap={STATUS_MAP}
+                selectable={activeMode !== null}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                totalCount={etcRows.length}
+                highlight={appliedFilters.keyword}
+              />
+            </div>
+          )}
+
+          {/* 프로젝트 미선택 + 데이터 없음 */}
+          {!isLoading && !projectId && resolvedRows.length === 0 && (
+            <DataTable
+              columns={PC_COLUMNS}
+              rows={[]}
+              statusMap={STATUS_MAP}
+              selectable={false}
+              totalCount={0}
+            />
+          )}
+
+          {/* 전체 선택 건수 */}
+          {selectedIds.length > 0 && (
+            <p className={styles.selectedCount}>
+              {selectedIds.length}개 선택됨
+            </p>
+          )}
         </Card>
       </section>
 
