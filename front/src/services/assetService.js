@@ -269,7 +269,7 @@ export const fetchDashboard = async () => {
 // ═══════════════════════════════════════════════════════════════
 //  Admin — PC 전체 조회
 // ═══════════════════════════════════════════════════════════════
-// 코드 블록 닫기 에러
+
 export const fetchEnterpriseList = async (params = {}) => {
   try {
     const cleanParams = Object.fromEntries(
@@ -278,12 +278,12 @@ export const fetchEnterpriseList = async (params = {}) => {
     const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST, { params: cleanParams })
 
     const CATEGORY_NAME_MAP = {
-      office:     '사무',
       furniture:  '가구',
+      office:     '사무',
       industrial: '산업',
       electrical: '전기',
     }
-    
+
     // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
     const convertItemNumber = (itemNumber) => {
       if (!itemNumber) return null
@@ -293,40 +293,44 @@ export const fetchEnterpriseList = async (params = {}) => {
       parts[0] = korName
       return parts.join('-')
     }
-    
-    // 자산번호를 파트별로 분해 (한글 / 알파벳 / 숫자)
-    const parseItemNumber = (num) => {
-      if (!num) return ['', '', 0]
-      const [kor = '', alpha = '', n = '0'] = num.split('-')
-      return [kor, alpha, Number(n) || 0]
-    }
 
-    // 행 매핑
-    const rows = (data.list ?? []).map((item) => ({
-      id:             item.id,
-      itemNumber:     convertItemNumber(item.item_number),
-      itemTypeName:   item.item_type?.name                  ?? null,
-      manufacturer:   item.manufacturer                     ?? null,
-      spec:           item.spec                             ?? null,
-      serialNumber:   item.serial_number                    ?? null,
-      location:       item.location                         ?? null,
-      acquiredAt:     item.acquisition_date                 ?? null,
-      state:          item.state,
-      userName:       item.User?.profile?.name ?? item.User?.email ?? null,
-      departmentName: item.User?.profile?.department?.name  ?? null,
-      remarks:        item.remarks                          ?? null,
-    }))
-
-    // 1차: 한글, 2차: 알파벳, 3차: 숫자 오름차순 정렬
-    rows.sort((a, b) => {
-      const [aKor, aAlpha, aNum] = parseItemNumber(a.itemNumber)
-      const [bKor, bAlpha, bNum] = parseItemNumber(b.itemNumber)
-      return aKor.localeCompare(bKor, 'ko') || aAlpha.localeCompare(bAlpha, 'en') || aNum - bNum
-    })
+    // 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
+    const categoryOrderMap = new Map(
+      Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
+    )
 
     return {
       total: data.total ?? 0,
-      rows: rows.map((item, i) => ({ ...item, no: i + 1 })),
+      rows: (data.list ?? [])
+        .sort((a, b) => {
+          // 1순위: CATEGORY_NAME_MAP 키 순서 (가구 > 사무 > 산업 > 전기)
+          const catA = categoryOrderMap.get(a.item_number?.split('-')?.[0])
+          const catB = categoryOrderMap.get(b.item_number?.split('-')?.[0])
+          if (catA !== catB) return catA - catB
+
+          // 2순위: item_type.code 알파벳 오름차순
+          const codeA = a.item_type?.code ?? ''
+          const codeB = b.item_type?.code ?? ''
+          if (codeA !== codeB) return codeA.localeCompare(codeB)
+
+          // 3순위: id 숫자 오름차순
+          return a.id - b.id
+        })
+        .map((item, i) => ({
+          id:             item.id,
+          no:             i + 1,
+          itemNumber:     convertItemNumber(item.item_number),
+          itemTypeName:   item.item_type?.name     ?? null,
+          manufacturer:   item.manufacturer        ?? null,
+          spec:           item.spec                ?? null,
+          serialNumber:   item.serial_number       ?? null,
+          location:       item.location            ?? null,
+          acquiredAt:     item.acquisition_date    ?? null,
+          state:          item.state,
+          userName:       item.User?.profile?.name ?? item.User?.email ?? null,
+          departmentName: item.User?.profile?.department?.name ?? null,
+          remarks:        item.remarks ?? null,
+        })),
 
       categories: (() => {
         const map = new Map()
