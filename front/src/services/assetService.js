@@ -294,23 +294,39 @@ export const fetchEnterpriseList = async (params = {}) => {
       return parts.join('-')
     }
     
+    // 자산번호를 파트별로 분해 (한글 / 알파벳 / 숫자)
+    const parseItemNumber = (num) => {
+      if (!num) return ['', '', 0]
+      const [kor = '', alpha = '', n = '0'] = num.split('-')
+      return [kor, alpha, Number(n) || 0]
+    }
+
+    // 행 매핑
+    const rows = (data.list ?? []).map((item) => ({
+      id:             item.id,
+      itemNumber:     convertItemNumber(item.item_number),
+      itemTypeName:   item.item_type?.name                  ?? null,
+      manufacturer:   item.manufacturer                     ?? null,
+      spec:           item.spec                             ?? null,
+      serialNumber:   item.serial_number                    ?? null,
+      location:       item.location                         ?? null,
+      acquiredAt:     item.acquisition_date                 ?? null,
+      state:          item.state,
+      userName:       item.User?.profile?.name ?? item.User?.email ?? null,
+      departmentName: item.User?.profile?.department?.name  ?? null,
+      remarks:        item.remarks                          ?? null,
+    }))
+
+    // 1차: 한글, 2차: 알파벳, 3차: 숫자 오름차순 정렬
+    rows.sort((a, b) => {
+      const [aKor, aAlpha, aNum] = parseItemNumber(a.itemNumber)
+      const [bKor, bAlpha, bNum] = parseItemNumber(b.itemNumber)
+      return aKor.localeCompare(bKor, 'ko') || aAlpha.localeCompare(bAlpha) || aNum - bNum
+    })
+
     return {
       total: data.total ?? 0,
-      rows: (data.list ?? []).map((item, i) => ({
-        id:             item.id,
-        no:             i + 1,
-        itemNumber:     convertItemNumber(item.item_number),
-        itemTypeName:   item.item_type?.name     ?? null,
-        manufacturer:   item.manufacturer        ?? null,
-        spec:           item.spec                ?? null,
-        serialNumber:   item.serial_number       ?? null,
-        location:       item.location            ?? null,
-        acquiredAt:     item.acquisition_date    ?? null,
-        state:          item.state,
-        userName:       item.User?.profile?.name ?? item.User?.email ?? null,
-        departmentName: item.User?.profile?.department?.name ?? null,
-        remarks:        item.remarks ?? null,
-      })),
+      rows: rows.map((item, i) => ({ ...item, no: i + 1 })),
 
       categories: (() => {
         const map = new Map()
