@@ -586,29 +586,38 @@ const RequestFormFields = ({
                   />
                 </div>
 
-                {/* 라이선스 필요 여부 체크박스 */}
+                {/* 라이선스형 / 구독형 라디오 버튼 */}
                 <div className={styles.inputGroup}>
-                  <label className={styles.selectLabel}>라이선스 필요</label>
-                  <div className={styles.checkboxWrapper}>
-                    <input
-                      type="checkbox"
-                      id={`licenseRequired-${item.id}`}
-                      className={styles.checkbox}
-                      checked={item.licenseRequired}
-                      onChange={(e) =>
-                        onItemChange(index, {
-                          licenseRequired: e.target.checked,
-                          quantity:        "",
-                          licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
-                          licensePassword: "",
-                        })
-                      }
-                    />
-                    <label
-                      htmlFor={`licenseRequired-${item.id}`}
-                      className={styles.checkboxLabel}
-                    >
-                      {item.licenseRequired ? "라이선스형" : "구독형"}
+                  <label className={styles.selectLabel}>라이선스 유형</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name={`licenseRequired-${item.id}`}
+                        checked={item.licenseRequired === true}
+                        onChange={() =>
+                          onItemChange(index, {
+                            licenseRequired: true,
+                            quantity:        "",
+                          })
+                        }
+                      />
+                      라이선스형
+                    </label>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name={`licenseRequired-${item.id}`}
+                        checked={item.licenseRequired === false}
+                        onChange={() =>
+                          onItemChange(index, {
+                            licenseRequired: false,
+                            licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
+                            licensePassword: "",
+                          })
+                        }
+                      />
+                      구독형
                     </label>
                   </div>
                 </div>
