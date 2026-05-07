@@ -1980,7 +1980,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       model:      AssetSwLicense,
       as:         'licenses',
       where:      { state: 'available' },
-      attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type'],
+      attributes: isAdmin ? ['id', 'license_key', 'license_password', 'key_type', 'license_type'] : ['id', 'key_type', 'license_type'],
       required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
     }]
   });
