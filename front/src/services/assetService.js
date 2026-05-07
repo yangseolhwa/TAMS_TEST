@@ -387,15 +387,64 @@ export const fetchSwList = async (params = {}) => {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  자산 할당 관련
+// ═══════════════════════════════════════════════════════════════
+ 
+// 전체 유저 목록 조회 (할당 대상 선택)
+export const fetchUsers = async (keyword = '') => {
+  try {
+    const params = keyword.trim() ? { keyword: keyword.trim() } : {}
+    const { data } = await api.get(ENDPOINTS.AUTH.USERS, { params })
+    return data.users ?? []
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? '유저 목록 조회에 실패했습니다.')
+  }
+}
+ 
+// PC 할당 가능 목록 조회 (state=stored & responsible_type=vacant)
+export const fetchEnterpriseAvailable = async (params = {}) => {
+  try {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v != null)
+    )
+    const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_AVAILABLE, { params: cleanParams })
+    return data.list ?? []
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 할당 가능 목록 조회에 실패했습니다.')
+  }
+}
+ 
+// SW 할당 가능 목록 조회 (available 라이선스가 있는 SW)
+export const fetchSwAvailable = async () => {
+  try {
+    const { data } = await api.get(ENDPOINTS.ASSETS.SW_AVAILABLE)
+    return data.list ?? []
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'SW 할당 가능 목록 조회에 실패했습니다.')
+  }
+}
+ 
+// PC 자산 직접 할당
+export const assignEnterpriseAsset = async (body) => {
+  try {
+    const { data } = await api.patch(ENDPOINTS.ASSETS.ENTERPRISE_ASSIGN, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 자산 할당에 실패했습니다.')
+  }
+}
+
+// SW 할당 (라이선스형: { license_id, user_id } / 구독형: { asset_sw_id, user_id })
 export const assignSwLicense = async (body) => {
   try {
     const { data } = await api.patch(ENDPOINTS.ASSETS.SW_ASSIGN, body)
     return data
   } catch (error) {
-    throw new Error(error.response?.data?.message ?? 'SW 라이선스 할당에 실패했습니다.')
+    throw new Error(error.response?.data?.message ?? 'SW 할당에 실패했습니다.')
   }
 }
-
+ 
 // ═══════════════════════════════════════════════════════════════
 //  히스토리
 // ═══════════════════════════════════════════════════════════════

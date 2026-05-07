@@ -398,7 +398,7 @@ const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link
  
 const importSwOriginal = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: '파일이 없습니다.' });
- 
+
   let rows;
   try {
     const wb = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
@@ -407,22 +407,47 @@ const importSwOriginal = async (req, res) => {
   } catch {
     return res.status(400).json({ message: '엑셀 파일을 읽을 수 없습니다.' });
   }
- 
+
   const profiles = await Profile.findAll({ include: [{ model: User, attributes: ['id'] }] });
   const nameToUserId = {};
   profiles.forEach(p => { if (p.name) nameToUserId[p.name.trim()] = p.user_id; });
- 
+
   const results = [];
   let imported = 0, failed = 0;
   let lastSwId = null;
   let lastName = null, lastMfr = null, lastVer = null, lastKeyType = null;
- 
+
   const g = (row, col) => readXlsxCell(row, col);
- 
+
+  // ── 사용자 문자열 파싱 공통 헬퍼 ──────────────────────────────
+  function parseUserEntries(rawUsers) {
+    const entries = [];
+    let sdoeCount = 0;
+
+    const rawList = rawUsers
+      ? rawUsers.split(',').map(u => u.trim()).filter(u => u && u !== '-')
+      : [];
+
+    for (const uName of rawList) {
+      const sdoeMatch = uName.match(SDOE_RE);
+      if (sdoeMatch) {
+        sdoeCount += sdoeMatch[1] ? Number(sdoeMatch[1]) : 1;
+      } else {
+        const mappedId = nameToUserId[uName] ?? null;
+        entries.push({
+          userId:   mappedId,
+          userNote: mappedId !== null ? null : uName,
+        });
+      }
+    }
+
+    return { entries, sdoeCount };
+  }
+
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const r   = i + 1;
- 
+
     const rawNum     = g(row, SW_COL.num);
     const rawName    = g(row, SW_COL.name);
     const rawVer     = g(row, SW_COL.ver);
@@ -434,41 +459,45 @@ const importSwOriginal = async (req, res) => {
     const rawMfr     = g(row, SW_COL.mfr);
     const rawUsers   = g(row, SW_COL.users);
     const rawRemarks = g(row, SW_COL.remarks);
- 
+
     if (!rawNum && !rawName && !rawKey && !rawUsers?.trim()) continue;
- 
+
     const isNewSw = rawNum !== null;
- 
-    const name = toVal(rawName) ?? lastName;
-    const mfr  = toVal(rawMfr)  ?? lastMfr;
+
+    const name    = toVal(rawName) ?? lastName;
+    const mfr     = toVal(rawMfr)  ?? lastMfr;
     const ver     = isNewSw ? toVal(rawVer) : (toVal(rawVer) ?? lastVer);
     const keyType = isNewSw
       ? (rawKtype ? (KEY_TYPE_MAP[rawKtype] ?? null) : null)
       : ((rawKtype ? (KEY_TYPE_MAP[rawKtype] ?? null) : null) ?? lastKeyType);
- 
     const relLink = (rawLink === '-') ? null : toVal(rawLink);
- 
+
     if (!name) {
       results.push({ row: r, status: 'skipped', reason: '제품명 carry-forward 불가' });
       continue;
     }
- 
+
     lastName    = name;
     lastVer     = ver     ?? lastVer;
     lastMfr     = mfr     ?? lastMfr;
     lastKeyType = keyType ?? lastKeyType;
- 
+
+    // ── 구독형 판별: 제품키 컬럼이 비어 있으면 구독형 ──────────────
+    const licKeyRaw      = toVal(rawKey);
+    const isSubscription = !licKeyRaw || licKeyRaw === '-';
+
     try {
       let sw;
       if (isNewSw) {
+        const qty = parseInt(String(rawQty ?? '0').trim(), 10);
         sw = await AssetSw.create({
           name,
           version:          ver     || null,
           manufacturer:     mfr     || null,
-          quantity:         0,                  // 라이선스 생성 시 +1 처리하므로 0 시작
+          quantity:         isNaN(qty) ? 0 : qty,
           acquisition_date: null,
-          license_required: true,               // 원본 데이터는 모두 라이선스형
-          related_link:     relLink || null,    // 기존 relLink 변수 활용
+          license_required: !isSubscription,
+          related_link:     relLink || null,
           state:            'available',
           remarks:          toVal(rawRemarks) || null,
         });
@@ -480,81 +509,112 @@ const importSwOriginal = async (req, res) => {
         }
         sw = await AssetSw.findByPk(lastSwId);
       }
- 
-      if (rawKey === '-') {
-        results.push({ row: r, status: 'skipped', reason: '라이선스 키 없음 (-)' });
+
+      const issueDate = rawIssue instanceof Date ? rawIssue : parseDate(rawIssue);
+      const { entries: userEntries, sdoeCount } = parseUserEntries(rawUsers);
+
+      // ── 구독형: 사용자별 라이선스 레코드 생성 ──────────────────────
+      if (isSubscription) {
+        for (const entry of userEntries) {
+          const lic = await AssetSwLicense.create({
+            asset_sw_id:      sw.id,
+            user_id:          entry.userId,
+            user_note:        entry.userNote,
+            license_key:      null,
+            license_password: null,
+            key_type:         null,
+            license_type:     'per_seat',
+            issue_date:       null,
+            state:            'in_use',
+          });
+          await AssetSwHistory.create({
+            asset_sw_id:  sw.id, license_id: lic.id,
+            user_id:      entry.userId, change_type: 'register',
+            before_value: null, after_value: 'in_use',
+          });
+        }
+
+        // SDOE 슬롯
+        for (let s = 0; s < sdoeCount; s++) {
+          const lic = await AssetSwLicense.create({
+            asset_sw_id:      sw.id,
+            user_id:          null,
+            user_note:        'SDOE',
+            license_key:      null,
+            license_password: null,
+            key_type:         null,
+            license_type:     'shared',
+            issue_date:       null,
+            state:            'in_use',
+          });
+          await AssetSwHistory.create({
+            asset_sw_id:  sw.id, license_id: lic.id,
+            user_id:      null, change_type: 'register',
+            before_value: null, after_value: 'in_use',
+          });
+        }
+
+        const totalLicenseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id } });
+        const inUseCount        = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
+        await sw.reload(); // 현재 quantity 재로드
+        const newQuantity = Math.max(sw.quantity, totalLicenseCount); // 엑셀 수량과 실제 라이선스 수 중 큰 값
+        await sw.update({
+          quantity: newQuantity,
+          state:    inUseCount > 0 ? 'in_use' : 'available',
+        });
+
+        results.push({ row: r, status: 'success', sw_id: sw.id, new_sw: isNewSw, name, note: '구독형' });
+        imported++;
         continue;
       }
- 
-      let licKey, licPassword;
-      if (keyType === 'credential' && rawKey) {
-        const sepIdx = rawKey.indexOf(',');
+
+      // ── 라이선스 키 파싱 (credential: id,password 형태) ────────────
+      let finalLicKey, licPassword;
+      if (keyType === 'credential' && licKeyRaw) {
+        const sepIdx = licKeyRaw.indexOf(',');
         if (sepIdx !== -1) {
-          licKey      = rawKey.slice(0, sepIdx).trim() || null;
-          licPassword = rawKey.slice(sepIdx + 1).trim() || null;
+          finalLicKey = licKeyRaw.slice(0, sepIdx).trim() || null;
+          licPassword = licKeyRaw.slice(sepIdx + 1).trim() || null;
         } else {
-          licKey      = rawKey || null;
+          finalLicKey = licKeyRaw;
           licPassword = null;
         }
       } else {
-        licKey      = rawKey || null;
+        finalLicKey = licKeyRaw;
         licPassword = null;
       }
- 
-      const issueDate = rawIssue instanceof Date ? rawIssue : parseDate(rawIssue);
- 
-      let sdoeCount = 0;
-      const userNames = rawUsers
-        ? rawUsers.split(',').map(u => u.trim()).filter(u => u && u !== '-').filter(u => {
-            const m = u.match(SDOE_RE);
-            if (m) { sdoeCount += m[1] ? Number(m[1]) : 1; return false; }
-            return true;
-          })
-        : [];
- 
-      // 일반 사용자 라이선스 → per_seat
-      for (const uName of userNames) {
-        const isSpecial = isSpecialUser(uName);
-        const userId    = isSpecial ? null : (nameToUserId[uName] ?? null);
+
+      // ── license_type 결정: 총 사용자 2명 이상 → shared ─────────────
+      const totalUsers  = userEntries.length + sdoeCount;
+      const licenseType = totalUsers > 1 ? 'shared' : 'per_seat';
+
+      // ── 일반 사용자 라이선스 생성 ───────────────────────────────────
+      for (const entry of userEntries) {
         const lic = await AssetSwLicense.create({
           asset_sw_id:      sw.id,
-          user_id:          userId,
-          license_key:      licKey,
+          user_id:          entry.userId,
+          user_note:        entry.userNote,
+          license_key:      finalLicKey,
           license_password: licPassword,
           key_type:         keyType,
-          license_type:     'per_seat',
+          license_type:     licenseType,
           issue_date:       issueDate,
           state:            'in_use',
         });
         await AssetSwHistory.create({
-          asset_sw_id: sw.id, license_id: lic.id,
-          user_id: userId, change_type: 'register',
+          asset_sw_id:  sw.id, license_id: lic.id,
+          user_id:      entry.userId, change_type: 'register',
           before_value: null, after_value: 'in_use',
         });
-        await sw.increment('quantity', { by: 1 }); // 라이선스 1개 → quantity +1
       }
- 
-      // 사용자도 SDOE도 없음 → available, per_seat
-      if (userNames.length === 0 && sdoeCount === 0) {
-        await AssetSwLicense.create({
-          asset_sw_id:      sw.id,
-          user_id:          null,
-          license_key:      licKey,
-          license_password: licPassword,
-          key_type:         keyType,
-          license_type:     'per_seat',
-          issue_date:       issueDate,
-          state:            'available',
-        });
-        await sw.increment('quantity', { by: 1 }); // quantity +1
-      }
- 
-      // SDOE N대 → shared
+
+      // ── SDOE 슬롯 생성 ──────────────────────────────────────────────
       for (let s = 0; s < sdoeCount; s++) {
         const lic = await AssetSwLicense.create({
           asset_sw_id:      sw.id,
           user_id:          null,
-          license_key:      licKey,
+          user_note:        'SDOE',
+          license_key:      finalLicKey,
           license_password: licPassword,
           key_type:         keyType,
           license_type:     'shared',
@@ -562,16 +622,31 @@ const importSwOriginal = async (req, res) => {
           state:            'in_use',
         });
         await AssetSwHistory.create({
-          asset_sw_id: sw.id, license_id: lic.id,
-          user_id: null, change_type: 'register',
+          asset_sw_id:  sw.id, license_id: lic.id,
+          user_id:      null, change_type: 'register',
           before_value: null, after_value: 'in_use',
         });
-        await sw.increment('quantity', { by: 1 }); // quantity +1
       }
- 
+
+      // ── 사용자/SDOE 모두 없음 → 미사용 라이선스 (available) ─────────
+      if (userEntries.length === 0 && sdoeCount === 0) {
+        await AssetSwLicense.create({
+          asset_sw_id:      sw.id,
+          user_id:          null,
+          user_note:        null,
+          license_key:      finalLicKey,
+          license_password: licPassword,
+          key_type:         keyType,
+          license_type:     'per_seat',
+          issue_date:       issueDate,
+          state:            'available',
+        });
+      }
+
+      // ── SW state 재계산 ──────────────────────────────────────────────
       const inUseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
       await sw.update({ state: inUseCount > 0 ? 'in_use' : 'available' });
- 
+
       results.push({ row: r, status: 'success', sw_id: sw.id, new_sw: isNewSw, name, ver });
       imported++;
     } catch (err) {
@@ -579,8 +654,11 @@ const importSwOriginal = async (req, res) => {
       failed++;
     }
   }
- 
-  return res.status(200).json({ message: `SW Import 완료: ${imported}건 성공, ${failed}건 실패`, imported, failed, results });
+
+  return res.status(200).json({
+    message: `SW Import 완료: ${imported}건 성공, ${failed}건 실패`,
+    imported, failed, results,
+  });
 };
  
 // ─────────────────────────────────────────────────────────────────
