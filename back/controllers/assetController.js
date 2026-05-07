@@ -1952,20 +1952,22 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
 // GET /api/assets/sw/available
 // - 라이선스형: available 라이선스가 1개 이상 존재하는 SW (DB 레벨 INNER JOIN)
 // - 구독형: returned 아닌 SW (수량 관리이므로 SW 자체 표시)
-// 라이선스 키/비밀번호 미포함
+// - admin: license_key / license_password 포함
+// - user:  license_key / license_password 미포함
 // ─────────────────────────────────────────
 exports.getSwAvailable = asyncWrapper(async (req, res) => {
   const { keyword } = req.query;
- 
+  const isAdmin = req.user.role === 'admin';
+
   const keywordWhere = keyword ? {
     [Op.or]: [
       { name:         { [Op.like]: `%${keyword}%` } },
       { manufacturer: { [Op.like]: `%${keyword}%` } },
     ],
   } : {};
- 
+
   const SW_ATTRS = ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'];
- 
+
   // ── 라이선스형: available 라이선스 존재하는 SW만 (INNER JOIN) ───
   const licenseTypeSw = await AssetSw.findAll({
     where: {
@@ -1982,7 +1984,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
     }]
   });
- 
+
   // ── 구독형: returned 아닌 SW 전체 ────────────────────────────────
   const subscriptionSw = await AssetSw.findAll({
     where: {
@@ -1992,7 +1994,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
     },
     attributes: SW_ATTRS,
   });
- 
+
   const result = [
     ...licenseTypeSw.map(sw => ({
       id:               sw.id,
@@ -2003,11 +2005,13 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       state:            sw.state,
       quantity:         sw.quantity,
       available_licenses: sw.licenses.map(l => ({
-        id:               l.id,
-        key_type:         l.key_type,
-        license_key:      l.license_key,
-        license_password: l.license_password,
-        license_type:     l.license_type,
+        id:           l.id,
+        key_type:     l.key_type,
+        license_type: l.license_type,
+        ...(isAdmin && {
+          license_key:      l.license_key,
+          license_password: l.license_password,
+        }),
       })),
     })),
     ...subscriptionSw.map(sw => ({
@@ -2021,7 +2025,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       available_licenses: [],
     })),
   ].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
- 
+
   res.status(200).json({ total: result.length, list: result });
 });
 
