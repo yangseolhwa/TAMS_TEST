@@ -12,4 +12,7 @@ router.post("/logout", verifyAccessToken, authController.logout);
 // POST /api/auth/refresh
 router.post("/refresh", authController.refresh);
 
+// GET /api/auth/users (admin only)
+router.get("/users", verifyAccessToken, authController.getUsers);
+
 module.exports = router;
