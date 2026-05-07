@@ -196,11 +196,6 @@ exports.getUsers = asyncWrapper(async (req, res) => {
 
   const { keyword } = req.query;
 
-  const profileWhere = {};
-  if (keyword) {
-    profileWhere.name = { [Op.like]: `%${keyword}%` };
-  }
-
   const userWhere = {};
   if (keyword) {
     userWhere[Op.or] = [
