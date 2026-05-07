@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { User, RefreshToken, Profile } = require("../models");
+const { Op } = require("sequelize");
+const { User, RefreshToken, Profile, Department } = require("../models");
 const asyncWrapper = require("../middleware/asyncWrapper");
 
 // 이메일 형식 검증 정규식
@@ -182,4 +183,62 @@ exports.refresh = asyncWrapper(async (req, res) => {
     })
     .status(200)
     .json({ message: "토큰이 재발급되었습니다." });
+});
+
+// ─────────────────────────────────────────
+// 전체 유저 조회 (admin 전용)
+// GET /api/auth/users
+// query: keyword (이름 또는 이메일 검색)
+// ─────────────────────────────────────────
+exports.getUsers = asyncWrapper(async (req, res) => {
+  const { role } = req.user;
+  if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+
+  const { keyword } = req.query;
+
+  const profileWhere = {};
+  if (keyword) {
+    profileWhere.name = { [Op.like]: `%${keyword}%` };
+  }
+
+  const userWhere = {};
+  if (keyword) {
+    userWhere[Op.or] = [
+      { email: { [Op.like]: `%${keyword}%` } },
+      { '$profile.name$': { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+
+  const users = await User.findAll({
+    where: userWhere,
+    attributes: ['id', 'email', 'role'],
+    include: [
+      {
+        model: Profile,
+        as: 'profile',
+        attributes: ['name', 'company_rank', 'department_id'],
+        include: [
+          {
+            model: Department,
+            as: 'department',
+            attributes: ['id', 'name'],
+          },
+        ],
+      },
+    ],
+    order: [
+      [{ model: Profile, as: 'profile' }, 'name', 'ASC'],
+    ],
+  });
+
+  const result = users.map(u => ({
+    id:           u.id,
+    email:        u.email,
+    role:         u.role,
+    name:         u.profile?.name         ?? null,
+    company_rank: u.profile?.company_rank ?? null,
+    department:   u.profile?.department?.name ?? null,
+  }));
+
+  res.status(200).json({ total: result.length, users: result });
 });
