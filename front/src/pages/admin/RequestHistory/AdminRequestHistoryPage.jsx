@@ -5,6 +5,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import ActionButton from "../../../components/ActionButton/ActionButton";
 import Banner from "../../../components/Banner/Banner";
 import Card from "../../../components/Card/Card";
+import DataTable from "../../../components/DataTable/DataTable";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import RejectReasonModal from "../../../components/RejectReasonModal/RejectReasonModal";
 import styles from "./AdminRequestHistoryPage.module.css";
@@ -103,58 +104,30 @@ const AdminRequestHistoryPage = () => {
     },
   });
 
-  // ── 셀 렌더링 ─────────────────────────────────────────────────────────────
-  const renderCell = (col, row) => {
-    if (col.key === "actions") {
-      return (
-        <div className={styles.rowActions}>
-          <ActionButton
-            variant="blue"
-            size="xxs"
-            label="승인"
-            onClick={() => { setTargetRowId(row.id); setShowApproveConfirm(true); }}
-          />
-          <ActionButton
-            variant="red"
-            size="xxs"
-            label="반려"
-            onClick={() => { setTargetRowId(row.id); setRejectReason(""); setShowRejectModal(true); }}
-          />
-        </div>
-      );
-    }
-    return row[col.key] ?? "—";
+  // ── 처리 버튼 컬럼 ───────────────────────────────────────────────────────
+  const actionsColumn = {
+    key: "actions",
+    label: "처리",
+    renderCell: (row) => (
+      <div className={styles.rowActions}>
+        <ActionButton
+          variant="blue"
+          size="xxs"
+          label="승인"
+          onClick={() => { setTargetRowId(row.id); setShowApproveConfirm(true); }}
+        />
+        <ActionButton
+          variant="red"
+          size="xxs"
+          label="반려"
+          onClick={() => { setTargetRowId(row.id); setRejectReason(""); setShowRejectModal(true); }}
+        />
+      </div>
+    ),
   };
 
-  // ── 처리 버튼 컬럼 ───────────────────────────────────────────────────────
-  const actionsColumn = { key: "actions", label: "처리" };
-
-  const pcColumns = useMemo(() => [...PC_COLUMNS, actionsColumn], []);
-  const swColumns = useMemo(() => [...SW_COLUMNS, actionsColumn], []);
-
-  // ── 테이블 렌더링 헬퍼 ───────────────────────────────────────────────────
-  const renderTable = (columns, rows, emptyMsg) => (
-    <div className={styles.tableWrapper}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            {columns.map((col) => <th key={col.key}>{col.label}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading ? (
-            <tr><td colSpan={columns.length} className={styles.empty}>불러오는 중...</td></tr>
-          ) : rows.length === 0 ? (
-            <tr><td colSpan={columns.length} className={styles.empty}>{emptyMsg}</td></tr>
-          ) : rows.map((row) => (
-            <tr key={row.id}>
-              {columns.map((col) => <td key={col.key}>{renderCell(col, row)}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  const pcColumns  = useMemo(() => [...PC_COLUMNS, actionsColumn], []);
+  const swColumns  = useMemo(() => [...SW_COLUMNS, actionsColumn], []);
 
   return (
     <div className={styles.page}>
@@ -174,7 +147,12 @@ const AdminRequestHistoryPage = () => {
           </Card>
         </div>
         <Card className={styles.tableCard}>
-          {renderTable(pcColumns, pcRows, "요청 내역이 없습니다.")}
+          <DataTable
+            columns={pcColumns}
+            rows={isLoading ? [] : pcRows}
+            selectable={false}
+            totalCount={pcRows.length}
+          />
         </Card>
       </section>
 
@@ -188,7 +166,12 @@ const AdminRequestHistoryPage = () => {
           </Card>
         </div>
         <Card className={styles.tableCard}>
-          {renderTable(swColumns, swRows, "요청 내역이 없습니다.")}
+          <DataTable
+            columns={swColumns}
+            rows={isLoading ? [] : swRows}
+            selectable={false}
+            totalCount={swRows.length}
+          />
         </Card>
       </section>
 
