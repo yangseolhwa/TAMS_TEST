@@ -1978,7 +1978,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       model:      AssetSwLicense,
       as:         'licenses',
       where:      { state: 'available' },
-      attributes: ['id', 'key_type', 'license_type'],
+      attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type'],
       required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
     }]
   });
@@ -2003,9 +2003,11 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       state:            sw.state,
       quantity:         sw.quantity,
       available_licenses: sw.licenses.map(l => ({
-        id:           l.id,
-        key_type:     l.key_type,
-        license_type: l.license_type,
+        id:               l.id,
+        key_type:         l.key_type,
+        license_key:      l.license_key,
+        license_password: l.license_password,
+        license_type:     l.license_type,
       })),
     })),
     ...subscriptionSw.map(sw => ({
