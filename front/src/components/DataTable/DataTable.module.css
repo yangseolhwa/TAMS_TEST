@@ -79,9 +79,6 @@
   padding: 10px 12px;
   font-size: 13px;
   color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: middle;
 }
 
