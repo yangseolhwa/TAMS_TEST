@@ -71,7 +71,11 @@ const UserMyAssetsPage = () => {
   const [returnTarget,      setReturnTarget]      = useState(null)
 
   // ── Mutations ─────────────────────────────────────────────────────────────
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['myAssets'] })
+  // 변경
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['myAssets'] })
+    queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
+  }
 
   const returnPcMutation = useMutation({
     mutationFn: (rawId) => returnEnterpriseAssets({ asset_ids: [rawId] }),

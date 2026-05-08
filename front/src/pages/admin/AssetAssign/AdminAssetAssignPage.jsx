@@ -6,6 +6,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import TabCard from '../../../components/TabCard/TabCard'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
+import DataTable from '../../../components/DataTable/DataTable'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -20,16 +21,6 @@ import styles from './AdminAssetAssignPage.module.css'
 const TABS = [
   { id: 'pc', label: 'PC 할당' },
   { id: 'sw', label: 'SW 할당' },
-]
-
-const PC_COLUMNS = [
-  { key: 'no',           label: 'No'        },
-  { key: 'itemNumber',   label: '자산번호'  },
-  { key: 'itemTypeName', label: '자산 종류' },
-  { key: 'manufacturer', label: '제조사'    },
-  { key: 'spec',         label: '규격'      },
-  { key: 'serialNumber', label: '시리얼'    },
-  { key: 'location',     label: '위치'      },
 ]
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -51,7 +42,7 @@ const AdminAssetAssignPage = () => {
   const [openSwIds, setOpenSwIds] = useState(new Set())
 
   // ── 라이선스 패널 높이 측정용 ─────────────────────────────────────────────
-  const panelRefs    = useRef({})
+  const panelRefs      = useRef({})
   const [panelHeights, setPanelHeights] = useState({})
 
   // ── PC 할당 행 상태: { [assetId]: { userId } } ───────────────────────────
@@ -101,24 +92,14 @@ const AdminAssetAssignPage = () => {
     )
   }, [swList, swAppliedKeyword])
 
-  // ── SW 아코디언 토글 ──────────────────────────────────────────────────────
-  const toggleSwAccordion = (swId) => {
-    const el = panelRefs.current[swId]
-    if (el) {
-      setPanelHeights((prev) => ({ ...prev, [swId]: el.scrollHeight }))
-    }
-    setOpenSwIds((prev) => {
-      const next = new Set(prev)
-      prev.has(swId) ? next.delete(swId) : next.add(swId)
-      return next
-    })
-  }
+  // ── Mutations (isMutating은 pcColumns useMemo보다 반드시 먼저 선언) ───────
   const pcAssignMutation = useMutation({
     mutationFn: ({ assetId, userId }) => assignEnterpriseAsset({ asset_id: assetId, user_id: userId }),
     onSuccess: (res) => {
       toast.success(res?.message ?? '자산이 할당되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['enterpriseAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
       setPcAssignState((prev) => { const next = { ...prev }; delete next[confirm.assetId]; return next })
       setConfirm(null)
     },
@@ -131,9 +112,9 @@ const AdminAssetAssignPage = () => {
       toast.success(res?.message ?? 'SW가 할당되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['swAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
       setSwAssignState((prev) => {
         const next = { ...prev }
-        // 라이선스형은 licenseId 키, 구독형은 sw-{swId} 키로 상태 관리
         if (confirm.type === 'sw-subscription') delete next[`sw-${confirm.swId}`]
         else delete next[confirm.licenseId]
         return next
@@ -166,11 +147,11 @@ const AdminAssetAssignPage = () => {
     if (!userId) { toast.error('사용자를 선택해주세요.'); return }
     const user = users.find((u) => u.id === Number(userId))
     setConfirm({
-      type:        'sw-subscription',
-      swId:        Number(swId),
-      userId:      Number(userId),
-      userName:    user?.name ?? user?.email ?? '선택된 사용자',
-      assetLabel:  swName,
+      type:       'sw-subscription',
+      swId:       Number(swId),
+      userId:     Number(userId),
+      userName:   user?.name ?? user?.email ?? '선택된 사용자',
+      assetLabel: swName,
     })
   }
 
@@ -199,73 +180,86 @@ const AdminAssetAssignPage = () => {
     }
   }
 
-  // ── PC 테이블 렌더링 ──────────────────────────────────────────────────────
-  const renderPcTable = () => {
-    if (pcLoading) return <div className={styles.empty}>불러오는 중...</div>
-    if (filteredPcList.length === 0) return <div className={styles.empty}>할당 가능한 PC 자산이 없습니다.</div>
+  // ── PC DataTable rows ─────────────────────────────────────────────────────
+  const pcRows = useMemo(() =>
+    filteredPcList.map((item, i) => ({
+      id:           item.id,
+      no:           i + 1,
+      itemNumber:   item.item_number     ?? null,
+      itemTypeName: item.item_type?.name ?? null,
+      manufacturer: item.manufacturer   ?? null,
+      spec:         item.spec           ?? null,
+      serialNumber: item.serial_number  ?? null,
+      location:     item.location       ?? null,
+    })),
+  [filteredPcList])
 
-    return (
-      <div className={styles.tableWrapper}>
-        {/* 헤더 */}
-        <div className={`${styles.thead} ${styles.pcThead}`}>
-          {PC_COLUMNS.map((col) => (
-            <div key={col.key} className={styles.th}>{col.label}</div>
-          ))}
-          <div className={styles.th}>담당자 지정</div>
-          <div className={styles.th}>할당</div>
-        </div>
+  // ── PC DataTable columns ──────────────────────────────────────────────────
+  const pcColumns = useMemo(() => [
+    { key: 'no',           label: 'No',        width: '48px' },
+    { key: 'itemNumber',   label: '자산번호',  type: 'dash'  },
+    { key: 'itemTypeName', label: '자산 종류', type: 'dash'  },
+    { key: 'manufacturer', label: '제조사',    type: 'dash'  },
+    { key: 'spec',         label: '규격',      type: 'dash'  },
+    { key: 'serialNumber', label: '시리얼',    type: 'dash'  },
+    { key: 'location',     label: '위치',      type: 'dash'  },
+    {
+      key: 'assign_user',
+      label: '담당자 지정',
+      width: '200px',
+      renderCell: (row) => {
+        const userId = pcAssignState[row.id]?.userId ?? ''
+        return (
+          <select
+            className={styles.inlineSelect}
+            value={userId}
+            onChange={(e) =>
+              setPcAssignState((prev) => ({
+                ...prev,
+                [row.id]: { userId: e.target.value },
+              }))
+            }
+          >
+            <option value="">사용자 선택</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name ? `${u.name} (${u.email})` : u.email}
+              </option>
+            ))}
+          </select>
+        )
+      },
+    },
+    {
+      key: 'assign_btn',
+      label: '할당',
+      width: '64px',
+      renderCell: (row) => {
+        const userId = pcAssignState[row.id]?.userId ?? ''
+        return (
+          <ActionButton
+            variant="blue"
+            size="xxs"
+            label="할당"
+            disabled={!userId || isMutating}
+            onClick={() => handlePcAssignClick(row.id)}
+          />
+        )
+      },
+    },
+  ], [pcAssignState, users, isMutating])
 
-        {/* 바디 */}
-        <div className={styles.tbody}>
-          {filteredPcList.map((item, i) => {
-            const userId = pcAssignState[item.id]?.userId ?? ''
-            return (
-              <div key={item.id} className={`${styles.tr} ${styles.pcRow}`}>
-                <div className={styles.td}>{i + 1}</div>
-                <div className={styles.td}>{item.item_number ?? '—'}</div>
-                <div className={styles.td}>{item.item_type?.name ?? '—'}</div>
-                <div className={styles.td}>{item.manufacturer ?? '—'}</div>
-                <div className={styles.td}>{item.spec ?? '—'}</div>
-                <div className={styles.td}>{item.serial_number ?? '—'}</div>
-                <div className={styles.td}>{item.location ?? '—'}</div>
-
-                {/* 사용자 select */}
-                <div className={styles.td}>
-                  <select
-                    className={styles.inlineSelect}
-                    value={userId}
-                    onChange={(e) =>
-                      setPcAssignState((prev) => ({
-                        ...prev,
-                        [item.id]: { userId: e.target.value },
-                      }))
-                    }
-                  >
-                    <option value="">사용자 선택</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name ? `${u.name} (${u.email})` : u.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 할당 버튼 */}
-                <div className={styles.td}>
-                  <ActionButton
-                    variant="blue"
-                    size="xxs"
-                    label="할당"
-                    disabled={!userId || isMutating}
-                    onClick={() => handlePcAssignClick(item.id)}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
+  // ── SW 아코디언 토글 ──────────────────────────────────────────────────────
+  const toggleSwAccordion = (swId) => {
+    const el = panelRefs.current[swId]
+    if (el) {
+      setPanelHeights((prev) => ({ ...prev, [swId]: el.scrollHeight }))
+    }
+    setOpenSwIds((prev) => {
+      const next = new Set(prev)
+      prev.has(swId) ? next.delete(swId) : next.add(swId)
+      return next
+    })
   }
 
   // ── SW 아코디언 렌더링 ────────────────────────────────────────────────────
@@ -342,47 +336,46 @@ const AdminAssetAssignPage = () => {
             className={`${styles.licensePanel} ${isOpen ? styles.licensePanelOpen : ''}`}
             style={{ maxHeight: isOpen ? (panelHeights[sw.id] ?? 0) + 'px' : '0px' }}
           >
-              {licenses.map((lic) => {
-                const userId = swAssignState[lic.id]?.userId ?? ''
-                // credential: ID / Password 슬래시로 표시 / serial: 라이선스 키만 표시
-                const licenseDisplay = lic.key_type === 'credential'
-                  ? `${lic.license_key ?? '—'} / ${lic.license_password ?? '—'}`
-                  : (lic.license_key ?? '—')
-                return (
-                  <div key={lic.id} className={styles.licenseRow}>
-                    <div className={styles.licenseTd}>{licenseDisplay}</div>
-                    <div className={styles.licenseTd}>
-                      <select
-                        className={styles.inlineSelect}
-                        value={userId}
-                        onChange={(e) =>
-                          setSwAssignState((prev) => ({
-                            ...prev,
-                            [lic.id]: { userId: e.target.value },
-                          }))
-                        }
-                      >
-                        <option value="">사용자 선택</option>
-                        {users.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name ? `${u.name} (${u.email})` : u.email}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={styles.licenseTd}>
-                      <ActionButton
-                        variant="blue"
-                        size="xxs"
-                        label="할당"
-                        disabled={!userId || isMutating}
-                        onClick={() => handleSwAssignClick(lic.id, sw.name)}
-                      />
-                    </div>
+            {licenses.map((lic) => {
+              const userId = swAssignState[lic.id]?.userId ?? ''
+              const licenseDisplay = lic.key_type === 'credential'
+                ? `${lic.license_key ?? '—'} / ${lic.license_password ?? '—'}`
+                : (lic.license_key ?? '—')
+              return (
+                <div key={lic.id} className={styles.licenseRow}>
+                  <div className={styles.licenseTd}>{licenseDisplay}</div>
+                  <div className={styles.licenseTd}>
+                    <select
+                      className={styles.inlineSelect}
+                      value={userId}
+                      onChange={(e) =>
+                        setSwAssignState((prev) => ({
+                          ...prev,
+                          [lic.id]: { userId: e.target.value },
+                        }))
+                      }
+                    >
+                      <option value="">사용자 선택</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name ? `${u.name} (${u.email})` : u.email}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )
-              })}
-            </div>
+                  <div className={styles.licenseTd}>
+                    <ActionButton
+                      variant="blue"
+                      size="xxs"
+                      label="할당"
+                      disabled={!userId || isMutating}
+                      onClick={() => handleSwAssignClick(lic.id, sw.name)}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )
     }
@@ -446,8 +439,14 @@ const AdminAssetAssignPage = () => {
                   </button>
                 </div>
               </div>
-              {renderPcTable()}
-              <p className={styles.totalCount}>총 {filteredPcList.length}건</p>
+              <DataTable
+                columns={pcColumns}
+                rows={pcLoading ? [] : pcRows}
+                selectable={false}
+                totalCount={pcRows.length}
+                highlight={pcAppliedKeyword}
+                maxHeight="calc(100vh - 500px)"
+              />
             </>
           )}
 
