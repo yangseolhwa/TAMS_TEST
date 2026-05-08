@@ -1,77 +1,4 @@
 /* =====================
-   테이블 래퍼 (PC)
-   ===================== */
-.tableWrapper {
-  overflow-x: auto;
-}
-
-/* =====================
-   헤더 (PC)
-   ===================== */
-.thead {
-  display: grid;
-  align-items: center;
-  background-color: var(--color-primary);
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-/* PC: No | 자산번호 | 자산종류 | 제조사 | 규격 | 시리얼 | 위치 | 담당자지정 | 할당 */
-.pcThead {
-  grid-template-columns: 48px 120px 100px 100px 100px 130px 100px 200px 64px;
-}
-
-.th {
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-surface);
-  white-space: nowrap;
-}
-
-/* =====================
-   바디 (PC)
-   ===================== */
-.tbody {
-  overflow-y: auto;
-  max-height: 480px;
-}
-
-/* =====================
-   행 (PC)
-   ===================== */
-.tr {
-  display: grid;
-  align-items: center;
-  border-bottom: 1px solid var(--color-border-light);
-  transition: background-color var(--transition-fast);
-}
-
-.pcRow {
-  grid-template-columns: 48px 120px 100px 100px 100px 130px 100px 200px 64px;
-}
-
-.tr:last-child {
-  border-bottom: none;
-}
-
-.tr:hover {
-  background-color: var(--color-primary-tint);
-}
-
-/* =====================
-   셀 (PC)
-   ===================== */
-.td {
-  padding: 10px 12px;
-  font-size: 13px;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* =====================
    인라인 select
    ===================== */
 .inlineSelect {
@@ -125,10 +52,6 @@
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
-}
-
-.swAccordionChevronCol {
-  width: 40px;
 }
 
 /* SW 아코디언 아이템 */
@@ -192,6 +115,17 @@
 }
 
 /* =====================
+   헤더 th (SW 아코디언용)
+   ===================== */
+.th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+/* =====================
    소제목 행 (구독형 / 라이선스형)
    ===================== */
 .groupTitle {
@@ -242,14 +176,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* 라이선스 빈 상태 */
-.licenseEmpty {
-  padding: 16px 12px;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  text-align: center;
 }
 
 /* =====================
