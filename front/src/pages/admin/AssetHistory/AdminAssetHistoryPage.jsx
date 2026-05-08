@@ -10,42 +10,36 @@ import styles from './AdminAssetHistoryPage.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
-// 변경 컬럼 배지 스타일
-const CHANGE_TYPE_STYLE = {
-  '등록':     styles.badgeRegister,
-  '반납':     styles.badgeReturn,
-  '상태 변경': styles.badgeStateChange,
-  '이동':     styles.badgeMove,
-  '할당':     styles.badgeAssign,
+const CHANGE_TYPE_STATUS_MAP = {
+  '등록':     { label: '등록',     color: 'green'  },
+  '반납':     { label: '반납',     color: 'return' },
+  '상태 변경': { label: '상태 변경', color: 'yellow' },
+  '이동':     { label: '이동',     color: 'blue'   },
+  '할당':     { label: '할당',     color: 'purple' },
 }
 
-// 상태값 → 한글 매핑
-const STATE_LABEL = {
-  in_use:    '사용중',
-  stored:    '보관중',
-  returned:  '반납됨',
-  available: '사용가능',
+const STATE_STATUS_MAP = {
+  in_use:    { label: '사용중',   color: 'green'  },
+  stored:    { label: '보관중',   color: 'blue'   },
+  returned:  { label: '반납됨',   color: 'return' },
+  available: { label: '사용가능', color: 'gray'   },
 }
 
-// 변경 전/후 셀 렌더링 (한글 텍스트로만 표시)
 const renderValueCell = (value) => {
   if (value == null || value === '') return <span className={styles.dash}>-</span>
-  const korean = STATE_LABEL[value] ?? value
-  return <span>{korean}</span>
+  const mapped = STATE_STATUS_MAP[value]
+  if (!mapped) return <span>{value}</span>
+  return (
+    <span className={`${styles.badge} ${styles[`status_${mapped.color}`]}`}>
+      {mapped.label}
+    </span>
+  )
 }
 
 const COLUMNS = [
   { key: 'no',          label: 'No' },
   { key: 'requestedAt', label: '날짜' },
-  {
-    key: 'changeType',
-    label: '변경',
-    renderCell: (row) => (
-      <span className={`${styles.badge} ${CHANGE_TYPE_STYLE[row.changeType] ?? ''}`}>
-        {row.changeType}
-      </span>
-    ),
-  },
+  { key: 'changeType',  label: '변경', type: 'status' },
   {
     key: 'beforeValue',
     label: '변경 전',
@@ -169,6 +163,7 @@ const AdminAssetHistoryPage = () => {
           <DataTable
             columns={COLUMNS}
             rows={isLoading ? [] : filteredRows}
+            statusMap={CHANGE_TYPE_STATUS_MAP}
             selectable={false}
             totalCount={filteredRows.length}
             highlight={appliedKeyword}
