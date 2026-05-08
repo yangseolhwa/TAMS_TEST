@@ -395,6 +395,14 @@ const downloadDfTemplate = async (req, res) => {
 //   - SDOE 라이선스 (동일 키 여러 레코드) → license_type: 'shared'
 // ─────────────────────────────────────────────────────────────────
 const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link:7, mfr:8, users:9, remarks:12 };
+
+// license_type 결정 헬퍼
+// - 구독형(isSubscription=true): 키 자체가 없으므로 항상 per_seat
+// - 라이선스형: 동일 키를 2명 이상이 사용하면 shared, 아니면 per_seat
+function determineLicenseType(isSubscription, totalUsers) {
+  if (isSubscription) return 'per_seat';
+  return totalUsers > 1 ? 'shared' : 'per_seat';
+}
  
 const importSwOriginal = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: '파일이 없습니다.' });
@@ -523,7 +531,7 @@ const importSwOriginal = async (req, res) => {
             license_key:      null,
             license_password: null,
             key_type:         null,
-            license_type:     'per_seat',
+            license_type:     determineLicenseType(true, 1),
             issue_date:       null,
             state:            'in_use',
           });
@@ -543,7 +551,7 @@ const importSwOriginal = async (req, res) => {
             license_key:      null,
             license_password: null,
             key_type:         null,
-            license_type:     'shared',
+            license_type:     determineLicenseType(true, 1),
             issue_date:       null,
             state:            'in_use',
           });
@@ -586,7 +594,7 @@ const importSwOriginal = async (req, res) => {
 
       // ── license_type 결정: 총 사용자 2명 이상 → shared ─────────────
       const totalUsers  = userEntries.length + sdoeCount;
-      const licenseType = totalUsers > 1 ? 'shared' : 'per_seat';
+      const licenseType = determineLicenseType(false, totalUsers);
 
       // ── 일반 사용자 라이선스 생성 ───────────────────────────────────
       for (const entry of userEntries) {
@@ -617,7 +625,7 @@ const importSwOriginal = async (req, res) => {
           license_key:      finalLicKey,
           license_password: licPassword,
           key_type:         keyType,
-          license_type:     'shared',
+          license_type:     determineLicenseType(false, totalUsers),
           issue_date:       issueDate,
           state:            'in_use',
         });
