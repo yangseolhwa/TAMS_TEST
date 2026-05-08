@@ -398,10 +398,9 @@ const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link
 
 // license_type 결정 헬퍼
 // - 구독형(isSubscription=true): 키 자체가 없으므로 항상 per_seat
-// - 라이선스형: 아래 조건 중 하나라도 해당하면 shared
-//   ① 동일 키를 2명 이상이 사용 (totalUsers > 1)
-//   ② 라이선스 키 1개인데 수량이 2개 이상 (quantity > 1)
-function determineLicenseType(isSubscription, totalUsers, quantity = 1) {
+// - 라이선스형: 동일 키를 2명 이상이 사용하면 shared, 아니면 per_seat
+// ※ quantity 기반 shared 보정은 루프 종료 후 사후 처리로 수행
+function determineLicenseType(isSubscription, totalUsers) {
   if (isSubscription) return 'per_seat';
   return (totalUsers > 1 || quantity > 1) ? 'shared' : 'per_seat';
 }
@@ -425,6 +424,7 @@ const importSwOriginal = async (req, res) => {
   const results = [];
   let imported = 0, failed = 0;
   let lastSwId = null;
+  const licensedSwIds = new Set(); // 라이선스형 SW ID 수집 (사후 보정용)
   let lastName = null, lastMfr = null, lastVer = null, lastKeyType = null;
 
   const g = (row, col) => readXlsxCell(row, col);
@@ -657,11 +657,25 @@ const importSwOriginal = async (req, res) => {
       const inUseCount = await AssetSwLicense.count({ where: { asset_sw_id: sw.id, state: 'in_use' } });
       await sw.update({ state: inUseCount > 0 ? 'in_use' : 'available' });
 
+      licensedSwIds.add(sw.id);
       results.push({ row: r, status: 'success', sw_id: sw.id, new_sw: isNewSw, name, ver });
       imported++;
     } catch (err) {
       results.push({ row: r, status: 'failed', reason: err.message });
       failed++;
+    }
+  }
+
+  // ── 사후 보정: quantity > 라이선스 레코드 수 이면 전체 shared로 업데이트 ──
+  // 예) 키 1개, quantity=3, 사용자 1명 → 해당 키가 3좌석 커버 → shared
+  for (const swId of licensedSwIds) {
+    const sw          = await AssetSw.findByPk(swId);
+    const licenseCount = await AssetSwLicense.count({ where: { asset_sw_id: swId } });
+    if (sw && sw.quantity > licenseCount) {
+      await AssetSwLicense.update(
+        { license_type: 'shared' },
+        { where: { asset_sw_id: swId } }
+      );
     }
   }
 
