@@ -402,7 +402,7 @@ const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link
 // ※ quantity 기반 shared 보정은 루프 종료 후 사후 처리로 수행
 function determineLicenseType(isSubscription, totalUsers) {
   if (isSubscription) return 'per_seat';
-  return totalUsers > 1 ? 'shared' : 'per_seat';
+  return (totalUsers > 1 || quantity > 1) ? 'shared' : 'per_seat';
 }
  
 const importSwOriginal = async (req, res) => {
@@ -596,7 +596,7 @@ const importSwOriginal = async (req, res) => {
 
       // ── license_type 결정: 총 사용자 2명 이상 → shared ─────────────
       const totalUsers  = userEntries.length + sdoeCount;
-      const licenseType = determineLicenseType(false, totalUsers);
+      const licenseType = determineLicenseType(false, totalUsers, sw.quantity);
 
       // ── 일반 사용자 라이선스 생성 ───────────────────────────────────
       for (const entry of userEntries) {

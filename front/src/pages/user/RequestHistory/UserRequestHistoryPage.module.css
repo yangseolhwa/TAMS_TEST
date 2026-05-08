@@ -4,40 +4,65 @@
   gap: 20px;
 }
 
+/* =====================
+   섹션 래퍼
+   ===================== */
 .section {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 /* =====================
-   상태 뱃지
+   요약 카드 (SW/PC 라벨 + 건수)
    ===================== */
-.statusBadge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 12px;
+.summaryWrap {
+  width: 110px;
+  flex-shrink: 0;
+  position: relative;
+  padding-top: 18px;
+}
+
+.summaryLabel {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  padding: 4px 18px;
+  font-size: 13px;
   font-weight: 700;
-  color: #ffffff;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
+  color: var(--color-surface);
 }
 
-.status_PENDING {
-  background-color: var(--color-status-pending);
+.labelSw { background-color: var(--color-label-sw); }
+.labelPc { background-color: var(--color-label-pc); }
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 16px 16px !important;
 }
 
-.status_APPROVED {
-  background-color: var(--color-status-approved);
+.summaryCount {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
-.status_REJECTED {
-  background-color: var(--color-status-rejected);
+.summaryUnit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
 /* =====================
-   대시
+   테이블 카드
    ===================== */
-.dash {
-  color: var(--color-text-secondary);
+.tableCard {
+  flex: 1;
+  min-width: 0;
 }

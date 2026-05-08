@@ -10,9 +10,6 @@
   margin-bottom: 12px;
 }
 
-/* =====================
-   오른쪽 액션 버튼 그룹
-   ===================== */
 .actionButtons {
   margin-left: auto;
   display: flex;
@@ -48,6 +45,36 @@
 .exportBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* =====================
+   PC / PLC 테이블 섹션
+   ===================== */
+.tableSection {
+  margin-top: 20px;
+}
+
+.tableSection:first-of-type {
+  margin-top: 0;
+}
+
+.tableSectionLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 8px 2px;
+}
+
+/* =====================
+   선택 건수 표시
+   ===================== */
+.selectedCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin: 12px 0 0 2px;
 }
 
 /* =====================

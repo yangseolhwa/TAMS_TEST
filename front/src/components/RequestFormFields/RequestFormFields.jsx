@@ -18,11 +18,6 @@ const KEY_TYPE_OPTIONS = [
   { value: "credential", label: "크리덴셜" },
 ];
 
-const LICENSE_TYPE_OPTIONS = [
-  { value: "per_seat", label: "개인 전용" },
-  { value: "shared",   label: "공유" },
-];
-
 // ─── 초기 아이템 ──────────────────────────────────────────────────────────────
 export const createInitialItem = () => ({
   id:        crypto.randomUUID(),
@@ -192,24 +187,6 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
             </div>
           )}
 
-          {/* 라이선스 타입 (라디오버튼) */}
-          <div className={styles.inputGroup}>
-            <label className={styles.selectLabel}>라이선스 타입</label>
-            <div className={styles.radioGroup}>
-              {LICENSE_TYPE_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name={`licenseType-${item.id}`}
-                    value={opt.value}
-                    checked={item.licenseType === opt.value}
-                    onChange={() => onItemChange(index, "licenseType", opt.value)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -248,28 +225,22 @@ const RequestFormFields = ({
     refetchOnWindowFocus: false,
   });
 
-  // PC: 카테고리 목록 (중복 제거)
-  const pcCategories = useMemo(() => [
-    ...new Map(
-      (enterpriseAssets ?? [])
-        .filter((a) => a.item_category)
-        .map((a) => [a.item_category.id, a.item_category])
-    ).values(),
-  ], [enterpriseAssets]);
+  const pcCategories = useMemo(() => enterpriseAssets ?? [], [enterpriseAssets]);
 
-  // PC: item_type 목록 (중복 제거)
-  const pcItemTypes = useMemo(() => [
-    ...new Map(
-      (enterpriseAssets ?? [])
-        .filter((a) => a.item_type)
-        .map((a) => [a.item_type.id, a.item_type])
-    ).values(),
-  ], [enterpriseAssets]);
+  // PC: 선택된 카테고리의 item_type 목록
+  const getPcItemTypes = (categoryId) => {
+    if (!categoryId) return [];
+    const cat = pcCategories.find((c) => String(c.id) === String(categoryId));
+    return cat?.item_types ?? [];
+  };
 
-  // PC: 제조사 목록 (중복 제거)
-  const pcManufacturers = useMemo(() => [
-    ...new Set((enterpriseAssets ?? []).map((a) => a.manufacturer).filter(Boolean)),
-  ], [enterpriseAssets]);
+  // PC: 선택된 item_type의 제조사 목록
+  const getPcManufacturers = (categoryId, itemTypeId) => {
+    if (!categoryId || !itemTypeId) return [];
+    const itemTypes = getPcItemTypes(categoryId);
+    const type = itemTypes.find((t) => String(t.id) === String(itemTypeId));
+    return type?.manufacturers ?? [];
+  };
 
   // SW: 소프트웨어명 목록 (중복 제거)
   const swNames = useMemo(() => [
@@ -338,7 +309,15 @@ const RequestFormFields = ({
                     className={styles.select}
                     value={item.categoryId}
                     onFocus={() => refetchEnterprise()}
-                    onChange={(e) => onItemChange(index, "categoryId", e.target.value)}
+                    onChange={(e) =>
+                      onItemChange(index, {
+                        categoryId:       e.target.value,
+                        itemTypeId:       "",
+                        itemTypeName:     "",
+                        manufacturer:     "",
+                        manufacturerName: "",
+                      })
+                    }
                   >
                     <option value="">선택</option>
                     {pcCategories.map((cat) => (
@@ -364,7 +343,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.itemTypeId}
-                      onFocus={() => refetchEnterprise()}
+                      disabled={!item.categoryId}
                       onChange={(e) =>
                         onItemChange(index, {
                           itemTypeId:       e.target.value,
@@ -375,7 +354,7 @@ const RequestFormFields = ({
                       }
                     >
                       <option value="">선택</option>
-                      {pcItemTypes.map((type) => (
+                      {getPcItemTypes(item.categoryId).map((type) => (
                         <option key={type.id} value={type.id}>{type.name}</option>
                       ))}
                       <option value={DIRECT_INPUT}>직접 입력...</option>
@@ -403,7 +382,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.manufacturer}
-                      onFocus={() => refetchEnterprise()}
+                      disabled={!item.itemTypeId || item.itemTypeId === DIRECT_INPUT}
                       onChange={(e) =>
                         onItemChange(index, {
                           manufacturer:     e.target.value,
@@ -412,7 +391,7 @@ const RequestFormFields = ({
                       }
                     >
                       <option value="">선택</option>
-                      {pcManufacturers.map((mfr) => (
+                      {getPcManufacturers(item.categoryId, item.itemTypeId).map((mfr) => (
                         <option key={mfr} value={mfr}>{mfr}</option>
                       ))}
                       <option value={DIRECT_INPUT}>직접 입력...</option>
@@ -607,29 +586,38 @@ const RequestFormFields = ({
                   />
                 </div>
 
-                {/* 라이선스 필요 여부 체크박스 */}
+                {/* 라이선스형 / 구독형 라디오 버튼 */}
                 <div className={styles.inputGroup}>
-                  <label className={styles.selectLabel}>라이선스 필요</label>
-                  <div className={styles.checkboxWrapper}>
-                    <input
-                      type="checkbox"
-                      id={`licenseRequired-${item.id}`}
-                      className={styles.checkbox}
-                      checked={item.licenseRequired}
-                      onChange={(e) =>
-                        onItemChange(index, {
-                          licenseRequired: e.target.checked,
-                          quantity:        "",
-                          licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
-                          licensePassword: "",
-                        })
-                      }
-                    />
-                    <label
-                      htmlFor={`licenseRequired-${item.id}`}
-                      className={styles.checkboxLabel}
-                    >
-                      {item.licenseRequired ? "라이선스형" : "구독형"}
+                  <label className={styles.selectLabel}>라이선스 유형</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name={`licenseRequired-${item.id}`}
+                        checked={item.licenseRequired === true}
+                        onChange={() =>
+                          onItemChange(index, {
+                            licenseRequired: true,
+                            quantity:        "",
+                          })
+                        }
+                      />
+                      라이선스형
+                    </label>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name={`licenseRequired-${item.id}`}
+                        checked={item.licenseRequired === false}
+                        onChange={() =>
+                          onItemChange(index, {
+                            licenseRequired: false,
+                            licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
+                            licensePassword: "",
+                          })
+                        }
+                      />
+                      구독형
                     </label>
                   </div>
                 </div>
