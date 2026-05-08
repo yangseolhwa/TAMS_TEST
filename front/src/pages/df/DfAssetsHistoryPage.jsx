@@ -10,31 +10,33 @@ import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsHistoryPage.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const REQUEST_TYPE_STYLE = {
-  '등록':     styles.badgeRegister,
-  '반납':     styles.badgeReturn,
-  '상태 변경': styles.badgeStateChange,
-  '이동':     styles.badgeMove,
+const REQUEST_TYPE_STATUS_MAP = {
+  '등록':     { label: '등록',     color: 'green'  },
+  '반납':     { label: '반납',     color: 'return' },
+  '상태 변경': { label: '상태 변경', color: 'yellow' },
+  '이동':     { label: '이동',     color: 'blue'   },
 }
 
-const STATE_BADGE_STYLE = {
-  '사용중': styles.stateActive,
-  '보관중': styles.stateStored,
-  '대여중': styles.stateInactive,
+const STATE_STATUS_MAP = {
+  '사용중': { label: '사용중', color: 'green' },
+  '보관중': { label: '보관중', color: 'blue'  },
+  '대여중': { label: '대여중', color: 'orange'},
 }
 
 const renderChangedCell = (requestType, locationVal, stateVal) => {
   if (requestType === '이동') {
-    return locationVal
-      ? <span>{locationVal}</span>
-      : <span className={styles.dash}>-</span>
+    return locationVal ?? <span style={{ color: 'var(--color-text-secondary)' }}>-</span>
   }
-  if (requestType === '상태 변경') {
-    return stateVal
-      ? <span className={`${styles.badge} ${STATE_BADGE_STYLE[stateVal] ?? ''}`}>{stateVal}</span>
-      : <span className={styles.dash}>-</span>
+  if (requestType === '상태 변경' && stateVal) {
+    const mapped = STATE_STATUS_MAP[stateVal]
+    if (!mapped) return <span>{stateVal}</span>
+    return (
+      <span className={`${styles.badge} ${styles[`status_${mapped.color}`]}`}>
+        {mapped.label}
+      </span>
+    )
   }
-  return <span className={styles.dash}>-</span>
+  return <span style={{ color: 'var(--color-text-secondary)' }}>-</span>
 }
 
 const COLUMNS = [
@@ -43,15 +45,7 @@ const COLUMNS = [
   { key: 'category',     label: '자산 종류', },
   { key: 'modelName',    label: '모델명', },
   { key: 'serialNumber', label: '시리얼', },
-  {
-    key: 'requestType',
-    label: '요청',
-    renderCell: (row) => (
-      <span className={`${styles.badge} ${REQUEST_TYPE_STYLE[row.requestType] ?? ''}`}>
-        {row.requestType}
-      </span>
-    ),
-  },
+  { key: 'requestType', label: '요청', type: 'status' },
   {
     key: 'prevChange',
     label: '변경 전',
@@ -199,9 +193,11 @@ const DfAssetsHistoryPage = ({ role }) => {
           <DataTable
             columns={COLUMNS}
             rows={isLoading ? [] : filteredRows}
+            statusMap={REQUEST_TYPE_STATUS_MAP}
             selectable={false}
             totalCount={filteredRows.length}
             highlight={appliedKeyword}
+            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

@@ -152,6 +152,7 @@ const AdminRequestHistoryPage = () => {
             rows={isLoading ? [] : pcRows}
             selectable={false}
             totalCount={pcRows.length}
+            maxHeight="calc(100vh - 480px)"
           />
         </Card>
       </section>
@@ -171,6 +172,7 @@ const AdminRequestHistoryPage = () => {
             rows={isLoading ? [] : swRows}
             selectable={false}
             totalCount={swRows.length}
+            maxHeight="calc(100vh - 480px)"
           />
         </Card>
       </section>

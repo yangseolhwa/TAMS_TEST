@@ -211,6 +211,7 @@ const UserMyAssetsPage = () => {
             rows={isLoading ? [] : swRows}
             selectable={false}
             totalCount={swRows.length}
+            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
@@ -232,7 +233,7 @@ const UserMyAssetsPage = () => {
                 <ActionButton variant="black" size="sm" label="저장" onClick={handleMoveSaveClick} disabled={isMutating} />
               </>
             ) : (
-              <ActionButton variant="outline" size="sm" label="수정" onClick={handleMoveClick} disabled={isMutating} />
+              <ActionButton variant="outline" size="sm" label="자산 이동" onClick={handleMoveClick} disabled={isMutating} />
             )}
           </div>
           <DataTable
@@ -240,6 +241,7 @@ const UserMyAssetsPage = () => {
             rows={isLoading ? [] : pcRows}
             selectable={false}
             totalCount={pcRows.length}
+            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
