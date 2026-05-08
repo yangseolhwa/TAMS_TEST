@@ -537,6 +537,17 @@
   text-align: left;
 }
 
+/* ── shared 타입 사용자 멀티라인 ── */
+.swLicenseUserMulti {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.swLicenseChevronSpacer {
+  grid-column: 5;
+}
+
 /* ── 빈 상태 메시지 ── */
 .swLicenseEmpty {
   margin: 0;

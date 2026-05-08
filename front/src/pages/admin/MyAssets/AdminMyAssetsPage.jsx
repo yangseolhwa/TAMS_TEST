@@ -25,11 +25,12 @@ const AdminMyAssetsPage = () => {
       activeCount:   sw.in_use_count    ?? 0,
       inactiveCount: sw.available_count ?? 0,
       licenses: (sw.licenses ?? []).map((lic) => ({
-        id:   lic.id,
-        key:  lic.license_key,
-        password: lic.license_password ?? null,
-        keyType:  lic.key_type,
-        user: lic.user?.name ?? lic.user?.email ?? '-',
+        id:          lic.id,
+        key:         lic.license_key,
+        password:    lic.license_password ?? null,
+        keyType:     lic.key_type,
+        licenseType: lic.license_type,
+        user:        lic.user?.name ?? lic.user?.email ?? '-',
       })),
     })),
   [data])
@@ -65,6 +66,54 @@ const AdminMyAssetsPage = () => {
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>불러오는 중...</p>
       </div>
     )
+  }
+
+  // shared 라이선스 그룹핑 렌더링
+  const renderLicenseRows = (licenses) => {
+    const sharedLicenses = licenses.filter((l) => l.licenseType === 'shared')
+    const otherLicenses  = licenses.filter((l) => l.licenseType !== 'shared')
+
+    const rows = []
+
+    // shared 그룹 — 키 1행 + 사용자 여러 명 multiLine
+    if (sharedLicenses.length > 0) {
+      rows.push(
+        <div key="shared" className={styles.swLicenseRow}>
+          <span className={styles.swLicenseKey}>
+            {sharedLicenses[0].key}
+            {sharedLicenses[0].keyType === 'credential' && sharedLicenses[0].password && (
+              <span className={styles.swLicensePassword}> / {sharedLicenses[0].password}</span>
+            )}
+          </span>
+          <span className={styles.swLicenseUser}>
+            <span className={styles.swLicenseUserMulti}>
+              {sharedLicenses.map((l) => (
+                <span key={l.id}>{l.user}</span>
+              ))}
+            </span>
+          </span>
+          <span className={styles.swLicenseChevronSpacer} />
+        </div>
+      )
+    }
+
+    // 개별 라이선스 (per_seat 등)
+    otherLicenses.forEach((license) => {
+      rows.push(
+        <div key={license.id} className={styles.swLicenseRow}>
+          <span className={styles.swLicenseKey}>
+            {license.key}
+            {license.keyType === 'credential' && license.password && (
+              <span className={styles.swLicensePassword}> / {license.password}</span>
+            )}
+          </span>
+          <span className={styles.swLicenseUser}>{license.user}</span>
+          <span className={styles.swLicenseChevronSpacer} />
+        </div>
+      )
+    })
+
+    return rows
   }
 
   return (
@@ -134,18 +183,7 @@ const AdminMyAssetsPage = () => {
                       <p className={styles.swLicenseEmpty}>사용 중인 라이선스가 없습니다.</p>
                     ) : (
                       <div className={styles.swLicenseList}>
-                        {sw.licenses.map((license) => (
-                          <div key={license.id} className={styles.swLicenseRow}>
-                            <span className={styles.swLicenseKey}>
-                              {license.key}
-                              {license.keyType === 'credential' && license.password && (
-                                <span className={styles.swLicensePassword}> / {license.password}</span>
-                              )}
-                            </span>
-                            <span className={styles.swLicenseUser}>{license.user}</span>
-                            <span className={styles.swLicenseChevronSpacer} />
-                          </div>
-                        ))}
+                        {renderLicenseRows(sw.licenses)}
                       </div>
                     )}
                   </div>

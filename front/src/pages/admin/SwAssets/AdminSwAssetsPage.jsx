@@ -35,22 +35,36 @@ const COLUMNS = [
   {
     key: 'licenseKeys',
     label: '라이선스',
-    renderCell: (row) =>
-      renderMultiLine(
-        row.licenses.flatMap((l) => [l.license_key, l.license_password].filter(Boolean)),
-        styles.multiLine
-      ),
+    renderCell: (row) => {
+      const sharedLicenses = row.licenses.filter((l) => l.license_type === 'shared')
+      const otherLicenses  = row.licenses.filter((l) => l.license_type !== 'shared')
+
+      // shared: 키 1개만 표시
+      const keys = [
+        ...(sharedLicenses.length > 0
+          ? [sharedLicenses[0].license_key, sharedLicenses[0].license_password].filter(Boolean)
+          : []),
+        ...otherLicenses.flatMap((l) => [l.license_key, l.license_password].filter(Boolean)),
+      ]
+      return renderMultiLine(keys, styles.multiLine)
+    },
   },
   { key: 'relatedLink', label: '관련 링크' },
   { key: 'manufacturer', label: '제조사'  },
   {
     key: 'users',
     label: '사용자',
-    renderCell: (row) =>
-      renderMultiLine(
-        row.licenses.map((l) => l.user?.name ?? l.user?.email),
-        styles.multiLine
-      ),
+    renderCell: (row) => {
+      const sharedLicenses = row.licenses.filter((l) => l.license_type === 'shared')
+      const otherLicenses  = row.licenses.filter((l) => l.license_type !== 'shared')
+
+      // shared: 사용자 여러 명 multiLine / 나머지: 각 라이선스별 1명
+      const users = [
+        ...sharedLicenses.map((l) => l.user?.name ?? l.user?.email),
+        ...otherLicenses.map((l) => l.user?.name ?? l.user?.email),
+      ]
+      return renderMultiLine(users, styles.multiLine)
+    },
   },
   { key: 'usedCount',   label: '사용수량' },
   { key: 'remainCount', label: '남은수량' },
@@ -172,7 +186,6 @@ const AdminSwAssetsPage = () => {
             selectable={false}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
-            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>
