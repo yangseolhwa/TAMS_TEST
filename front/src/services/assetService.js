@@ -204,53 +204,44 @@ const REQUEST_TYPE_LABEL = { register: '등록', return: '반납', assign: '할�
 export const fetchAssetRequests = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
 
-  const enterpriseRows = (data.enterprise ?? []).map((item) => {
+  const enterpriseRows = (data.enterprise ?? []).map((item, i) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) {console.err(e)}
-
-    const assetName    = item.item_type?.name        ?? null
-    const manufacturer = item.asset?.manufacturer    ?? parsed.manufacturer    ?? null
-    const serialNumber = item.asset?.serial_number   ?? parsed.serial_number   ?? null
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { console.error(e) }
 
     return {
-      id:           `req-ent-${item.id}`,
-      assetType:    'PC',
-      assetName,
-      spec:         parsed.spec ?? null,
-      manufacturer,
-      serialNumber,
-      licenseKey:   null,
-      requestType:  REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:    item.requester?.profile?.name ?? item.requester?.email ?? null,
-      requestedAt:  item.request_date ? item.request_date.slice(0, 10) : null,
-      processedAt:  item.processed_at ? item.processed_at.slice(0, 10) : null,
-      status:       item.status?.toUpperCase(),
-      reason:       item.rejection_reason ?? null,
+      id:              `req-ent-${item.id}`,
+      no:              i + 1,
+      requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
+      userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
+      itemTypeName:    item.item_type?.name ?? null,
+      manufacturer:    item.asset?.manufacturer    ?? parsed.manufacturer    ?? null,
+      serialNumber:    item.asset?.serial_number   ?? parsed.serial_number   ?? null,
+      spec:            parsed.spec ?? null,
+      status:          item.status?.toUpperCase(),
+      rejectionReason: item.rejection_reason ?? null,
     }
   })
 
-  const swRows = (data.sw ?? []).map((item) => {
+  const swRows = (data.sw ?? []).map((item, i) => {
     let parsed = {}
-    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { console.err(e) }
+    try { parsed = JSON.parse(item.new_asset_data ?? '{}') } catch (e) { console.error(e) }
 
     return {
-      id:           `req-sw-${item.id}`,
-      assetType:    'SW',
-      assetName:    item.sw?.name             ?? parsed.name         ?? null,
-      spec:         null,
-      manufacturer: item.sw?.manufacturer     ?? parsed.manufacturer ?? null,
-      serialNumber: null,
-      licenseKey:   parsed.license_key        ?? null,
-      requestType:  REQUEST_TYPE_LABEL[item.request_type] ?? item.request_type,
-      requester:    item.requester?.profile?.name ?? item.requester?.email ?? null,
-      requestedAt:  item.request_date ? item.request_date.slice(0, 10) : null,
-      processedAt:  item.processed_at ? item.processed_at.slice(0, 10) : null,
-      status:       item.status?.toUpperCase(),
-      reason:       item.rejection_reason ?? null,
+      id:              `req-sw-${item.id}`,
+      no:              i + 1,
+      requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
+      userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
+      assetName:       item.sw?.name          ?? parsed.name         ?? null,
+      manufacturer:    item.sw?.manufacturer  ?? parsed.manufacturer ?? null,
+      version:         item.sw?.version       ?? parsed.version      ?? null,
+      licenseKey:      item.license_detail?.license_key ?? parsed.license_key ?? null,
+      licensePassword: parsed.license_password ?? null,
+      status:          item.status?.toUpperCase(),
+      rejectionReason: item.rejection_reason ?? null,
     }
   })
 
-  return [...enterpriseRows, ...swRows].map((row, i) => ({ ...row, no: i + 1 }))
+  return { enterpriseRows, swRows }
 }
 
 // ═══════════════════════════════════════════════════════════════
