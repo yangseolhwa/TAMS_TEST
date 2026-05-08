@@ -352,6 +352,7 @@ const DfAssetsListPage = ({ role }) => {
             onSelectionChange={setSelectedIds}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
+            maxHeight="calc(100vh - 500px)"
           />
         </Card>
       </section>
