@@ -80,6 +80,7 @@ const AdminPcAssetsPage = () => {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['enterpriseList'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
   }
 
   const stateMutation = useMutation({

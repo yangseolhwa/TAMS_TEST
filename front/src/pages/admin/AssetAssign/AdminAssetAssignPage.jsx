@@ -99,6 +99,7 @@ const AdminAssetAssignPage = () => {
       toast.success(res?.message ?? '자산이 할당되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['enterpriseAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
       setPcAssignState((prev) => { const next = { ...prev }; delete next[confirm.assetId]; return next })
       setConfirm(null)
     },
@@ -111,6 +112,7 @@ const AdminAssetAssignPage = () => {
       toast.success(res?.message ?? 'SW가 할당되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['swAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
       setSwAssignState((prev) => {
         const next = { ...prev }
         if (confirm.type === 'sw-subscription') delete next[`sw-${confirm.swId}`]
