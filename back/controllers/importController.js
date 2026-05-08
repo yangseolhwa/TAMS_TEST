@@ -625,7 +625,7 @@ const importSwOriginal = async (req, res) => {
           license_key:      finalLicKey,
           license_password: licPassword,
           key_type:         keyType,
-          license_type:     determineLicenseType(false, totalUsers),
+          license_type:     licenseType,
           issue_date:       issueDate,
           state:            'in_use',
         });
