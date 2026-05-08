@@ -167,6 +167,7 @@ const AdminAssetHistoryPage = () => {
             selectable={false}
             totalCount={filteredRows.length}
             highlight={appliedKeyword}
+            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

@@ -5,6 +5,7 @@ import Card from "../../../components/Card/Card";
 import DataTable from "../../../components/DataTable/DataTable";
 import styles from "./UserRequestHistoryPage.module.css";
 import { fetchAssetRequests } from "../../../services/assetService";
+import Banner from "../../../components/Banner/Banner";
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const STATUS_LABEL = { PENDING: '대기', APPROVED: '승인', REJECTED: '반려' }
@@ -50,6 +51,13 @@ const UserRequestHistoryPage = () => {
   return (
     <div className={styles.page}>
       <PageHeader title="내 자산 요청 내역" />
+      <Banner
+        text={
+          <>
+            자산 요청 내역은 <strong>24시간</strong> 후에 자동으로 삭제됩니다.
+          </>
+        }
+      />
 
       {/* PC 섹션 */}
       <section className={styles.section}>
@@ -67,6 +75,7 @@ const UserRequestHistoryPage = () => {
             statusMap={STATUS_MAP}
             selectable={false}
             totalCount={enterpriseRows.length}
+            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
@@ -87,6 +96,7 @@ const UserRequestHistoryPage = () => {
             statusMap={STATUS_MAP}
             selectable={false}
             totalCount={swRows.length}
+            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
