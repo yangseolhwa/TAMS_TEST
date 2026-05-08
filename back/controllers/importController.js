@@ -398,10 +398,12 @@ const SW_COL = { num:0, name:1, ver:2, qty:3, issue_date:4, key:5, ktype:6, link
 
 // license_type 결정 헬퍼
 // - 구독형(isSubscription=true): 키 자체가 없으므로 항상 per_seat
-// - 라이선스형: 동일 키를 2명 이상이 사용하면 shared, 아니면 per_seat
-function determineLicenseType(isSubscription, totalUsers) {
+// - 라이선스형: 아래 조건 중 하나라도 해당하면 shared
+//   ① 동일 키를 2명 이상이 사용 (totalUsers > 1)
+//   ② 라이선스 키 1개인데 수량이 2개 이상 (quantity > 1)
+function determineLicenseType(isSubscription, totalUsers, quantity = 1) {
   if (isSubscription) return 'per_seat';
-  return totalUsers > 1 ? 'shared' : 'per_seat';
+  return (totalUsers > 1 || quantity > 1) ? 'shared' : 'per_seat';
 }
  
 const importSwOriginal = async (req, res) => {
@@ -594,7 +596,7 @@ const importSwOriginal = async (req, res) => {
 
       // ── license_type 결정: 총 사용자 2명 이상 → shared ─────────────
       const totalUsers  = userEntries.length + sdoeCount;
-      const licenseType = determineLicenseType(false, totalUsers);
+      const licenseType = determineLicenseType(false, totalUsers, sw.quantity);
 
       // ── 일반 사용자 라이선스 생성 ───────────────────────────────────
       for (const entry of userEntries) {
