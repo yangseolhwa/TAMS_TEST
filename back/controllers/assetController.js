@@ -573,7 +573,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: Number(quantity ?? 0),
+          quantity: Math.max(0, Number(quantity) || 0),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -2117,6 +2117,16 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       before_value: null,
       after_value:  'in_use',
     }, { transaction: t });
+
+    const inUseCount = await AssetSwLicense.count({
+      where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
+      transaction: t,
+    });
+    if (sw.quantity > 0 && inUseCount > sw.quantity) {
+      const err = new Error('할당 가능 수량(' + sw.quantity + '개)을 초과했습니다.');
+      err.statusCode = 400;
+      throw err;
+    }
 
     await recalcSwState(Number(asset_sw_id), t);  
 
