@@ -6,6 +6,28 @@
 import api from './httpClient'
 import { ENDPOINTS } from './endpoints'
 
+const CATEGORY_NAME_MAP = {
+      furniture:  '가구',
+      office:     '사무',
+      industrial: '산업',
+      electrical: '전기',
+    }
+
+    // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
+    const convertItemNumber = (itemNumber) => {
+      if (!itemNumber) return null
+      const parts = itemNumber.split('-')
+      const korName = CATEGORY_NAME_MAP[parts[0]]
+      if (!korName) return itemNumber
+      parts[0] = korName
+      return parts.join('-')
+    }
+
+    // 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
+    const categoryOrderMap = new Map(
+      Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
+    )
+
 // ═══════════════════════════════════════════════════════════════
 //  개인 자산
 // ═══════════════════════════════════════════════════════════════
@@ -235,7 +257,7 @@ export const fetchAssetRequests = async () => {
       manufacturer:    item.sw?.manufacturer  ?? parsed.manufacturer ?? null,
       version:         item.sw?.version       ?? parsed.version      ?? null,
       licenseKey:      item.license_detail?.license_key ?? parsed.licenses?.[0]?.license_key ?? parsed.license_key ?? null,
-      licensePassword: item.license_detail?.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
+      licensePassword: item.license_detail?.license_password ?? parsed.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
       status:          item.status?.toUpperCase(),
       rejectionReason: item.rejection_reason ?? null,
     }
@@ -267,28 +289,6 @@ export const fetchEnterpriseList = async (params = {}) => {
       Object.entries(params).filter(([, v]) => v !== '' && v != null)
     )
     const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_LIST, { params: cleanParams })
-
-    const CATEGORY_NAME_MAP = {
-      furniture:  '가구',
-      office:     '사무',
-      industrial: '산업',
-      electrical: '전기',
-    }
-
-    // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
-    const convertItemNumber = (itemNumber) => {
-      if (!itemNumber) return null
-      const parts = itemNumber.split('-')
-      const korName = CATEGORY_NAME_MAP[parts[0]]
-      if (!korName) return itemNumber
-      parts[0] = korName
-      return parts.join('-')
-    }
-
-    // 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
-    const categoryOrderMap = new Map(
-      Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
-    )
 
     return {
       total: data.total ?? 0,
@@ -400,7 +400,21 @@ export const fetchEnterpriseAvailable = async (params = {}) => {
       Object.entries(params).filter(([, v]) => v !== '' && v != null)
     )
     const { data } = await api.get(ENDPOINTS.ASSETS.ENTERPRISE_AVAILABLE, { params: cleanParams })
-    return data.list ?? []
+    return (data.list ?? [])
+      .sort((a, b) => {
+        const catA = categoryOrderMap.get(a.item_number?.split('-')?.[0])
+        const catB = categoryOrderMap.get(b.item_number?.split('-')?.[0])
+        if (catA !== catB) return catA - catB
+      
+        const codeA = a.item_type?.code ?? ''
+        const codeB = b.item_type?.code ?? ''
+        if (codeA !== codeB) return codeA.localeCompare(codeB)
+        return a.id - b.id
+      })
+    .map((item) => ({
+      ...item,
+      item_number: convertItemNumber(item.item_number),
+    }))
   } catch (error) {
     throw new Error(error.response?.data?.message ?? 'PC 할당 가능 목록 조회에 실패했습니다.')
   }
@@ -433,6 +447,26 @@ export const assignSwLicense = async (body) => {
     return data
   } catch (error) {
     throw new Error(error.response?.data?.message ?? 'SW 할당에 실패했습니다.')
+  }
+}
+
+// PC 할당 요청 (user)
+export const requestEnterpriseAssign = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.ENTERPRISE_ASSIGN_REQUEST, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 자산 할당 요청에 실패했습니다.')
+  }
+}
+
+// SW 할당 요청 (user)
+export const requestSwAssign = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.SW_ASSIGN_REQUEST, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'SW 할당 요청에 실패했습니다.')
   }
 }
  

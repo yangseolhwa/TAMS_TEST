@@ -19,6 +19,7 @@ export const ENDPOINTS = {
     ENTERPRISE_APPROVE:     '/assets/enterprise/approve',
     ENTERPRISE_REJECT:      '/assets/enterprise/reject',
     ENTERPRISE_ASSIGN:      '/assets/enterprise/assign',
+    ENTERPRISE_ASSIGN_REQUEST: '/assets/enterprise/assign/request',
     // SW
     SW:             '/assets/sw',
     SW_LIST:        '/assets/sw',
@@ -29,6 +30,7 @@ export const ENDPOINTS = {
     SW_APPROVE:     '/assets/sw/approve',
     SW_REJECT:      '/assets/sw/reject',
     SW_ASSIGN:      '/assets/sw/assign',
+    SW_ASSIGN_REQUEST: '/assets/sw/assign/request',
     // 요청
     REQUESTS: '/assets/requests',
     // 대시보드
