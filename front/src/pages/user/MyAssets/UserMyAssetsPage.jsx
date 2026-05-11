@@ -51,6 +51,7 @@ const UserMyAssetsPage = () => {
     queryKey: ['myAssets'],
     queryFn:  fetchMyAssets,
     refetchOnWindowFocus: false,
+    staleTime: 0,
   })
 
   const pcRows = useMemo(

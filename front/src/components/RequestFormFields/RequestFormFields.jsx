@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useQuery } from "@tanstack/react-query";
-import { XSquareFill, PlusSquareFill, ChevronDown, ChevronUp } from "react-bootstrap-icons";
+import { XSquareFill, PlusSquareFill, InfoCircleFill, ChevronDown, ChevronUp } from "react-bootstrap-icons";
 import { fetchEnterpriseAssetsForForm, fetchSwAssetsForForm } from "../../services/assetService";
 import styles from "./RequestFormFields.module.css";
 
@@ -14,8 +14,8 @@ export const ASSET_TYPES = [
 ];
 
 const KEY_TYPE_OPTIONS = [
-  { value: "serial",     label: "시리얼" },
-  { value: "credential", label: "크리덴셜" },
+  { value: "serial",     label: "제품키" },
+  { value: "credential", label: "계정형" },
 ];
 
 // ─── 초기 아이템 ──────────────────────────────────────────────────────────────
@@ -103,6 +103,11 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
           <div className={styles.inputGroup}>
             <label className={styles.selectLabel}>
               키 유형 <span className={styles.required}>*</span>
+              <InfoCircleFill
+                size={13}
+                style={{ color: 'var(--color-accent)', marginLeft: 4, cursor: 'default', flexShrink: 0 }}
+                title="제품키: 시리얼 번호 또는 라이선스 키&#10;계정형: 아이디/비밀번호 형태의 계정 정보"
+              />
             </label>
             <div className={styles.radioGroup}>
               {KEY_TYPE_OPTIONS.map((opt) => (
@@ -614,6 +619,7 @@ const RequestFormFields = ({
                             licenseRequired: false,
                             licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
                             licensePassword: "",
+                            quantity:        "",
                           })
                         }
                       />
@@ -623,23 +629,21 @@ const RequestFormFields = ({
                 </div>
               </div>
 
-              {/* Row 3: 구독형일 때 수량 / 공통 필드 */}
+              {/* Row 3: 수량 / 공통 필드 */}
               <div className={styles.inputRow}>
-                {!item.licenseRequired && (
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      수량 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      min="1"
-                      placeholder="수량 입력"
-                      value={item.quantity}
-                      onChange={(e) => onItemChange(index, "quantity", e.target.value)}
-                    />
-                  </div>
-                )}
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>
+                    수량 <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="1"
+                    placeholder="1 이상 입력"
+                    value={item.quantity}
+                    onChange={(e) => onItemChange(index, "quantity", e.target.value)}
+                  />
+                </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.selectLabel}>관련 링크</label>
                   <input

@@ -130,3 +130,5 @@
 .status_blue   { background-color: var(--color-badge-state-move);     }
 .status_return { background-color: var(--color-badge-state-return);   }
 .status_gray   { background-color: var(--color-badge-state-grey);     }
+.status_yellow { background-color: var(--color-badge-state-change); }
+.status_red    { background-color: var(--color-badge-state-return); }
