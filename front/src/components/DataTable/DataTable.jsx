@@ -34,7 +34,6 @@ const DataTable = ({
   onSelectionChange = () => {},
   totalCount,
   highlight,
-  maxHeight,
 }) => {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -123,7 +122,7 @@ const DataTable = ({
         </div>
 
         {/* 본문 — 스크롤 영역 */}
-        <div className={styles.tbody} style={maxHeight ? { maxHeight } : undefined}>
+        <div className={styles.tbody}>
           {rows.length === 0 ? (
             <div className={styles.emptyRow}>
               데이터가 없습니다.
@@ -153,7 +152,6 @@ const DataTable = ({
             ))
           )}
         </div>
-
       </div>
 
       {totalCount !== undefined && (
@@ -188,7 +186,6 @@ DataTable.propTypes = {
   onSelectionChange: PropTypes.func,
   totalCount:        PropTypes.number,
   highlight:         PropTypes.string,
-  maxHeight:         PropTypes.string,
 };
 
 export default DataTable;

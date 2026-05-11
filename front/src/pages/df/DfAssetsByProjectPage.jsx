@@ -399,7 +399,6 @@ const DfAssetsByProjectPage = ({ role }) => {
                 onSelectionChange={setSelectedIds}
                 totalCount={isLoading ? 0 : pcRows.length}
                 highlight={appliedFilters.keyword}
-                maxHeight="calc(100vh - 540px)"
               />
             </div>
           )}
@@ -417,7 +416,6 @@ const DfAssetsByProjectPage = ({ role }) => {
                 onSelectionChange={setSelectedIds}
                 totalCount={isLoading ? 0 : plcRows.length}
                 highlight={appliedFilters.keyword}
-                maxHeight="calc(100vh - 540px)"
               />
             </div>
           )}

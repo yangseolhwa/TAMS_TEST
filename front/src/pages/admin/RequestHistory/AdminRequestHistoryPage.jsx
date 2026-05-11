@@ -9,6 +9,8 @@ import DataTable from "../../../components/DataTable/DataTable";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import RejectReasonModal from "../../../components/RejectReasonModal/RejectReasonModal";
 import styles from "./AdminRequestHistoryPage.module.css";
+import common from '../../AssetPage.common.module.css'
+
 import {
   fetchAssetRequests,
   approveEnterpriseRequest,
@@ -130,7 +132,7 @@ const AdminRequestHistoryPage = () => {
   const swColumns  = useMemo(() => [...SW_COLUMNS, actionsColumn], []);
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader title="내 자산 요청 내역" />
 
       <Banner
@@ -152,7 +154,6 @@ const AdminRequestHistoryPage = () => {
             rows={isLoading ? [] : pcRows}
             selectable={false}
             totalCount={pcRows.length}
-            maxHeight="calc(100vh - 480px)"
           />
         </Card>
       </section>
@@ -172,7 +173,6 @@ const AdminRequestHistoryPage = () => {
             rows={isLoading ? [] : swRows}
             selectable={false}
             totalCount={swRows.length}
-            maxHeight="calc(100vh - 480px)"
           />
         </Card>
       </section>

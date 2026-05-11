@@ -247,7 +247,7 @@ const AdminAssetAssignPage = () => {
         )
       },
     },
-  ], [pcAssignState, users, isMutating])
+  ], [pcAssignState, users, isMutating, pcList])
 
   // ── SW 아코디언 토글 ──────────────────────────────────────────────────────
   const toggleSwAccordion = (swId) => {
@@ -445,7 +445,6 @@ const AdminAssetAssignPage = () => {
                 selectable={false}
                 totalCount={pcRows.length}
                 highlight={pcAppliedKeyword}
-                maxHeight="calc(100vh - 500px)"
               />
             </>
           )}
