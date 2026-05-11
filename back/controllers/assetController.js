@@ -2122,18 +2122,32 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       lock: t.LOCK.UPDATE, 
       transaction: t, 
     });
+
+    if (!lockedSw) {
+      const err = new Error('SW를 찾을 수 없습니다.');
+      err.statusCode = 404;
+      throw err;
+    }
+
     // 락 획득 후 최신 할당 수량을 다시 계산하여 stale read 방지
     const currentInUseCount = await AssetSwLicense.count({
       where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
       transaction: t,
     });
-    if (lockedSw && lockedSw.quantity > 0 && currentInUseCount > lockedSw.quantity) {
+
+    if (lockedSw.quantity > 0 && currentInUseCount > lockedSw.quantity) {
       const err = new Error('할당 가능 수량(' + lockedSw.quantity + '개)을 초과했습니다.');
       err.statusCode = 400;
       throw err;
     }
 
-    await recalcSwState(Number(asset_sw_id), t);  
+    const newState = (lockedSw.quantity > 0 && currentInUseCount >= lockedSw.quantity) 
+      ? 'in_use' 
+      : 'available';
+
+    if (lockedSw.state !== newState) {
+      await lockedSw.update({ state: newState }, { transaction: t });
+    }
 
     return license;
   });
