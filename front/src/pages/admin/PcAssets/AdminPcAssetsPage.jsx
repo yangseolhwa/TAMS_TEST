@@ -19,16 +19,18 @@ import styles from './AdminPcAssetsPage.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
-  { key: 'no',           label: 'No' },
-  { key: 'categoryName', label: '카테고리',    type: 'dash' },
-  { key: 'itemTypeName', label: '자산 종류',   type: 'dash' },
-  { key: 'acquiredAt',   label: '취득일',      type: 'dash' },
-  { key: 'manufacturer', label: '제조사',      type: 'dash' },
-  { key: 'spec',         label: '규격',        type: 'dash' },
-  { key: 'serialNumber', label: '시리얼 번호', type: 'dash' },
-  { key: 'location',     label: '위치',        type: 'dash' },
-  { key: 'userName',     label: '담당자',      type: 'dash' },
-  { key: 'state',        label: '상태',        type: 'status' },
+  { key: 'no',             label: 'No' },
+  { key: 'itemNumber',     label: '자산번호',   type: 'dash' },
+  { key: 'departmentName', label: '소관부서',   type: 'dash' },
+  { key: 'location',       label: '위치',       type: 'dash' },
+  { key: 'userName',       label: '담당자',     type: 'dash' },
+  { key: 'acquiredAt',     label: '취득일',     type: 'dash' },
+  { key: 'manufacturer',   label: '제조사',     type: 'dash' },
+  { key: 'itemTypeName',   label: '자산 종류',  type: 'dash' },
+  { key: 'spec',           label: '규격',       type: 'dash' },
+  { key: 'serialNumber',   label: '시리얼 번호', type: 'dash' },
+  { key: 'remarks',        label: '비고',       type: 'dash' },
+  { key: 'state',          label: '상태',       type: 'status' },
 ]
 
 const STATUS_MAP = {
@@ -78,6 +80,7 @@ const AdminPcAssetsPage = () => {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['enterpriseList'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
   }
 
   const stateMutation = useMutation({
@@ -271,6 +274,7 @@ const AdminPcAssetsPage = () => {
             onSelectionChange={setSelectedIds}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
+            maxHeight="calc(100vh - 500px)"
           />
         </Card>
       </section>

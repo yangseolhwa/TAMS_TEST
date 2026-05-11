@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
 const asyncWrapper = require('../middleware/asyncWrapper');
+const { recalcSwState, recalcSwStateBatch } = require('../utils/swStateHelper');
 const {
   AssetEnterprise, AssetEnterpriseCategory, AssetEnterpriseItemType,
   AssetEnterpriseRequest, AssetEnterpriseHistory,
@@ -254,7 +255,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
 
   const projectWhere = project_id ? { id: Number(project_id) } : {};
 
-  const itemWhere = { state: { [Op.ne]: 'returned' } };
+  const itemWhere = {}; 
   if (state)        itemWhere.state         = state;
   if (manufacturer) itemWhere.manufacturer  = { [Op.like]: `%${manufacturer}%` };
   if (item_type_id) itemWhere.asset_type_id = Number(item_type_id);
@@ -467,6 +468,17 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
   }
  
   const createdRequests = await AssetEnterpriseRequest.bulkCreate(requestRows);
+
+  await AssetEnterpriseHistory.bulkCreate(
+    requestRows.map((row) => ({
+      asset_enterprise_id: row.asset_id ?? null,  // 신규 자산이면 null
+      user_id:             userId,                // 요청자 ID
+      change_type:         'request',
+      before_value:        null,
+      after_value:         'pending',
+    }))
+  );
+
   res.status(201).json({
     message: '자산 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
     requests: createdRequests,
@@ -561,7 +573,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity:         isLicenseRequired ? 0 : Number(quantity),
+          quantity: isLicenseRequired ? Number(quantity ?? 0) : Number(quantity),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -576,20 +588,24 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         const qty = Number(add_quantity);
         await targetSw.increment('quantity', { by: qty, transaction: t });
         await targetSw.reload({ transaction: t });
- 
-        const inUseCount = await AssetSwLicense.count({
-          where: { asset_sw_id: swId, state: 'in_use' },
-          transaction: t,
-        });
-        await AssetSw.update(
-          { state: inUseCount > 0 ? 'in_use' : 'available' },
-          { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
-        );
- 
+        await recalcSwState(swId, t);
         return { sw: targetSw, licenses: [] };
       }
  
       // 라이선스 등록
+      if (licenses.length > 0 && targetSw.quantity > 0) {
+        const existingCount = await AssetSwLicense.count({
+          where: { asset_sw_id: swId }, transaction: t,
+        });
+        if (existingCount + licenses.length > targetSw.quantity) {
+          const err = new Error(
+            `라이선스 수량 한도(${targetSw.quantity}개)를 초과합니다. 현재 ${existingCount}개 등록됨.`
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+      }
+
       const createdLicenses = [];
       for (const lic of licenses) {
         const license = await AssetSwLicense.create({
@@ -612,21 +628,13 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           before_value: null,
           after_value:  'in_use',
         }, { transaction: t });
- 
-        await AssetSw.increment('quantity', { by: 1, where: { id: swId }, transaction: t });
+
         createdLicenses.push(license);
       }
  
       // SW state 재계산
       if (licenses.length > 0) {
-        const inUseCount = await AssetSwLicense.count({
-          where: { asset_sw_id: swId, state: 'in_use' },
-          transaction: t,
-        });
-        await AssetSw.update(
-          { state: inUseCount > 0 ? 'in_use' : 'available' },
-          { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
-        );
+        await recalcSwState(swId, t);
       }
  
       const sw = await AssetSw.findByPk(swId, { transaction: t });
@@ -720,6 +728,17 @@ exports.registerSw = asyncWrapper(async (req, res) => {
   }
  
   const createdRequests = await AssetSwRequest.bulkCreate(requestRows);
+
+  await AssetSwHistory.bulkCreate(
+    requestRows.map((row) => ({
+      asset_sw_id:  row.asset_sw_id ?? null,  // 신규 SW이면 null
+      license_id:   null,
+      user_id:      userId,                   // 요청자 ID
+      change_type:  'request',
+      before_value: null,
+      after_value:  'pending',
+    }))
+  );
  
   res.status(201).json({
     message: 'SW 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
@@ -1115,6 +1134,14 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
+
+  await AssetEnterpriseHistory.create({
+    asset_enterprise_id: request.asset_id ?? null,  // 신규 자산 요청이면 null
+    user_id:             request.requester_id,       // 요청자 ID (admin 아님)
+    change_type:         'rejected',
+    before_value:        'pending',
+    after_value:         'rejected',
+  });
  
   res.status(200).json({ message: '자산 등록 요청이 거절되었습니다.', request });
 });
@@ -1180,10 +1207,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       await lockedLicense.save({ transaction: t });
  
       // SW state 재계산
-      await AssetSw.update(
-        { state: 'in_use' },
-        { where: { id: lockedLicense.asset_sw_id, state: { [Op.ne]: 'returned' } }, transaction: t }
-      );
+      await recalcSwState(lockedLicense.asset_sw_id, t);
  
       request.status       = 'approved';
       request.processed_at = new Date();
@@ -1285,16 +1309,21 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       after_value:  'in_use',
     }, { transaction: t });
  
-    await AssetSw.increment('quantity', { by: 1, where: { id: swId }, transaction: t });
- 
-    const inUseCount = await AssetSwLicense.count({
-      where: { asset_sw_id: swId, state: 'in_use' },
-      transaction: t,
-    });
-    await AssetSw.update(
-      { state: inUseCount > 0 ? 'in_use' : 'available' },
-      { where: { id: swId, state: { [Op.ne]: 'returned' } }, transaction: t }
-    );
+    const targetSwForApprove = await AssetSw.findByPk(swId, { transaction: t });
+    if (targetSwForApprove && targetSwForApprove.quantity > 0) {
+      const existingCount = await AssetSwLicense.count({
+        where: { asset_sw_id: swId }, transaction: t,
+      });
+      if (existingCount >= targetSwForApprove.quantity) {
+        const err = new Error(
+          `라이선스 수량 한도(${targetSwForApprove.quantity}개)에 도달하여 승인할 수 없습니다.`
+        );
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    await recalcSwState(swId, t);
  
     request.status       = 'approved';
     request.processed_at = new Date();
@@ -1332,6 +1361,15 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
+
+  await AssetSwHistory.create({
+    asset_sw_id:  request.asset_sw_id ?? null,  // 신규 SW 요청이면 null
+    license_id:   null,
+    user_id:      request.requester_id,          // 요청자 ID (admin 아님)
+    change_type:  'rejected',
+    before_value: 'pending',
+    after_value:  'rejected',
+  });
  
   res.status(200).json({ message: 'SW 등록 요청이 거절되었습니다.', request });
 });
@@ -1505,41 +1543,7 @@ exports.returnSw = asyncWrapper(async (req, res) => {
       );
  
       if (recalcIds.length > 0) {
-        // GROUP BY 단일 쿼리로 모든 SW의 in_use 라이선스 수 한 번에 조회
-        const countsRaw = await AssetSwLicense.findAll({
-          where: {
-            asset_sw_id: { [Op.in]: recalcIds },
-            state:       'in_use',
-          },
-          attributes: [
-            'asset_sw_id',
-            [sequelize.fn('COUNT', sequelize.col('id')), 'cnt'],
-          ],
-          group: ['asset_sw_id'],
-          raw: true,
-          transaction: t,
-        });
- 
-        const inUseCountMap = Object.fromEntries(
-          countsRaw.map(r => [Number(r.asset_sw_id), parseInt(r.cnt, 10)])
-        );
- 
-        // in_use 남은 SW와 available로 바꿀 SW 분리 → 벌크 업데이트 2회
-        const toInUse    = recalcIds.filter(id => (inUseCountMap[id] ?? 0) > 0);
-        const toAvailable = recalcIds.filter(id => (inUseCountMap[id] ?? 0) === 0);
- 
-        if (toInUse.length > 0) {
-          await AssetSw.update(
-            { state: 'in_use' },
-            { where: { id: { [Op.in]: toInUse }, state: { [Op.ne]: 'returned' } }, transaction: t }
-          );
-        }
-        if (toAvailable.length > 0) {
-          await AssetSw.update(
-            { state: 'available' },
-            { where: { id: { [Op.in]: toAvailable }, state: { [Op.ne]: 'returned' } }, transaction: t }
-          );
-        }
+        await recalcSwStateBatch(recalcIds, t);
       }
  
       // 반납 요청 기록
@@ -1726,7 +1730,7 @@ exports.moveDf = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.getDfDashboard = asyncWrapper(async (req, res) => {
   const items = await AssetProjectItem.findAll({
-    where: { state: { [Op.ne]: 'returned' } },
+    where: {},
     attributes: ['id', 'project_id', 'asset_type_id'],
     include: [
       { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
@@ -2080,15 +2084,7 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       lockedLicense.state   = 'in_use';
       lockedLicense.user_id = user_id;
       await lockedLicense.save({ transaction: t });
-
-      const inUseCount = await AssetSwLicense.count({
-        where: { asset_sw_id: lockedLicense.asset_sw_id, state: 'in_use' },
-        transaction: t,
-      });
-      await AssetSw.update(
-        { state: inUseCount > 0 ? 'in_use' : 'available' },
-        { where: { id: lockedLicense.asset_sw_id, state: { [Op.ne]: 'returned' } }, transaction: t }
-      );
+      await recalcSwState(lockedLicense.asset_sw_id, t);
     });
 
     return res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
@@ -2124,10 +2120,7 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
     }, { transaction: t });
 
     await AssetSw.increment('quantity', { by: 1, where: { id: Number(asset_sw_id) }, transaction: t });
-    await AssetSw.update(
-      { state: 'in_use' },
-      { where: { id: Number(asset_sw_id), state: { [Op.ne]: 'returned' } }, transaction: t }
-    );
+    await recalcSwState(Number(asset_sw_id), t);  
 
     return license;
   });
@@ -2169,6 +2162,15 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
     required_quantity: 1,
     request_reason:    request_reason ?? null,
     new_asset_data:    JSON.stringify({ license_id: Number(license_id) }),
+  });
+
+  await AssetSwHistory.create({
+    asset_sw_id:  Number(asset_sw_id),
+    license_id:   Number(license_id),
+    user_id:      userId,               // 요청자 ID
+    change_type:  'request',
+    before_value: 'available',          // 라이선스 현재 상태
+    after_value:  'pending',
   });
  
   res.status(201).json({
@@ -2455,6 +2457,14 @@ exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
     required_quantity: 1,
     request_reason:    request_reason ?? null,
     new_asset_data:    null,
+  });
+
+  await AssetEnterpriseHistory.create({
+    asset_enterprise_id: Number(asset_id),
+    user_id:             userId,            // 요청자 ID
+    change_type:         'request',
+    before_value:        asset.state,       // 현재 자산 상태 (stored)
+    after_value:         'pending',
   });
  
   res.status(201).json({
@@ -2971,39 +2981,7 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
     }
 
     // 영향받은 SW 마스터 state 재계산
-    const countsRaw = await AssetSwLicense.findAll({
-      where: {
-        asset_sw_id: { [Op.in]: [...affectedSwIds] },
-        state:       'in_use',
-      },
-      attributes: [
-        'asset_sw_id',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'cnt'],
-      ],
-      group: ['asset_sw_id'],
-      raw: true,
-      transaction: t,
-    });
- 
-    const inUseCountMap = Object.fromEntries(
-      countsRaw.map(r => [Number(r.asset_sw_id), parseInt(r.cnt, 10)])
-    );
- 
-    const toInUse    = [...affectedSwIds].filter(id => (inUseCountMap[id] ?? 0) > 0);
-    const toAvailable = [...affectedSwIds].filter(id => (inUseCountMap[id] ?? 0) === 0);
- 
-    if (toInUse.length > 0) {
-      await AssetSw.update(
-        { state: 'in_use' },
-        { where: { id: { [Op.in]: toInUse } }, transaction: t }
-      );
-    }
-    if (toAvailable.length > 0) {
-      await AssetSw.update(
-        { state: 'available' },
-        { where: { id: { [Op.in]: toAvailable } }, transaction: t }
-      );
-    }
+    await recalcSwStateBatch([...affectedSwIds], t);
   });
 
   if (changedCount === 0) {

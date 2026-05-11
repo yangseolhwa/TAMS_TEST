@@ -1,1 +1,13 @@
-/* 공통 스타일은 AssetPage.common.module.css 참고 */
+/* =====================
+   멀티라인 셀
+   ===================== */
+.multiLine {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.multiLine span {
+  display: block;
+  line-height: 1.5;
+}

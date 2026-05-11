@@ -98,6 +98,16 @@ html, body {
   --color-badge-orange-bg:       #FFC583;
   --color-badge-orange:          #8C4C03;
   --color-badge-return-bg:       #FEE2E2;
+
+  /* Badge - State (진한 톤) */
+--color-badge-state-register: #16a34a;
+--color-badge-state-return:   #b91c1c;
+--color-badge-state-change:   #d97706;
+--color-badge-state-move:     #1d4eda;
+--color-badge-state-assign:   #6834d0;
+--color-badge-state-text:     #ffffff;
+--color-badge-state-grey:     #888888;
+
   /* Table */
   --color-table-header-bg: #f2f4f9;
 }

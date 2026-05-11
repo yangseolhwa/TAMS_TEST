@@ -121,8 +121,12 @@
   margin-bottom: 12px;
 }
 
+.dash {
+  color: var(--color-text-secondary);
+}
+
 /* =====================
-   뱃지 공통
+   변경 전/후 배지
    ===================== */
 .badge {
   display: inline-block;
@@ -131,36 +135,10 @@
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
-  color: #ffffff;
+  color: var(--color-badge-state-text);
 }
 
-/* =====================
-   변경 컬럼 배지 (진한 톤)
-   ===================== */
-.badgeRegister {
-  background-color: #16a34a;
-}
-
-.badgeReturn {
-  background-color: #b91c1c;
-}
-
-.badgeStateChange {
-  background-color: #d97706;
-}
-
-.badgeMove {
-  background-color: #1d4eda;
-}
-
-.badgeAssign {
-  background-color: #6834d0;
-}
-
-
-/* =====================
-   대시 표시
-   ===================== */
-.dash {
-  color: var(--color-text-secondary);
-}
+.status_green  { background-color: var(--color-badge-state-register); }
+.status_blue   { background-color: var(--color-badge-state-move);     }
+.status_return { background-color: var(--color-badge-state-return);   }
+.status_gray   { background-color: var(--color-badge-state-grey);     }

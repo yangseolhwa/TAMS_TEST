@@ -1,0 +1,200 @@
+/* =====================
+   인라인 select
+   ===================== */
+.inlineSelect {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.inlineSelect:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.inlineSelect:disabled {
+  background-color: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* =====================
+   SW 아코디언
+   ===================== */
+.swAccordion {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+}
+
+/* SW 목록 헤더 */
+/* 소프트웨어명 | 제조사 | 버전 | 담당자지정 | 할당(chevron) */
+.swAccordionHeader {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 80px 200px 64px;
+  align-items: center;
+  min-width: 600px;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* SW 아코디언 아이템 */
+.swAccordionItem {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.swAccordionItem:last-child {
+  border-bottom: none;
+}
+
+/* SW 행 버튼 (라이선스형 아코디언) */
+.swAccordionRow {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 80px 200px 64px;
+  align-items: center;
+  min-width: 600px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  text-align: left;
+}
+
+/* SW 행 div (구독형 flat) */
+.swFlatRow {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 80px 200px 64px;
+  align-items: center;
+  min-width: 600px;
+}
+
+.swAccordionRow:hover {
+  background-color: var(--color-primary-tint);
+}
+
+.swAccordionRowOpen {
+  background-color: var(--color-accent-bg);
+}
+
+.swAccordionRowOpen:hover {
+  background-color: var(--color-accent-bg);
+}
+
+.swAccordionCell {
+  padding: 11px 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swAccordionChevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   헤더 th (SW 아코디언용)
+   ===================== */
+.th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-surface);
+  white-space: nowrap;
+}
+
+/* =====================
+   소제목 행 (구독형 / 라이선스형)
+   ===================== */
+.groupTitle {
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* =====================
+   라이선스 패널
+   ===================== */
+.licensePanel {
+  overflow: hidden;
+  background-color: var(--color-accent-bg);
+  transition: max-height 300ms ease-in-out;
+}
+
+.licensePanelOpen {
+  border-top: 1px solid var(--color-accent-border);
+}
+
+/* 라이선스 행 */
+.licenseRow {
+  display: grid;
+  grid-template-columns: 1fr 200px 64px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-accent-border);
+  transition: background-color var(--transition-fast);
+}
+
+.licenseRow:last-child {
+  border-bottom: none;
+}
+
+.licenseRow:hover {
+  background-color: var(--color-accent-border);
+}
+
+.licenseTd {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =====================
+   빈 데이터
+   ===================== */
+.empty {
+  padding: 40px 14px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+/* =====================
+   총 건수
+   ===================== */
+.totalCount {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 600;
+  margin: 0;
+  padding-top: 10px;
+}

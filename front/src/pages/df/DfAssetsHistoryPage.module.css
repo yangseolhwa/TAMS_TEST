@@ -40,59 +40,16 @@
   color: var(--color-text-secondary);
 }
 
-/* =====================
-   뱃지 — 요청 유형
-   ===================== */
 .badge {
   display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
+  color: var(--color-badge-state-text);
 }
 
-.badgeRegister {
-  background-color: var(--color-badge-green-bg);
-  color: var(--color-badge-green);
-}
-
-.badgeReturn {
-  background-color: var(--color-badge-return-bg);
-  color: var(--color-badge-red2);
-}
-
-.badgeStateChange {
-  background-color: var(--color-badge-orange-bg);
-  color: var(--color-badge-orange);
-}
-
-.badgeMove {
-  background-color: var(--color-badge-blue2-bg);
-  color: var(--color-badge-blue2);
-}
-
-/* =====================
-   뱃지 — 상태
-   ===================== */
-.stateActive {
-  background-color: var(--color-badge-green2-bg);
-  color: var(--color-badge-green2);
-}
-
-.stateStored {
-  background-color: var(--color-badge-blue2-bg);
-  color: var(--color-badge-blue2);
-}
-
-.stateInactive {
-  background-color: var(--color-badge-gray-bg);
-  color: var(--color-text-secondary);
-}
-
-/* =====================
-   대시 표시
-   ===================== */
-.dash {
-  color: var(--color-text-secondary);
-}
+.status_green  { background-color: var(--color-badge-state-register); }
+.status_blue   { background-color: var(--color-badge-state-move);     }
+.status_orange { background-color: var(--color-badge-state-change);   }

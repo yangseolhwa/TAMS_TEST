@@ -34,6 +34,7 @@ const DataTable = ({
   onSelectionChange = () => {},
   totalCount,
   highlight,
+  maxHeight,
 }) => {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -91,7 +92,11 @@ const DataTable = ({
   };
 
   // 컬럼 너비 스타일 계산
-  const getColStyle = (col) => col.width ? { width: col.width, flexShrink: 0 } : { flex: 1 };
+  const getColStyle = (col) => {
+  if (col.width) return { width: col.width, flexShrink: 0 };
+  if (col.key === 'no') return { width: '48px', flexShrink: 0 };
+  return { flex: 1 };
+} ;
   const checkboxColStyle = { width: '40px', flexShrink: 0 };
 
   return (
@@ -118,7 +123,7 @@ const DataTable = ({
         </div>
 
         {/* 본문 — 스크롤 영역 */}
-        <div className={styles.tbody}>
+        <div className={styles.tbody} style={maxHeight ? { maxHeight } : undefined}>
           {rows.length === 0 ? (
             <div className={styles.emptyRow}>
               데이터가 없습니다.
@@ -183,6 +188,7 @@ DataTable.propTypes = {
   onSelectionChange: PropTypes.func,
   totalCount:        PropTypes.number,
   highlight:         PropTypes.string,
+  maxHeight:         PropTypes.string,
 };
 
 export default DataTable;
