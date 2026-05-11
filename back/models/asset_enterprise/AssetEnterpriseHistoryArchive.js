@@ -6,7 +6,11 @@ const AssetEnterpriseHistoryArchive = sequelize.define('AssetEnterpriseHistoryAr
   history_id: { type: DataTypes.INTEGER },
   asset_enterprise_id: { type: DataTypes.INTEGER },
   user_id: { type: DataTypes.INTEGER },
-  change_type: { type: DataTypes.ENUM('register', 'returned', 'change', 'move', 'assign') },
+  change_type: {
+    type: DataTypes.ENUM(
+      'register', 'returned', 'change', 'move', 'assign', 'request', 'rejected',
+    ),
+  },
   before_value: { type: DataTypes.STRING(255) },
   after_value: { type: DataTypes.STRING(255) },
   archived_at: { type: DataTypes.DATE },

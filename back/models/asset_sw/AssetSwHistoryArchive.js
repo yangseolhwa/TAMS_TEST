@@ -7,7 +7,11 @@ const AssetSwHistoryArchive = sequelize.define('AssetSwHistoryArchive', {
   asset_sw_id: { type: DataTypes.INTEGER },
   license_id: { type: DataTypes.INTEGER },
   user_id: { type: DataTypes.INTEGER },
-  change_type: { type: DataTypes.ENUM('register', 'returned', 'change', 'assign') },
+  change_type: {
+    type: DataTypes.ENUM(
+      'register', 'returned', 'change', 'assign', 'request', 'rejected',
+    ),
+  },
   before_value: { type: DataTypes.STRING(255) },
   after_value: { type: DataTypes.STRING(255) },
   archived_at: { type: DataTypes.DATE },
