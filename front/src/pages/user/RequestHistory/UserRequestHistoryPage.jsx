@@ -43,6 +43,7 @@ const UserRequestHistoryPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn:  fetchAssetRequests,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 
@@ -52,13 +53,6 @@ const UserRequestHistoryPage = () => {
   return (
     <div className={common.page}>
       <PageHeader title="내 자산 요청 내역" />
-      <Banner
-        text={
-          <>
-            자산 요청 내역은 <strong>24시간</strong> 후에 자동으로 삭제됩니다.
-          </>
-        }
-      />
 
       {/* PC 섹션 */}
       <section className={styles.section}>

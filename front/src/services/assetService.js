@@ -168,7 +168,7 @@ export const approveEnterpriseRequest = async (requestId) => {
 
 export const rejectEnterpriseRequest = async (requestId, rejectReason) => {
   try {
-    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {}
+    const body = rejectReason?.trim() ? { rejection_reason: rejectReason.trim() } : {}
     const { data } = await api.patch(`${ENDPOINTS.ASSETS.ENTERPRISE_REJECT}/${requestId}`, body)
     return data
   } catch (error) {
@@ -187,7 +187,7 @@ export const approveSwRequest = async (requestId) => {
 
 export const rejectSwRequest = async (requestId, rejectReason) => {
   try {
-    const body = rejectReason?.trim() ? { reject_reason: rejectReason.trim() } : {}
+    const body = rejectReason?.trim() ? { rejection_reason: rejectReason.trim() } : {}
     const { data } = await api.patch(`${ENDPOINTS.ASSETS.SW_REJECT}/${requestId}`, body)
     return data
   } catch (error) {
