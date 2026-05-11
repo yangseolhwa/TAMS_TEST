@@ -573,7 +573,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: isLicenseRequired ? Number(quantity ?? 0) : Number(quantity),
+          quantity: Number(quantity ?? 0),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -850,7 +850,6 @@ exports.registerDf = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.getRequests = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const buildWhere = (extraWhere) => {
     if (role === 'admin') {
@@ -860,7 +859,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
       requester_id: userId,
       [Op.or]: [
         { status: 'pending' },
-        { status: { [Op.in]: ['approved', 'rejected'] }, updated_at: { [Op.gte]: cutoff } },
+        { status: { [Op.in]: ['approved', 'rejected'] } },
       ],
       ...extraWhere,
     };
@@ -2119,7 +2118,6 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       after_value:  'in_use',
     }, { transaction: t });
 
-    await AssetSw.increment('quantity', { by: 1, where: { id: Number(asset_sw_id) }, transaction: t });
     await recalcSwState(Number(asset_sw_id), t);  
 
     return license;
