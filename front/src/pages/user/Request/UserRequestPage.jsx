@@ -250,7 +250,7 @@ const UserRequestPage = () => {
     <div className={common.page}>
       <PageHeader title="내 자산 등록 요청" />
 
-      <section className={styles.section}>
+      <section className={common.section}>
         <Card>
           <Banner
             text={

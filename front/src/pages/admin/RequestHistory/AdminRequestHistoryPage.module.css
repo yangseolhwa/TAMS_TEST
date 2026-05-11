@@ -5,6 +5,8 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
+  flex: none;
+  min-height: 0;
 }
 
 /* =====================
@@ -59,6 +61,7 @@
 .tableCard {
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 /* =====================
