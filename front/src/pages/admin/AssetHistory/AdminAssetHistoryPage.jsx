@@ -17,6 +17,8 @@ const CHANGE_TYPE_STATUS_MAP = {
   '상태 변경': { label: '상태 변경', color: 'yellow' },
   '이동':     { label: '이동',     color: 'blue'   },
   '할당':     { label: '할당',     color: 'purple' },
+  '요청':     { label: '요청',     color: 'gray'   },
+  '반려':     { label: '반려',     color: 'red'    },
 }
 
 const STATE_STATUS_MAP = {
@@ -24,6 +26,8 @@ const STATE_STATUS_MAP = {
   stored:    { label: '보관중',   color: 'blue'   },
   returned:  { label: '반납됨',   color: 'return' },
   available: { label: '사용가능', color: 'gray'   },
+  pending:   { label: '대기중',   color: 'yellow' },
+  rejected:  { label: '반려됨',   color: 'red'    },
 }
 
 const renderValueCell = (value) => {
