@@ -267,7 +267,7 @@ const AdminAssetAssignPage = () => {
     if (swLoading) return <div className={styles.empty}>불러오는 중...</div>
     if (filteredSwList.length === 0) return <div className={styles.empty}>할당 가능한 SW 자산이 없습니다.</div>
 
-    const subscriptionList = filteredSwList.filter((sw) => sw.license_required === false)
+    const subscriptionList = filteredSwList.filter((sw) => sw.license_required === false && (sw.available_count ?? 0) > 0)
     const licensedList     = filteredSwList.filter((sw) => sw.license_required !== false)
     const hasBothTypes     = subscriptionList.length > 0 && licensedList.length > 0
 
@@ -278,7 +278,7 @@ const AdminAssetAssignPage = () => {
           <div className={styles.swAccordionCell}>{sw.name ?? '—'}</div>
           <div className={styles.swAccordionCell}>{sw.manufacturer ?? '—'}</div>
           <div className={styles.swAccordionCell}>{sw.version ?? '—'}</div>
-          <div className={styles.swAccordionCell}>{sw.quantity ?? '—'}</div>
+          <div className={styles.swAccordionCell}>{sw.available_count ?? '—'}</div>
           <div className={styles.swAccordionCell}>
             <select
               className={styles.inlineSelect}
@@ -326,7 +326,7 @@ const AdminAssetAssignPage = () => {
             <div className={styles.swAccordionCell}>{sw.name ?? '—'}</div>
             <div className={styles.swAccordionCell}>{sw.manufacturer ?? '—'}</div>
             <div className={styles.swAccordionCell}>{sw.version ?? '—'}</div>
-            <div className={styles.swAccordionCell}>{sw.available_licenses?.length ?? '—'}</div>
+            <div className={styles.swAccordionCell}>{sw.available_count ?? '—'}</div>
             <div className={styles.swAccordionCell} />
             <div className={styles.swAccordionChevron}>
               {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

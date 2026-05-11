@@ -235,7 +235,7 @@ export const fetchAssetRequests = async () => {
       manufacturer:    item.sw?.manufacturer  ?? parsed.manufacturer ?? null,
       version:         item.sw?.version       ?? parsed.version      ?? null,
       licenseKey:      item.license_detail?.license_key ?? parsed.licenses?.[0]?.license_key ?? parsed.license_key ?? null,
-      licensePassword: item.license_detail?.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
+      licensePassword: item.license_detail?.license_password ?? parsed.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
       status:          item.status?.toUpperCase(),
       rejectionReason: item.rejection_reason ?? null,
     }
