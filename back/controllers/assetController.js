@@ -535,17 +535,12 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
     if (license_required === false) {
-      // 구독형: quantity = 총 사용 가능 자리 수 (필수)
       const qty = Number(quantity);
       if (!quantity || isNaN(qty) || qty < 1) {
-        return res.status(400).json({ message: '구독형 SW는 수량을 1 이상 입력해주세요.' });
-      }
-    } else {
-      // 라이선스형: quantity = 총 라이선스 수용 한도 (capacity, 필수)
-      // 이 값으로 등록 가능한 라이선스 개수를 제한합니다.
-      const qty = Number(quantity);
-      if (!quantity || isNaN(qty) || qty < 1) {
-        return res.status(400).json({ message: '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.' });
+        const message = license_required === false
+          ? '구독형 SW는 수량을 1 이상 입력해주세요.'
+          : '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.';
+        return res.status(400).json({ message });
       }
     }
   }
@@ -1258,7 +1253,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         name:             parsedData.name,
         manufacturer:     parsedData.manufacturer,
         version:          parsedData.version          ?? null,
-        quantity:         isLicenseRequired ? (parsedData.quantity ?? 0) : (parsedData.add_quantity ?? 0),
+        quantity:         isLicenseRequired ? (parsedData.quantity ?? 0) : 0,
         acquisition_date: parsedData.acquisition_date ?? null,
         license_required: isLicenseRequired,
         related_link:     parsedData.related_link     ?? null,
@@ -2130,12 +2125,20 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       lock: t.LOCK.UPDATE, 
       transaction: t, 
     });
+
     // 락 획득 후 최신 할당 수량을 다시 계산하여 stale read 방지
     const currentInUseCount = await AssetSwLicense.count({
       where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
       transaction: t,
     });
-    if (lockedSw && lockedSw.quantity > 0 && currentInUseCount > lockedSw.quantity) {
+
+    if (!lockedSw) {
+      const err = new Error('SW를 찾을 수 없습니다.');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (lockedSw.quantity > 0 && currentInUseCount > lockedSw.quantity) {
       const err = new Error('할당 가능 수량(' + lockedSw.quantity + '개)을 초과했습니다.');
       err.statusCode = 400;
       throw err;
