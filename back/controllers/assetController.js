@@ -974,7 +974,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
           const d = JSON.parse(r.new_asset_data);
           if (d.license_id) {
             const license = await AssetSwLicense.findByPk(d.license_id, {
-              attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type', 'state'],
+              attributes: ['id', ...(role === 'admin' ? ['license_key', 'license_password'] : []), 'key_type', 'license_type', 'state'],
             });
             plain.license_detail = license ?? null;
           }
@@ -1802,12 +1802,6 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     quantity:        s.quantity,
     license_required:s.license_required,
     sw_type:         s.sw_type,
-    user:            s.User ? {
-      id: s.User.id,
-      email: s.User.email,
-      role: s.User.role,
-      name: s.User.profile?.name ?? null,
-    } : null,
     state:           s.state,
     related_link:    s.related_link,
     in_use_count:    inUseCount,
@@ -1912,12 +1906,6 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       quantity:        sw.quantity,
       license_required: sw.license_required,
       sw_type:          sw.sw_type,
-      user:             sw.User ? {
-        id: sw.User.id, 
-        email: sw.User.email,
-        role: sw.User.role,
-        name: sw.User.profile?.name
-      } : null,
       acquisition_date: sw.acquisition_date,
       state:           sw.state,
       related_link:    sw.related_link,
