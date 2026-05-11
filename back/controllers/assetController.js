@@ -255,7 +255,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
 
   const projectWhere = project_id ? { id: Number(project_id) } : {};
 
-  const itemWhere = { state: { [Op.ne]: 'returned' } };
+  const itemWhere = {}; 
   if (state)        itemWhere.state         = state;
   if (manufacturer) itemWhere.manufacturer  = { [Op.like]: `%${manufacturer}%` };
   if (item_type_id) itemWhere.asset_type_id = Number(item_type_id);
@@ -1730,7 +1730,7 @@ exports.moveDf = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.getDfDashboard = asyncWrapper(async (req, res) => {
   const items = await AssetProjectItem.findAll({
-    where: { state: { [Op.ne]: 'returned' } },
+    where: {},
     attributes: ['id', 'project_id', 'asset_type_id'],
     include: [
       { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
