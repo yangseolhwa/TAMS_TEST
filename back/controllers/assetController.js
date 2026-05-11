@@ -535,9 +535,17 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
     if (license_required === false) {
+      // 구독형: quantity = 총 사용 가능 자리 수 (필수)
       const qty = Number(quantity);
       if (!quantity || isNaN(qty) || qty < 1) {
         return res.status(400).json({ message: '구독형 SW는 수량을 1 이상 입력해주세요.' });
+      }
+    } else {
+      // 라이선스형: quantity = 총 라이선스 수용 한도 (capacity, 필수)
+      // 이 값으로 등록 가능한 라이선스 개수를 제한합니다.
+      const qty = Number(quantity);
+      if (!quantity || isNaN(qty) || qty < 1) {
+        return res.status(400).json({ message: '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.' });
       }
     }
   }
@@ -573,7 +581,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: Math.max(0, Number(quantity) || 0),
+          quantity: Number(quantity),  // 위 검증에서 >= 1 확인됨
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -691,7 +699,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         ...(!isExisting ? {
           name, manufacturer,
           version:          version          ?? null,
-          quantity:         0,
+          quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용)
           acquisition_date: acquisition_date ?? null,
           related_link:     related_link     ?? null,
           remarks:          remarks          ?? null,
@@ -717,7 +725,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       new_asset_data: JSON.stringify({
         name, manufacturer,
         version:          version          ?? null,
-        quantity:         0,
+        quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용)
         acquisition_date: acquisition_date ?? null,
         related_link:     related_link     ?? null,
         remarks:          remarks          ?? null,
@@ -1250,7 +1258,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         name:             parsedData.name,
         manufacturer:     parsedData.manufacturer,
         version:          parsedData.version          ?? null,
-        quantity:         isLicenseRequired ? 0 : (parsedData.add_quantity ?? 0),
+        quantity:         isLicenseRequired ? (parsedData.quantity ?? 0) : (parsedData.add_quantity ?? 0),
         acquisition_date: parsedData.acquisition_date ?? null,
         license_required: isLicenseRequired,
         related_link:     parsedData.related_link     ?? null,
