@@ -7,6 +7,7 @@ import DataTable from '../../../components/DataTable/DataTable'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
+import common from '../../AssetPage.common.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ const AdminAssetHistoryPage = () => {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader
         title="내 자산 히스토리"
         desc="반납, 등록, 위치 이동에 관한 모든 이력을 조회합니다."
@@ -167,7 +168,6 @@ const AdminAssetHistoryPage = () => {
             selectable={false}
             totalCount={filteredRows.length}
             highlight={appliedKeyword}
-            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

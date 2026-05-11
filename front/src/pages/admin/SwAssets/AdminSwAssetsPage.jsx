@@ -190,7 +190,6 @@ const AdminSwAssetsPage = () => {
             selectable={false}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
-            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

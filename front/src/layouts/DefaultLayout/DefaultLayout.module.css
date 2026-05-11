@@ -4,7 +4,8 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* =====================
@@ -127,6 +128,7 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* =====================
@@ -270,6 +272,9 @@
   flex: 1;
   padding: 28px 32px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* =====================
