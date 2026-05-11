@@ -506,7 +506,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
  
   const isExisting = !!asset_sw_id;
  
-  // ── 입력 유효성 검사 ───────────────────────────────────────────────
+   // ── 입력 유효성 검사 ───────────────────────────────────────────────
   let existingSw = null;
   if (isExisting) {
     existingSw = await AssetSw.findByPk(asset_sw_id);
@@ -535,17 +535,11 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
     const qty = Number(quantity);
-
-    if (license_required === false) {
-      // 구독형: quantity = 총 사용 가능 자리 수
-      if (!quantity || isNaN(qty) || qty < 1) {
-        return res.status(400).json({ message: '구독형 SW는 수량을 1 이상 입력해주세요.' });
-      }
-    } else {
-      // 라이선스형: quantity = 총 라이선스 수용 한도 (capacity)
-      if (!quantity || isNaN(qty) || qty < 1) {
-        return res.status(400).json({ message: '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.' });
-      }
+    if (!quantity || isNaN(qty) || qty < 1) {
+      const message = (license_required === false)
+        ? '구독형 SW는 수량을 1 이상 입력해주세요.'
+        : '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.';
+      return res.status(400).json({ message });
     }
   }
  
@@ -580,7 +574,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: Math.max(0, Number(quantity) || 0),
+          quantity:  Number(quantity),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
