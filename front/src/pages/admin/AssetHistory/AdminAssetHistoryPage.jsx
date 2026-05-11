@@ -116,7 +116,7 @@ const AdminAssetHistoryPage = () => {
         desc="반납, 등록, 위치 이동에 관한 모든 이력을 조회합니다."
       />
 
-      <section className={styles.section}>
+      <section className={common.section}>
         <Card>
           {/* 필터 영역 */}
           <div className={styles.filterArea}>

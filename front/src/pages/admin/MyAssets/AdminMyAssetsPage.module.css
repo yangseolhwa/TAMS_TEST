@@ -5,6 +5,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: none;
+  min-height: 0;
 }
 
 .sectionHeader {
