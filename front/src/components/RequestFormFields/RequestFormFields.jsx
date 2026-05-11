@@ -614,6 +614,7 @@ const RequestFormFields = ({
                             licenseRequired: false,
                             licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
                             licensePassword: "",
+                            quantity:        "",
                           })
                         }
                       />
@@ -623,23 +624,21 @@ const RequestFormFields = ({
                 </div>
               </div>
 
-              {/* Row 3: 구독형일 때 수량 / 공통 필드 */}
+              {/* Row 3: 수량 / 공통 필드 */}
               <div className={styles.inputRow}>
-                {!item.licenseRequired && (
-                  <div className={styles.inputGroup}>
-                    <label className={styles.selectLabel}>
-                      수량 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      min="1"
-                      placeholder="수량 입력"
-                      value={item.quantity}
-                      onChange={(e) => onItemChange(index, "quantity", e.target.value)}
-                    />
-                  </div>
-                )}
+                <div className={styles.inputGroup}>
+                  <label className={styles.selectLabel}>
+                    수량 <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="1"
+                    placeholder="1 이상 입력"
+                    value={item.quantity}
+                    onChange={(e) => onItemChange(index, "quantity", e.target.value)}
+                  />
+                </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.selectLabel}>관련 링크</label>
                   <input
