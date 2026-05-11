@@ -449,6 +449,26 @@ export const assignSwLicense = async (body) => {
     throw new Error(error.response?.data?.message ?? 'SW 할당에 실패했습니다.')
   }
 }
+
+// PC 할당 요청 (user)
+export const requestEnterpriseAssign = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.ENTERPRISE_ASSIGN_REQUEST, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'PC 자산 할당 요청에 실패했습니다.')
+  }
+}
+
+// SW 할당 요청 (user)
+export const requestSwAssign = async (body) => {
+  try {
+    const { data } = await api.post(ENDPOINTS.ASSETS.SW_ASSIGN_REQUEST, body)
+    return data
+  } catch (error) {
+    throw new Error(error.response?.data?.message ?? 'SW 할당 요청에 실패했습니다.')
+  }
+}
  
 // ═══════════════════════════════════════════════════════════════
 //  히스토리

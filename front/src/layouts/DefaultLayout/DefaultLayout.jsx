@@ -36,6 +36,7 @@ const TABS_BY_ROLE = {
       menus: [
         { id: 'my-assets-list',    label: '내 자산 현황',    path: 'my-assets' },
         { id: 'my-assets-request', label: '내 자산 등록 요청', path: 'request'  },
+        { id: 'my-assets-assign', label: '내 자산 할당 요청', path: 'assign' },
         { id: 'my-assets-history', label: '내 자산 요청 내역', path: 'history'  },
       ],
     },
