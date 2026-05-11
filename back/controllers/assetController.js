@@ -468,6 +468,17 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
   }
  
   const createdRequests = await AssetEnterpriseRequest.bulkCreate(requestRows);
+
+  await AssetEnterpriseHistory.bulkCreate(
+    requestRows.map((row) => ({
+      asset_enterprise_id: row.asset_id ?? null,  // 신규 자산이면 null
+      user_id:             userId,                // 요청자 ID
+      change_type:         'request',
+      before_value:        null,
+      after_value:         'pending',
+    }))
+  );
+
   res.status(201).json({
     message: '자산 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
     requests: createdRequests,
@@ -717,6 +728,17 @@ exports.registerSw = asyncWrapper(async (req, res) => {
   }
  
   const createdRequests = await AssetSwRequest.bulkCreate(requestRows);
+
+  await AssetSwHistory.bulkCreate(
+    requestRows.map((row) => ({
+      asset_sw_id:  row.asset_sw_id ?? null,  // 신규 SW이면 null
+      license_id:   null,
+      user_id:      userId,                   // 요청자 ID
+      change_type:  'request',
+      before_value: null,
+      after_value:  'pending',
+    }))
+  );
  
   res.status(201).json({
     message: 'SW 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
@@ -1112,6 +1134,14 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
+
+  await AssetEnterpriseHistory.create({
+    asset_enterprise_id: request.asset_id ?? null,  // 신규 자산 요청이면 null
+    user_id:             request.requester_id,       // 요청자 ID (admin 아님)
+    change_type:         'rejected',
+    before_value:        'pending',
+    after_value:         'rejected',
+  });
  
   res.status(200).json({ message: '자산 등록 요청이 거절되었습니다.', request });
 });
@@ -1331,6 +1361,15 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
+
+  await AssetSwHistory.create({
+    asset_sw_id:  request.asset_sw_id ?? null,  // 신규 SW 요청이면 null
+    license_id:   null,
+    user_id:      request.requester_id,          // 요청자 ID (admin 아님)
+    change_type:  'rejected',
+    before_value: 'pending',
+    after_value:  'rejected',
+  });
  
   res.status(200).json({ message: 'SW 등록 요청이 거절되었습니다.', request });
 });
@@ -2124,6 +2163,15 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
     request_reason:    request_reason ?? null,
     new_asset_data:    JSON.stringify({ license_id: Number(license_id) }),
   });
+
+  await AssetSwHistory.create({
+    asset_sw_id:  Number(asset_sw_id),
+    license_id:   Number(license_id),
+    user_id:      userId,               // 요청자 ID
+    change_type:  'request',
+    before_value: 'available',          // 라이선스 현재 상태
+    after_value:  'pending',
+  });
  
   res.status(201).json({
     message: '라이선스 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
@@ -2409,6 +2457,14 @@ exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
     required_quantity: 1,
     request_reason:    request_reason ?? null,
     new_asset_data:    null,
+  });
+
+  await AssetEnterpriseHistory.create({
+    asset_enterprise_id: Number(asset_id),
+    user_id:             userId,            // 요청자 ID
+    change_type:         'request',
+    before_value:        asset.state,       // 현재 자산 상태 (stored)
+    after_value:         'pending',
   });
  
   res.status(201).json({
