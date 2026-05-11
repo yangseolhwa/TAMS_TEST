@@ -386,55 +386,46 @@ const DfAssetsByProjectPage = ({ role }) => {
             </div>
           </div>
 
-          {/* PC 테이블 — 프로젝트에 PC 자산이 있으면 항상 표시 (필터 결과 0건이어도) */}
+          {/* PC 테이블 — 프로젝트가 PC 자산일 때 */}
           {projectCategories.has('PC') && (
-            <div className={styles.tableSection}>
-              <p className={styles.tableSectionLabel}>PC</p>
-              <DataTable
-                columns={PC_COLUMNS}
-                rows={isLoading ? [] : pcRows}
-                statusMap={STATUS_MAP}
-                selectable={activeMode !== null}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                totalCount={isLoading ? 0 : pcRows.length}
-                highlight={appliedFilters.keyword}
-              />
-            </div>
+            <DataTable
+              columns={PC_COLUMNS}
+              rows={isLoading ? [] : pcRows}
+              statusMap={STATUS_MAP}
+              selectable={activeMode !== null}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              totalCount={isLoading ? 0 : pcRows.length}
+              highlight={appliedFilters.keyword}
+            />
           )}
 
-          {/* PLC 테이블 — 프로젝트에 PLC 자산이 있으면 항상 표시 */}
+          {/* PLC 테이블 — 프로젝트가 PLC 자산일 때 */}
           {projectCategories.has('PLC') && (
-            <div className={styles.tableSection}>
-              <p className={styles.tableSectionLabel}>PLC</p>
-              <DataTable
-                columns={PLC_COLUMNS}
-                rows={isLoading ? [] : plcRows}
-                statusMap={STATUS_MAP}
-                selectable={activeMode !== null}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                totalCount={isLoading ? 0 : plcRows.length}
-                highlight={appliedFilters.keyword}
-              />
-            </div>
+            <DataTable
+              columns={PLC_COLUMNS}
+              rows={isLoading ? [] : plcRows}
+              statusMap={STATUS_MAP}
+              selectable={activeMode !== null}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              totalCount={isLoading ? 0 : plcRows.length}
+              highlight={appliedFilters.keyword}
+            />
           )}
 
-          {/* 기타 (PC/PLC 미분류) — 데이터 있을 때만 표시 */}
+          {/* 기타 (PC/PLC 미분류) */}
           {etcRows.length > 0 && (
-            <div className={styles.tableSection}>
-              <p className={styles.tableSectionLabel}>기타</p>
-              <DataTable
-                columns={PLC_COLUMNS}
-                rows={etcRows}
-                statusMap={STATUS_MAP}
-                selectable={activeMode !== null}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                totalCount={etcRows.length}
-                highlight={appliedFilters.keyword}
-              />
-            </div>
+            <DataTable
+              columns={PLC_COLUMNS}
+              rows={etcRows}
+              statusMap={STATUS_MAP}
+              selectable={activeMode !== null}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              totalCount={etcRows.length}
+              highlight={appliedFilters.keyword}
+            />
           )}
 
           {/* 프로젝트 미선택 + 데이터 없음 */}
