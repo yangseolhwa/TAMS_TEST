@@ -249,8 +249,7 @@ const UserRequestPage = () => {
   return (
     <div className={common.page}>
       <PageHeader title="내 자산 등록 요청" />
-
-      <section className={common.section}>
+      <section>
         <Card>
           <Banner
             text={
