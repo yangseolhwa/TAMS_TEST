@@ -453,6 +453,8 @@ export const fetchPersonalHistory = async (params = {}) => {
       change:   '상태 변경',
       move:     '이동',
       assign:   '할당',
+      request:  '요청',
+      rejected: '반려',
     }
 
     const swRows = (data.sw ?? []).map((item) => ({
