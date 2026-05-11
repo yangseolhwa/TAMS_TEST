@@ -462,6 +462,7 @@ export const fetchPersonalHistory = async (params = {}) => {
       no:          0,
       assetType:   'SW',
       requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      createdAt:   item.created_at ?? null,
       changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
       beforeValue: item.before_value ?? null,
       afterValue:  item.after_value  ?? null,
@@ -475,6 +476,7 @@ export const fetchPersonalHistory = async (params = {}) => {
       no:          0,
       assetType:   'PC',
       requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      createdAt:   item.created_at ?? null,
       changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
       beforeValue: item.before_value ?? null,
       afterValue:  item.after_value  ?? null,
@@ -484,7 +486,8 @@ export const fetchPersonalHistory = async (params = {}) => {
     }))
 
     const combined = [...swRows, ...enterpriseRows]
-      .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+      // .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .map((row, i) => ({ ...row, no: i + 1 }))
 
     return combined
