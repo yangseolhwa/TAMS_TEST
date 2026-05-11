@@ -89,8 +89,8 @@ export const fetchMyAssets = async () => {
       manufacturer:     sw.manufacturer    ?? null,
       license_key:      license.license_key    ?? null,
       license_password: license.license_password ?? null,
-      related_link:     license.related_link    ?? null,
-      remarks:          license.remarks         ?? null,
+      related_link:     sw.related_link    ?? null,
+      remarks:          sw.remarks         ?? null,
       state:            license.state,
     }))
   )
@@ -453,6 +453,8 @@ export const fetchPersonalHistory = async (params = {}) => {
       change:   '상태 변경',
       move:     '이동',
       assign:   '할당',
+      request:  '요청',
+      rejected: '반려',
     }
 
     const swRows = (data.sw ?? []).map((item) => ({
@@ -460,6 +462,7 @@ export const fetchPersonalHistory = async (params = {}) => {
       no:          0,
       assetType:   'SW',
       requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      createdAt:   item.created_at ?? null,
       changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
       beforeValue: item.before_value ?? null,
       afterValue:  item.after_value  ?? null,
@@ -473,6 +476,7 @@ export const fetchPersonalHistory = async (params = {}) => {
       no:          0,
       assetType:   'PC',
       requestedAt: item.created_at ? item.created_at.slice(0, 10) : null,
+      createdAt:   item.created_at ?? null,
       changeType:  CHANGE_TYPE_LABEL[item.change_type] ?? item.change_type,
       beforeValue: item.before_value ?? null,
       afterValue:  item.after_value  ?? null,
@@ -482,7 +486,8 @@ export const fetchPersonalHistory = async (params = {}) => {
     }))
 
     const combined = [...swRows, ...enterpriseRows]
-      .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+      // .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .map((row, i) => ({ ...row, no: i + 1 }))
 
     return combined
