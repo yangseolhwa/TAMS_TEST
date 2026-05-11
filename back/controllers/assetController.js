@@ -534,13 +534,17 @@ exports.registerSw = asyncWrapper(async (req, res) => {
     if (!name || !manufacturer) {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
+    const qty = Number(quantity);
+
     if (license_required === false) {
-      const qty = Number(quantity);
+      // 구독형: quantity = 총 사용 가능 자리 수
       if (!quantity || isNaN(qty) || qty < 1) {
-        const message = license_required === false
-          ? '구독형 SW는 수량을 1 이상 입력해주세요.'
-          : '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.';
-        return res.status(400).json({ message });
+        return res.status(400).json({ message: '구독형 SW는 수량을 1 이상 입력해주세요.' });
+      }
+    } else {
+      // 라이선스형: quantity = 총 라이선스 수용 한도 (capacity)
+      if (!quantity || isNaN(qty) || qty < 1) {
+        return res.status(400).json({ message: '라이선스형 SW는 총 라이선스 수량(capacity)을 1 이상 입력해주세요.' });
       }
     }
   }
@@ -576,7 +580,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: Number(quantity),  // 위 검증에서 >= 1 확인됨
+          quantity: Math.max(0, Number(quantity) || 0),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -694,7 +698,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         ...(!isExisting ? {
           name, manufacturer,
           version:          version          ?? null,
-          quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용)
+          quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용),
           acquisition_date: acquisition_date ?? null,
           related_link:     related_link     ?? null,
           remarks:          remarks          ?? null,
@@ -720,7 +724,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       new_asset_data: JSON.stringify({
         name, manufacturer,
         version:          version          ?? null,
-        quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용)
+        quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용),
         acquisition_date: acquisition_date ?? null,
         related_link:     related_link     ?? null,
         remarks:          remarks          ?? null,
@@ -2125,7 +2129,6 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       lock: t.LOCK.UPDATE, 
       transaction: t, 
     });
-
     // 락 획득 후 최신 할당 수량을 다시 계산하여 stale read 방지
     const currentInUseCount = await AssetSwLicense.count({
       where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
