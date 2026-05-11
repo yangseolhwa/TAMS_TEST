@@ -278,6 +278,7 @@ const AdminAssetAssignPage = () => {
           <div className={styles.swAccordionCell}>{sw.name ?? '—'}</div>
           <div className={styles.swAccordionCell}>{sw.manufacturer ?? '—'}</div>
           <div className={styles.swAccordionCell}>{sw.version ?? '—'}</div>
+          <div className={styles.swAccordionCell}>{sw.quantity ?? '—'}</div>
           <div className={styles.swAccordionCell}>
             <select
               className={styles.inlineSelect}
@@ -325,6 +326,7 @@ const AdminAssetAssignPage = () => {
             <div className={styles.swAccordionCell}>{sw.name ?? '—'}</div>
             <div className={styles.swAccordionCell}>{sw.manufacturer ?? '—'}</div>
             <div className={styles.swAccordionCell}>{sw.version ?? '—'}</div>
+            <div className={styles.swAccordionCell}>{sw.available_licenses?.length ?? '—'}</div>
             <div className={styles.swAccordionCell} />
             <div className={styles.swAccordionChevron}>
               {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -387,6 +389,7 @@ const AdminAssetAssignPage = () => {
           <div className={styles.th}>소프트웨어명</div>
           <div className={styles.th}>제조사</div>
           <div className={styles.th}>버전</div>
+          <div className={styles.th}>남은 수량</div>
           <div className={styles.th}>담당자 지정</div>
           <div className={styles.th}>할당</div>
         </div>
