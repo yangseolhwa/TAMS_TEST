@@ -445,7 +445,6 @@ const AdminAssetAssignPage = () => {
                 selectable={false}
                 totalCount={pcRows.length}
                 highlight={pcAppliedKeyword}
-                maxHeight="calc(100vh - 500px)"
               />
             </>
           )}

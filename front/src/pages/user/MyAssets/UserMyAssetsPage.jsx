@@ -6,6 +6,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
+import common from '../../AssetPage.common.module.css'
 import {
   fetchMyAssets,
   returnEnterpriseAssets,
@@ -194,7 +195,7 @@ const UserMyAssetsPage = () => {
   )
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader
         title="내 자산 현황"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
@@ -215,7 +216,6 @@ const UserMyAssetsPage = () => {
             rows={isLoading ? [] : swRows}
             selectable={false}
             totalCount={swRows.length}
-            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
@@ -245,7 +245,6 @@ const UserMyAssetsPage = () => {
             rows={isLoading ? [] : pcRows}
             selectable={false}
             totalCount={pcRows.length}
-            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>

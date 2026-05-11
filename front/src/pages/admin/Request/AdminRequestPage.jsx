@@ -11,6 +11,7 @@ import RequestFormFields, {
 } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import styles from "./AdminRequestPage.module.css";
+import common from '../../AssetPage.common.module.css'
 import {
   requestEnterpriseAsset,
   requestSwAsset,
@@ -247,7 +248,7 @@ const AdminRequestPage = () => {
 
   // ── 렌더링 ─────────────────────────────────────────────────────────────────
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader title="내 자산 등록" />
 
       <section className={styles.section}>

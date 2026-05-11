@@ -4,4 +4,7 @@
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
   padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
