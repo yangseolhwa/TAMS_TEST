@@ -407,8 +407,8 @@ const exportDf = async (req, res) => {
       const projName  = item.project?.name || 'Unknown';
       const sheetType = resolveSheetType(item);
 
-      if (!groupedForTotal[projName])   groupedForTotal[projName]  = [];
-      if (!groupedForSheets[projName])  groupedForSheets[projName] = { PC: [], PLC: [] };
+      if (!Object.prototype.hasOwnProperty.call(groupedForTotal, projName))   groupedForTotal[projName]  = [];
+      if (!Object.prototype.hasOwnProperty.call(groupedForSheets, projName))  groupedForSheets[projName] = { PC: [], PLC: [] };
 
       groupedForTotal[projName].push(item);
       groupedForSheets[projName][sheetType].push(item);

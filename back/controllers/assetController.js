@@ -850,7 +850,6 @@ exports.registerDf = asyncWrapper(async (req, res) => {
 // ─────────────────────────────────────────
 exports.getRequests = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const buildWhere = (extraWhere) => {
     if (role === 'admin') {
@@ -860,7 +859,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
       requester_id: userId,
       [Op.or]: [
         { status: 'pending' },
-        { status: { [Op.in]: ['approved', 'rejected'] }, updated_at: { [Op.gte]: cutoff } },
+        { status: { [Op.in]: ['approved', 'rejected'] } },
       ],
       ...extraWhere,
     };
