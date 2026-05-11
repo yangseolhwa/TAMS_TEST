@@ -48,26 +48,6 @@
 }
 
 /* =====================
-   PC / PLC 테이블 섹션
-   ===================== */
-.tableSection {
-  margin-top: 20px;
-}
-
-.tableSection:first-of-type {
-  margin-top: 0;
-}
-
-.tableSectionLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin: 0 0 8px 2px;
-}
-
-/* =====================
    선택 건수 표시
    ===================== */
 .selectedCount {
