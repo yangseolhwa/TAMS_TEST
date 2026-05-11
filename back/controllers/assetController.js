@@ -573,7 +573,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           name,
           manufacturer,
           version:          version          ?? null,
-          quantity: isLicenseRequired ? Number(quantity ?? 0) : Number(quantity),
+          quantity: Number(quantity ?? 0),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
@@ -2119,7 +2119,6 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       after_value:  'in_use',
     }, { transaction: t });
 
-    await AssetSw.increment('quantity', { by: 1, where: { id: Number(asset_sw_id) }, transaction: t });
     await recalcSwState(Number(asset_sw_id), t);  
 
     return license;
