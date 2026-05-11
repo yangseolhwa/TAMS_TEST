@@ -12,6 +12,7 @@ import AdminAssetAssignPage from './pages/admin/AssetAssign/AdminAssetAssignPage
 import UserMyAssetsPage from './pages/user/MyAssets/UserMyAssetsPage'
 import UserRequestPage from './pages/user/Request/UserRequestPage'
 import UserRequestHistoryPage from './pages/user/RequestHistory/UserRequestHistoryPage'
+import UserAssetAssignPage from './pages/user/AssetAssign/UserAssetAssignPage'
 import DfDashboardPage from './pages/df/DfDashboardPage'
 import DfAssetsListPage from './pages/df/DfAssetsListPage'
 import DfAssetsByProjectPage from './pages/df/DfAssetsByProjectPage'
@@ -72,6 +73,7 @@ function App() {
           <Route path="/user/df-assets/by-project"  element={role === 'user' ? <DfAssetsByProjectPage role={role} /> : <Navigate to="/login" replace />} />
           <Route path="/user/df-assets/register"    element={role === 'user' ? <DfAssetsRegisterPage role={role} /> : <Navigate to="/login" replace />} />
           <Route path="/user/df-assets/history"     element={role === 'user' ? <DfAssetsHistoryPage role={role} /> : <Navigate to="/login" replace />} />
+          <Route path="/user/my-assets/assign"      element={role === 'user' ? <UserAssetAssignPage /> : <Navigate to="/login" replace />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
