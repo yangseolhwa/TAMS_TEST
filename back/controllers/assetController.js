@@ -578,6 +578,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
           related_link:     related_link     ?? null,
+          sw_type:          isLicenseRequired ? 'license' : 'subscription',
           remarks:          remarks          ?? null,
           state:            'available',
         }, { transaction: t });
@@ -973,7 +974,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
           const d = JSON.parse(r.new_asset_data);
           if (d.license_id) {
             const license = await AssetSwLicense.findByPk(d.license_id, {
-              attributes: ['id', 'license_key', 'key_type', 'license_type', 'state'],
+              attributes: ['id', 'license_key', 'license_password', 'key_type', 'license_type', 'state'],
             });
             plain.license_detail = license ?? null;
           }
@@ -1254,6 +1255,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
         quantity:         isLicenseRequired ? (parsedData.quantity ?? 0) : 0,
         acquisition_date: parsedData.acquisition_date ?? null,
         license_required: isLicenseRequired,
+        sw_type:          isLicenseRequired ? 'license' : 'subscription',
         related_link:     parsedData.related_link     ?? null,
         remarks:          parsedData.remarks          ?? null,
         state:            'available',
@@ -1780,7 +1782,7 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
   // ── SW 집계 ──────────────────────────────
   const swList = await AssetSw.findAll({
     where: { state: { [Op.ne]: 'returned' } },
-    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'state', 'related_link'],
+    attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'license_required', 'sw_type', 'state', 'related_link'],
     include: [{
       model: AssetSwLicense,
       as: 'licenses',
@@ -1798,6 +1800,14 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     version:         s.version,
     manufacturer:    s.manufacturer,
     quantity:        s.quantity,
+    license_required:s.license_required,
+    sw_type:         s.sw_type,
+    user:            s.User ? {
+      id: s.User.id,
+      email: s.User.email,
+      role: s.User.role,
+      name: s.User.profile?.name ?? null,
+    } : null,
     state:           s.state,
     related_link:    s.related_link,
     in_use_count:    inUseCount,
@@ -1900,6 +1910,14 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       version:         sw.version,
       manufacturer:    sw.manufacturer,
       quantity:        sw.quantity,
+      license_required: sw.license_required,
+      sw_type:          sw.sw_type,
+      user:             sw.User ? {
+        id: sw.User.id, 
+        email: sw.User.email,
+        role: sw.User.role,
+        name: sw.User.profile?.name
+      } : null,
       acquisition_date: sw.acquisition_date,
       state:           sw.state,
       related_link:    sw.related_link,
@@ -1944,7 +1962,7 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
  
   const list = await AssetSw.findAll({
     where,
-    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'related_link', 'quantity'],
+    attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'sw_type', 'state', 'related_link', 'quantity'],
     order: [['name', 'ASC']],
   });
  
@@ -1970,7 +1988,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
     ],
   } : {};
 
-  const SW_ATTRS = ['id', 'name', 'manufacturer', 'version', 'license_required', 'state', 'quantity'];
+  const SW_ATTRS = ['id', 'name', 'manufacturer', 'version', 'license_required', 'sw_type', 'state', 'quantity'];
 
   // ── 라이선스형: available 라이선스 존재하는 SW만 (INNER JOIN) ───
   const licenseTypeSw = await AssetSw.findAll({
@@ -2006,6 +2024,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       manufacturer:     sw.manufacturer,
       version:          sw.version,
       license_required: true,
+      sw_type:          sw.sw_type,
       state:            sw.state,
       quantity:         sw.quantity,
       available_licenses: sw.licenses.map(l => ({
@@ -2024,6 +2043,7 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
       manufacturer:     sw.manufacturer,
       version:          sw.version,
       license_required: false,
+      sw_type:          sw.sw_type,
       state:            sw.state,
       quantity:         sw.quantity,
       available_licenses: [],
