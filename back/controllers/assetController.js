@@ -2122,8 +2122,12 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
       where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
       transaction: t,
     });
-    if (sw.quantity > 0 && inUseCount > sw.quantity) {
-      const err = new Error('할당 가능 수량(' + sw.quantity + '개)을 초과했습니다.');
+    const lockedSw = await AssetSw.findByPk(Number(asset_sw_id), {
+      lock: t.LOCK.UPDATE,
+      transaction: t,
+    });
+    if (lockedSw && lockedSw.quantity > 0 && inUseCount > lockedSw.quantity) {
+      const err = new Error('할당 가능 수량(' + lockedSw.quantity + '개)을 초과했습니다.');
       err.statusCode = 400;
       throw err;
     }
