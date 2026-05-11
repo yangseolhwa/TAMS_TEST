@@ -34,7 +34,6 @@ function formatDate(value) {
 }
 
 // ── 시트 타입 결정 ─────────────────────────────────────────────────
-// item_type.parent.name 기준, 없으면 PLC_ITEM_KEYWORDS로 판별
 function resolveSheetType(item) {
   const parentName = item.item_type?.parent?.name;
   if (parentName === 'PC' || parentName === 'PLC') return parentName;
@@ -42,7 +41,7 @@ function resolveSheetType(item) {
   return PLC_ITEM_KEYWORDS.has(typeName) ? 'PLC' : 'PC';
 }
 
-// ── 정렬: Item → 두산ItemNo → Manufacturer → ProductName → ModelNumber → 취득일
+// ── 정렬 ─────────────────────────────────────────────────────────
 function sortPcItems(items) {
   return [...items].sort((a, b) => {
     const pairs = [
@@ -61,7 +60,7 @@ function sortPcItems(items) {
   });
 }
 
-// ── 계층적 셀 병합 (범용) ─────────────────────────────────────────
+// ── 계층적 셀 병합 ────────────────────────────────────────────────
 function applyMerges(ws, dataStartRow, items, mergeRules) {
   if (items.length < 2) return;
 
@@ -85,9 +84,7 @@ function applyMerges(ws, dataStartRow, items, mergeRules) {
   }
 }
 
-// ── 통합 컬럼 정의 (PC/PLC 공통) ─────────────────────────────────
-// No | Item | 두산 Item No | Manufacturer | Product Name | Model Number
-// | Serial Number | QTY | 대여일 | 반납일 | 비고
+// ── 통합 컬럼 정의 ────────────────────────────────────────────────
 const UNIFIED_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
 const UNIFIED_COL_WIDTHS = [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20];
 
@@ -111,10 +108,21 @@ function buildMergeRules(items) {
   ];
 }
 
-// ── 프로젝트 시트 빌드 (PC/PLC 통합 컬럼) ────────────────────────
-function buildProjectSheet(wb, sheetName, rawItems) {
+// ── 프로젝트 시트 빌드 ────────────────────────────────────────────
+/**
+ * @param {ExcelJS.Workbook} wb
+ * @param {string}  sheetName
+ * @param {object[]} rawItems
+ * @param {boolean} isAllReturned - true이면 시트 탭을 빨간색으로 표시
+ */
+function buildProjectSheet(wb, sheetName, rawItems, isAllReturned = false) {
   const ws             = wb.addWorksheet(sheetName);
   const DATA_START_ROW = 3;
+
+  // 프로젝트 내 모든 자산이 반납된 경우 탭 색상을 빨간색으로 표시
+  if (isAllReturned) {
+    ws.properties.tabColor = { argb: 'FFFF0000' };
+  }
 
   ws.getColumn(1).width = 4;
   UNIFIED_HEADERS.forEach((_, i) => { ws.getColumn(i + 2).width = UNIFIED_COL_WIDTHS[i]; });
@@ -142,10 +150,8 @@ function buildProjectSheet(wb, sheetName, rawItems) {
   });
   headerRow.height = 30;
 
-  // 정렬
-  const items = sortPcItems(rawItems);
-
   // 데이터 행
+  const items = sortPcItems(rawItems);
   items.forEach((item, idx) => {
     const row    = ws.getRow(DATA_START_ROW + idx);
     const values = [
@@ -401,8 +407,8 @@ const exportDf = async (req, res) => {
       const projName  = item.project?.name || 'Unknown';
       const sheetType = resolveSheetType(item);
 
-      if (!groupedForTotal[projName])        groupedForTotal[projName]       = [];
-      if (!groupedForSheets[projName])       groupedForSheets[projName]      = { PC: [], PLC: [] };
+      if (!Object.prototype.hasOwnProperty.call(groupedForTotal, projName))   groupedForTotal[projName]  = [];
+      if (!Object.prototype.hasOwnProperty.call(groupedForSheets, projName))  groupedForSheets[projName] = { PC: [], PLC: [] };
 
       groupedForTotal[projName].push(item);
       groupedForSheets[projName][sheetType].push(item);
@@ -414,19 +420,41 @@ const exportDf = async (req, res) => {
 
     buildTotalSheet(wb, groupedForTotal);
 
+    // 프로젝트별 전체 반납 여부 판별 (groupedForTotal 기준)
+    // 반납 자산이 state 쿼리 없이 포함된 export에서 프로젝트 내 모든 자산이
+    // returned이면 시트 탭을 빨간색으로 표시
+    const allReturnedProjects = new Set(
+      Object.keys(groupedForSheets).filter((projName) => {
+        const allItems = groupedForTotal[projName] ?? [];
+        return allItems.length > 0 && allItems.every((item) => item.state === 'returned');
+      })
+    );
+
     Object.keys(groupedForSheets)
-      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .sort((a, b) => {
+        const isAReturned = allReturnedProjects.has(a);
+        const isBReturned = allReturnedProjects.has(b);
+
+        // 1. 반납 상태가 서로 다를 경우: 모두 반납된 프로젝트를 뒤쪽(오른쪽)으로 보냄
+        if (isAReturned !== isBReturned) {
+          return isAReturned ? 1 : -1; 
+        }
+
+        // 2. 반납 상태가 같을 경우: 기존처럼 이름순(가나다순)으로 정렬
+        return a.localeCompare(b, 'ko');
+      })
       .forEach((projName) => {
         const { PC: pcItems, PLC: plcItems } = groupedForSheets[projName];
-        const hasBoth = pcItems.length > 0 && plcItems.length > 0;
+        const hasBoth       = pcItems.length > 0 && plcItems.length > 0;
+        const isAllReturned = allReturnedProjects.has(projName);
 
         if (hasBoth) {
-          buildProjectSheet(wb, `${projName}_PC`,  pcItems);
-          buildProjectSheet(wb, `${projName}_PLC`, plcItems);
+          buildProjectSheet(wb, `${projName}_PC`,  pcItems,  isAllReturned);
+          buildProjectSheet(wb, `${projName}_PLC`, plcItems, isAllReturned);
         } else if (pcItems.length > 0) {
-          buildProjectSheet(wb, projName, pcItems);
+          buildProjectSheet(wb, projName, pcItems, isAllReturned);
         } else if (plcItems.length > 0) {
-          buildProjectSheet(wb, projName, plcItems);
+          buildProjectSheet(wb, projName, plcItems, isAllReturned);
         }
       });
 
