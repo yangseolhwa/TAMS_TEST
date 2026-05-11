@@ -134,6 +134,39 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
             </div>
           </div>
 
+          <div className={styles.inputGroup}>
+            <label className={styles.selectLabel}>라이선스 유형</label>
+            <div className={styles.radioGroup}>
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name={`licenseType-${item.id}`}
+                  value="per_seat"
+                  checked={item.licenseType === 'per_seat'}
+                  onChange={() =>
+                    onItemChange(index, { licenseType: 'per_seat' })
+                  }
+                />
+                개인
+              </label>
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name={`licenseType-${item.id}`}
+                  value="shared"
+                  checked={item.licenseType === 'shared'}
+                  onChange={() =>
+                    onItemChange(index, {
+                      licenseType:  'shared',
+                      licenseKeys:  [{ id: crypto.randomUUID(), value: '' }],
+                    })
+                  }
+                />
+                공용
+              </label>
+            </div>
+          </div>
+
           {/* 라이선스 키 목록 */}
           <div className={styles.inputGroup}>
             <label className={styles.selectLabel}>
@@ -161,7 +194,7 @@ const SwLicenseSection = ({ item, index, onItemChange }) => {
                     </button>
                   )}
                   {/* 플러스 버튼 — 첫 번째 행 + 시리얼 타입일 때, 3열 고정 */}
-                  {idx === 0 && item.keyType !== "credential" && (
+                  {idx === 0 && item.keyType !== "credential" && item.licenseType !== 'shared' && (
                     <button
                       type="button"
                       className={styles.addKeyBtn}
