@@ -89,8 +89,8 @@ export const fetchMyAssets = async () => {
       manufacturer:     sw.manufacturer    ?? null,
       license_key:      license.license_key    ?? null,
       license_password: license.license_password ?? null,
-      related_link:     license.related_link    ?? null,
-      remarks:          license.remarks         ?? null,
+      related_link:     sw.related_link    ?? null,
+      remarks:          sw.remarks         ?? null,
       state:            license.state,
     }))
   )

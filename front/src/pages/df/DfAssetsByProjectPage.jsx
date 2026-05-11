@@ -112,7 +112,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   })
 
