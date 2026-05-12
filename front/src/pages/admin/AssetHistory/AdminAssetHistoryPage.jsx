@@ -135,14 +135,14 @@ const AdminAssetHistoryPage = () => {
 
             <input
               type="date"
-              className={styles.filterDate}
+              className={common.filterDate}
               value={filterForm.from}
               onChange={(e) => handleFilterChange('from', e.target.value)}
             />
-            <span className={styles.dateSeparator}>~</span>
+            <span className={common.dateSeparator}>~</span>
             <input
               type="date"
-              className={styles.filterDate}
+              className={common.filterDate}
               value={filterForm.to}
               onChange={(e) => handleFilterChange('to', e.target.value)}
             />
