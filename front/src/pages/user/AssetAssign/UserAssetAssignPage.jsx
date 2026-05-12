@@ -90,7 +90,7 @@ const UserAssetAssignPage = () => {
       toast.success(res?.message ?? '할당 요청이 완료되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['enterpriseAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['assetRequests'] })
-      setPcReasonState((prev) => { const next = { ...prev }; delete next[confirm.assetId]; return next })
+      setPcReasonState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },
@@ -107,7 +107,7 @@ const UserAssetAssignPage = () => {
       toast.success(res?.message ?? '할당 요청이 완료되었습니다.')
       queryClient.invalidateQueries({ queryKey: ['swAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['assetRequests'] })
-      setSwReasonState((prev) => { const next = { ...prev }; delete next[confirm.swId]; return next })
+      setSwReasonState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },

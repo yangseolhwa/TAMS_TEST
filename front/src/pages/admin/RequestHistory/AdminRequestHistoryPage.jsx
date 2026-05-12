@@ -23,6 +23,7 @@ import {
 const PC_COLUMNS = [
   { key: "no",            label: "No"       },
   { key: "requestedAt",   label: "요청일"   },
+  { key: "requestType",   label: "요청 유형", type: "status" },
   { key: "userName",      label: "요청자"   },
   { key: "itemTypeName",  label: "자산 종류" },
   { key: "manufacturer",  label: "제조사"   },
@@ -34,6 +35,7 @@ const PC_COLUMNS = [
 const SW_COLUMNS = [
   { key: "no",              label: "No"            },
   { key: "requestedAt",     label: "요청일"        },
+  { key: "requestType",   label: "요청 유형", type: "status" },
   { key: "userName",        label: "요청자"        },
   { key: "assetName",       label: "소프트웨어명"  },
   { key: "manufacturer",    label: "제조사"        },
@@ -42,6 +44,11 @@ const SW_COLUMNS = [
   { key: "licensePassword", label: "라이선스 PW"  },
   { key: "requestReason",   label: "요청 사유" },
 ];
+
+const REQUEST_TYPE_STATUS_MAP = {
+  register: { label: '등록', color: 'green'  },
+  assign:   { label: '할당', color: 'purple' },
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminRequestHistoryPage = () => {
@@ -154,6 +161,7 @@ const AdminRequestHistoryPage = () => {
             columns={pcColumns}
             rows={isLoading ? [] : pcRows}
             selectable={false}
+            statusMap={REQUEST_TYPE_STATUS_MAP}
           />
         </Card>
       </section>
@@ -172,6 +180,7 @@ const AdminRequestHistoryPage = () => {
             columns={swColumns}
             rows={isLoading ? [] : swRows}
             selectable={false}
+            statusMap={REQUEST_TYPE_STATUS_MAP}
           />
         </Card>
       </section>

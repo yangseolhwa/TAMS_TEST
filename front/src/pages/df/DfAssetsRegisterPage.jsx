@@ -51,11 +51,6 @@ const DfAssetsRegisterPage = ({ role }) => {
   // ── 직접 입력 여부 & 파생 값 ──────────────────────────────────────────────
   const isDirect       = form.assetTypeId.startsWith(DIRECT_PREFIX)
   const directParentId = isDirect ? Number(form.assetTypeId.replace(DIRECT_PREFIX, '')) : null
-  const directParentName = useMemo(() => {
-    if (!isDirect || directParentId == null) return ''
-    // typeGroups에서 대분류 이름 찾기
-    return (window.__dfTypeGroupsCache ?? []).find((g) => g.id === directParentId)?.name ?? ''
-  }, [isDirect, directParentId])
 
   // ── 프로젝트 옵션 (대시보드) ───────────────────────────────────────────────
   const { data: dashboard } = useQuery({
@@ -68,7 +63,6 @@ const DfAssetsRegisterPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    onSuccess: (data) => { window.__dfTypeGroupsCache = data },
   })
 
   // ── 선택된 프로젝트의 대분류(PC/PLC) 기준 필터링 ──────────────────────────
