@@ -183,7 +183,7 @@ const DfAssetsByProjectPage = ({ role }) => {
       const info = typeInfoMap[tid]
       if (info?.parentName) cats.add(info.parentName)
     })
-    return cats.size > 0 ? cats : new Set(['PC', 'PLC'])
+    return cats
   }, [projectId, dashboard, typeInfoMap])
 
   const isReturnedFilter = appliedFilters.state === 'returned'
