@@ -21,8 +21,18 @@ const SW_COLUMNS = [
   { key: 'asset_name',       label: '소프트웨어명' },
   { key: 'version',          label: '버전'         },
   { key: 'manufacturer',     label: '제조사'       },
-  { key: 'license_key',      label: '라이선스 키'  },
-  { key: 'license_password', label: '라이선스 PW'  },
+  { key: 'acquisition_date', label: '취득일자'     },
+  {
+    key: 'license_info',
+    label: '라이선스 키 / 비밀번호',
+    renderCell: (row) => {
+      const key = row.license_key
+      const pw  = row.license_password
+      if (!key) return '—'
+      if (!pw)  return key
+      return `${key} / ${pw}`
+    },
+  },
   { key: 'related_link',     label: '관련 링크',
     renderCell: (row) => row.related_link
       ? <a className={styles.link} href={row.related_link} target="_blank" rel="noreferrer">{row.related_link}</a>
