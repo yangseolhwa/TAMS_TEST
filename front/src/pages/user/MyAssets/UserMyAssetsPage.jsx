@@ -18,10 +18,10 @@ import styles from './UserMyAssetsPage.module.css'
 // ── 컬럼 정의 ─────────────────────────────────────────────────────────────────
 const SW_COLUMNS = [
   { key: 'no',               label: 'No'           },
+  { key: 'acquisition_date', label: '취득일자'     },
   { key: 'asset_name',       label: '소프트웨어명' },
   { key: 'version',          label: '버전'         },
   { key: 'manufacturer',     label: '제조사'       },
-  { key: 'acquisition_date', label: '취득일자'     },
   {
     key: 'license_info',
     label: '라이선스 키 / 비밀번호',
