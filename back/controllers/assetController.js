@@ -1290,12 +1290,15 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       return { sw: targetSw, license: null };
     }
 
-    // ── 수량 한도 체크 (create 이후이므로 > 사용) ─────────────────────
-    // [Fix] targetSw 재사용 (중복 findByPk 제거), >= → >
-    if (targetSw.quantity > 0) {
-      const existingCount = await AssetSwLicense.count({ where: { asset_sw_id: swId }, transaction: t });
-      if (existingCount > targetSw.quantity) {
-        const err = new Error(`라이선스 수량 한도(${targetSw.quantity}개)를 초과하여 승인할 수 없습니다.`);
+    // ── 수량 한도 체크 (license 생성 이전) ───────────────────────────
+    if (targetSw && targetSw.quantity > 0) {
+      const existingCount = await AssetSwLicense.count({
+        where: { asset_sw_id: swId }, transaction: t,
+      });
+      if (existingCount >= targetSw.quantity) {   // create 이전이므로 >=
+        const err = new Error(
+          `라이선스 수량 한도(${targetSw.quantity}개)에 도달하여 승인할 수 없습니다.`
+        );
         err.statusCode = 400;
         throw err;
       }
@@ -1319,19 +1322,6 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       user_id:      request.requester_id, change_type: 'register',
       before_value: null, after_value: 'in_use',
     }, { transaction: t });
-
-    if (targetSw && targetSw.quantity > 0) {
-      const existingCount = await AssetSwLicense.count({
-        where: { asset_sw_id: swId }, transaction: t,
-      });
-      if (existingCount > targetSw.quantity) {
-        const err = new Error(
-          `라이선스 수량 한도(${targetSw.quantity}개)를 초과하여 승인할 수 없습니다.`
-        );
-        err.statusCode = 400;
-        throw err;
-      }
-    }
 
     await recalcSwState(swId, t);
 
@@ -1467,9 +1457,16 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
         after_value:         afterValue,
       }, { transaction: t });
 
+      // newUserId가 있으면 (시나리오 1: firstAdmin 인수) → admin 이름으로 location 세팅
+      // newUserId가 null이면 (시나리오 2: admin 해제 / 시나리오 3: 폐기) → null
+      const autoLocation = newUserId
+        ? await resolveLocationByResponsible({ userId: newUserId, responsibleType: 'personal' }, t)
+        : null;
+
       asset.state            = newState;
       asset.responsible_type = 'vacant';
       asset.user_id          = newUserId;
+      asset.location         = autoLocation;
       await asset.save({ transaction: t });
     }
 
