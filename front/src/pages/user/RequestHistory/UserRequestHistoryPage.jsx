@@ -9,8 +9,6 @@ import { fetchAssetRequests } from "../../../services/assetService";
 import { XSquare } from "react-bootstrap-icons";
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-const STATUS_LABEL = { PENDING: '대기', APPROVED: '승인', REJECTED: '반려' }
-
 const STATUS_MAP = {
   PENDING:  { label: '대기', color: 'yellow'  },
   APPROVED: { label: '승인', color: 'green'   },

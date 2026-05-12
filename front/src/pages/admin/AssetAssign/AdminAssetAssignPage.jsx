@@ -97,7 +97,8 @@ const AdminAssetAssignPage = () => {
       queryClient.invalidateQueries({ queryKey: ['enterpriseAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
-      setPcAssignState((prev) => { const next = { ...prev }; delete next[confirm.assetId]; return next })
+      queryClient.invalidateQueries({ queryKey: ['enterpriseList'] })
+      setPcAssignState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },
@@ -110,12 +111,8 @@ const AdminAssetAssignPage = () => {
       queryClient.invalidateQueries({ queryKey: ['swAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
-      setSwAssignState((prev) => {
-        const next = { ...prev }
-        if (confirm.type === 'sw-subscription') delete next[`sw-${confirm.swId}`]
-        else delete next[confirm.licenseId]
-        return next
-      })
+      queryClient.invalidateQueries({ queryKey: ['swList'] })
+      setSwAssignState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },
