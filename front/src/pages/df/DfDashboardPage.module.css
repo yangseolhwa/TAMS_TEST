@@ -22,6 +22,10 @@
   background-color: var(--color-primary);
 }
 
+.projectCardHeaderEnded {
+  background-color: var(--color-text-secondary);
+}
+
 .projectCardLeft {
   display: flex;
   align-items: baseline;

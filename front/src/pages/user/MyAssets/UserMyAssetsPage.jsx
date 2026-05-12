@@ -50,7 +50,6 @@ const UserMyAssetsPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['myAssets'],
     queryFn:  fetchMyAssets,
-    refetchOnWindowFocus: false,
     staleTime: 0,
   })
 
@@ -216,7 +215,6 @@ const UserMyAssetsPage = () => {
             columns={swColumns}
             rows={isLoading ? [] : swRows}
             selectable={false}
-            totalCount={swRows.length}
           />
         </Card>
       </section>
@@ -245,7 +243,6 @@ const UserMyAssetsPage = () => {
             columns={pcColumns}
             rows={isLoading ? [] : pcRows}
             selectable={false}
-            totalCount={pcRows.length}
           />
         </Card>
       </section>

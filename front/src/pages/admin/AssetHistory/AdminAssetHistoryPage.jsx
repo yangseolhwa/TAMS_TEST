@@ -85,7 +85,6 @@ const AdminAssetHistoryPage = () => {
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['personalHistory', apiParams],
     queryFn:  () => fetchPersonalHistory(apiParams),
-    refetchOnWindowFocus: false,
   })
 
   // 클라이언트 키워드 필터
