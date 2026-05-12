@@ -102,7 +102,7 @@ const DfDashboardPage = ({ role }) => {
 
           return (
             <Card key={project.id} className={styles.projectCard}>
-              <div className={styles.projectCardHeader}>
+              <div className={`${styles.projectCardHeader} ${project.end_project ? styles.projectCardHeaderEnded : ''}`}>
                 <div className={styles.projectCardLeft}>
                   <span className={styles.projectCardTitle}>{project.name}</span>
                   <span className={styles.projectCardCount}>
