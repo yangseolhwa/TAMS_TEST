@@ -152,7 +152,6 @@ const AdminRequestHistoryPage = () => {
             columns={pcColumns}
             rows={isLoading ? [] : pcRows}
             selectable={false}
-            totalCount={pcRows.length}
           />
         </Card>
       </section>
@@ -171,7 +170,6 @@ const AdminRequestHistoryPage = () => {
             columns={swColumns}
             rows={isLoading ? [] : swRows}
             selectable={false}
-            totalCount={swRows.length}
           />
         </Card>
       </section>
