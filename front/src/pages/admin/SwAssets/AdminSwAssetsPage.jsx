@@ -28,6 +28,12 @@ const renderMultiLine = (values, className) => {
   )
 }
 
+// shared / other 라이선스 분류 헬퍼
+const splitLicenses = (licenses) => ({
+  sharedLicenses: licenses.filter((l) => l.license_type === 'shared'),
+  otherLicenses:  licenses.filter((l) => l.license_type !== 'shared'),
+})
+
 const COLUMNS = [
   { key: 'no',          label: 'No'     },
   { key: 'productName', label: '제품명' },
@@ -36,8 +42,7 @@ const COLUMNS = [
     key: 'licenseKeys',
     label: '라이선스',
     renderCell: (row) => {
-      const sharedLicenses = row.licenses.filter((l) => l.license_type === 'shared')
-      const otherLicenses  = row.licenses.filter((l) => l.license_type !== 'shared')
+      const { sharedLicenses, otherLicenses } = splitLicenses(row.licenses)
 
       // shared: 키 1개만 표시
       const keys = [
@@ -55,9 +60,8 @@ const COLUMNS = [
     key: 'users',
     label: '사용자',
     renderCell: (row) => {
-      const sharedLicenses = row.licenses.filter((l) => l.license_type === 'shared')
-      const otherLicenses  = row.licenses.filter((l) => l.license_type !== 'shared')
-
+      const { sharedLicenses, otherLicenses } = splitLicenses(row.licenses)
+        
       // shared: 사용자 여러 명 multiLine / 나머지: 각 라이선스별 1명
       const users = [
         ...sharedLicenses.map((l) => l.user?.name ?? l.user?.email),
@@ -186,7 +190,6 @@ const AdminSwAssetsPage = () => {
             selectable={false}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
-            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

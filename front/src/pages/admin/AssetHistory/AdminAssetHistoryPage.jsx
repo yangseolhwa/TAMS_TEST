@@ -7,6 +7,7 @@ import DataTable from '../../../components/DataTable/DataTable'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
+import common from '../../AssetPage.common.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,8 @@ const CHANGE_TYPE_STATUS_MAP = {
   '상태 변경': { label: '상태 변경', color: 'yellow' },
   '이동':     { label: '이동',     color: 'blue'   },
   '할당':     { label: '할당',     color: 'purple' },
+  '요청':     { label: '요청',     color: 'gray'   },
+  '반려':     { label: '반려',     color: 'red'    },
 }
 
 const STATE_STATUS_MAP = {
@@ -23,6 +26,8 @@ const STATE_STATUS_MAP = {
   stored:    { label: '보관중',   color: 'blue'   },
   returned:  { label: '반납됨',   color: 'return' },
   available: { label: '사용가능', color: 'gray'   },
+  pending:   { label: '대기중',   color: 'yellow' },
+  rejected:  { label: '반려됨',   color: 'red'    },
 }
 
 const renderValueCell = (value) => {
@@ -109,13 +114,13 @@ const AdminAssetHistoryPage = () => {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader
         title="내 자산 히스토리"
         desc="반납, 등록, 위치 이동에 관한 모든 이력을 조회합니다."
       />
 
-      <section className={styles.section}>
+      <section className={common.section}>
         <Card>
           {/* 필터 영역 */}
           <div className={styles.filterArea}>
@@ -167,7 +172,6 @@ const AdminAssetHistoryPage = () => {
             selectable={false}
             totalCount={filteredRows.length}
             highlight={appliedKeyword}
-            maxHeight="calc(100vh - 450px)"
           />
         </Card>
       </section>

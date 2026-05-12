@@ -1,9 +1,3 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 /* =====================
    섹션 래퍼
    ===================== */
@@ -11,6 +5,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: none;
+  min-height: 0;
 }
 
 .sectionHeader {

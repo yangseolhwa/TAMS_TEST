@@ -6,6 +6,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import { fetchDashboard } from '../../../services/assetService'
 import styles from './AdminMyAssetsPage.module.css'
+import common from '../../AssetPage.common.module.css'
 
 const AdminMyAssetsPage = () => {
   const navigate = useNavigate()
@@ -31,6 +32,7 @@ const AdminMyAssetsPage = () => {
         keyType:     lic.key_type,
         licenseType: lic.license_type,
         user:        lic.user?.name ?? lic.user?.email ?? '-',
+        userNote: lic.user_note ?? null,
       })),
     })),
   [data])
@@ -61,7 +63,7 @@ const AdminMyAssetsPage = () => {
 
   if (isLoading) {
     return (
-      <div className={styles.page}>
+      <div className={common.page}>
         <PageHeader title="내 자산 현황" desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요." />
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>불러오는 중...</p>
       </div>
@@ -87,9 +89,27 @@ const AdminMyAssetsPage = () => {
           </span>
           <span className={styles.swLicenseUser}>
             <span className={styles.swLicenseUserMulti}>
-              {sharedLicenses.map((l) => (
-                <span key={l.id}>{l.user}</span>
-              ))}
+              {(() => {
+                // user_note 중복 집계
+                const noteCount = {}
+                const userList = []
+              
+                for (const l of sharedLicenses) {
+                  if (l.userNote) {
+                    noteCount[l.userNote] = (noteCount[l.userNote] ?? 0) + 1
+                  } else {
+                    userList.push(l.user ?? '-')
+                  }
+                }
+              
+                const noteList = Object.entries(noteCount).map(([note, count]) =>
+                  count >= 2 ? `${note} ${count}대` : note
+                )
+              
+                return [...userList, ...noteList].map((label, i) => (
+                  <span key={i}>{label}</span>
+                ))
+              })()}
             </span>
           </span>
           <span className={styles.swLicenseChevronSpacer} />
@@ -117,7 +137,7 @@ const AdminMyAssetsPage = () => {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader
         title="내 자산 현황"
         desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
