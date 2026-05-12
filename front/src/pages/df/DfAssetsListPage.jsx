@@ -21,14 +21,14 @@ import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsListPage.module.css'
 
 // ── 컬럼 정의 ────────────────────────────────────────────────────────────────
-// 전체 조회: No, 프로젝트명, 자산 종류(대+중분류), 소유 기관, 장비 번호,
-//            제조사, 시리얼 번호, 수량, 위치, 대여일, 반납일, 비고
+// 전체 조회: No, 프로젝트명, 분류, 소유 기관, 장비 번호,
+//            제조사, 시리얼 번호, 위치, 대여일, 반납일, 비고
 const COLUMNS = [
   { key: 'no',          label: 'No',       width: '48px' },
   { key: 'projectName', label: '프로젝트명', type: 'dash' },
   {
     key: 'categoryLabel',
-    label: '자산 종류',
+    label: '분류',
     renderCell: (row) => {
       const parent = row.parentCategoryName
       const sub    = row.subCategoryName
@@ -41,7 +41,6 @@ const COLUMNS = [
   { key: 'equipmentNo',  label: '장비 번호',   type: 'dash' },
   { key: 'manufacturer', label: '제조사',      type: 'dash' },
   { key: 'serialNumber', label: '시리얼 번호', type: 'dash' },
-  { key: 'quantity',     label: '수량',        type: 'dash' },
   { key: 'location',     label: '위치',        type: 'dash' },
   { key: 'acquiredAt',   label: '대여일',      type: 'dash' },
   { key: 'returnedAt',   label: '반납일',      type: 'dash' },
@@ -95,7 +94,7 @@ const DfAssetsListPage = ({ role }) => {
   const projectOptions = dashboard?.projectOptions ?? []
   const typeOptions    = dashboard?.typeOptions    ?? []
 
-  // ── 자산 종류 계층 — parentCategoryName/subCategoryName 보정용 ───────────
+  // ── 분류 계층 — parentCategoryName/subCategoryName 보정용 ───────────
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
@@ -240,7 +239,7 @@ const DfAssetsListPage = ({ role }) => {
               value={filterForm.item_type_id}
               onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
             >
-              <option value="">자산 종류 전체</option>
+              <option value="">분류 전체</option>
               {typeGroups.map((group) => (
                 <optgroup key={group.id} label={group.name}>
                   {group.children.map((child) => (

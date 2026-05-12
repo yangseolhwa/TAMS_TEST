@@ -123,3 +123,11 @@
   color: var(--color-text-secondary);
   flex-shrink: 0;
 }
+
+/* =====================
+   관련 링크
+   ===================== */
+.link {
+  color: var(--color-accent);
+  text-decoration: underline;
+}

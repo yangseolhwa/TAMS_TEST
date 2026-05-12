@@ -35,7 +35,7 @@ const SW_COLUMNS = [
   },
   { key: 'related_link',     label: '관련 링크',
     renderCell: (row) => row.related_link
-      ? <a className={styles.link} href={row.related_link} target="_blank" rel="noreferrer">{row.related_link}</a>
+      ? <a className={common.link} href={row.related_link} target="_blank" rel="noreferrer">{row.related_link}</a>
       : '—'
   },
   { key: 'remarks', label: '비고' },

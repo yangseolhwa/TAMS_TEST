@@ -54,7 +54,11 @@ const COLUMNS = [
       return renderMultiLine(keys, styles.multiLine)
     },
   },
-  { key: 'relatedLink', label: '관련 링크' },
+  { key: 'relatedLink',label: '관련 링크',
+    renderCell: (row) => row.relatedLink
+          ? <a className={common.link} href={row.relatedLink} target="_blank" rel="noreferrer">{row.relatedLink}</a>
+          : '—'
+  },
   { key: 'manufacturer', label: '제조사'  },
   {
     key: 'users',
