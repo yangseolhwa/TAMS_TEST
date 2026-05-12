@@ -102,6 +102,7 @@
   padding: 11px 12px;
   font-size: 13px;
   color: var(--color-text);
+  white-space: normal;
   word-break: break-word;
   overflow-wrap: break-word;
 }
