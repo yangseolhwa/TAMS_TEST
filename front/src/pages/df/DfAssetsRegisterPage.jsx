@@ -229,7 +229,7 @@ const DfAssetsRegisterPage = ({ role }) => {
     <div className={common.page}>
       <PageHeader
         title="DF 자산 등록"
-        desc="DF 장비의 등록, 조회 및 위치 변동을 수행합니다."
+        desc="프로젝트별 DF 자산을 등록합니다."
       />
 
       <section className={common.section}>
