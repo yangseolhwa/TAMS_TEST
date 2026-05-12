@@ -402,13 +402,17 @@ const exportDf = async (req, res) => {
 
     const groupedForTotal  = {};
     const groupedForSheets = {};
+    const projectIdMap = {};
 
     items.forEach((item) => {
       const projName  = item.project?.name || 'Unknown';
       const sheetType = resolveSheetType(item);
 
-      if (!Object.prototype.hasOwnProperty.call(groupedForTotal, projName))   groupedForTotal[projName]  = [];
-      if (!Object.prototype.hasOwnProperty.call(groupedForSheets, projName))  groupedForSheets[projName] = { PC: [], PLC: [] };
+      if (!Object.prototype.hasOwnProperty.call(groupedForTotal, projName)) {
+        groupedForTotal[projName] = [];
+        projectIdMap[projName]    = item.project_id; // 프로젝트 ID 기록
+      }
+  if (!Object.prototype.hasOwnProperty.call(groupedForSheets, projName))  groupedForSheets[projName] = { PC: [], PLC: [] };
 
       groupedForTotal[projName].push(item);
       groupedForSheets[projName][sheetType].push(item);
@@ -441,7 +445,7 @@ const exportDf = async (req, res) => {
         }
 
         // 2. 반납 상태가 같을 경우: 기존처럼 이름순(가나다순)으로 정렬
-        return a.localeCompare(b, 'ko');
+        return (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0);
       })
       .forEach((projName) => {
         const { PC: pcItems, PLC: plcItems } = groupedForSheets[projName];
