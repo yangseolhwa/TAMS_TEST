@@ -187,9 +187,9 @@ const PROJ_BLOCK_START_COL = 6;
 const PROJ_BLOCK_WIDTH     = 3;
 const PROJS_PER_ROW        = 3;
 
-function buildTotalSheet(wb, grouped) {
+function buildTotalSheet(wb, grouped, projectIdMap) {
   const ws           = wb.getWorksheet('TOTAL') || wb.addWorksheet('TOTAL');
-  const projectNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ko'));
+  const projectNames = Object.keys(grouped).sort((a, b) => (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0));
 
   const TC_B = 2, TC_C = 3, TC_D = 4;
 
@@ -422,7 +422,7 @@ const exportDf = async (req, res) => {
     wb.creator = 'TAMS';
     wb.created = new Date();
 
-    buildTotalSheet(wb, groupedForTotal);
+    buildTotalSheet(wb, groupedForTotal, projectIdMap);
 
     // 프로젝트별 전체 반납 여부 판별 (groupedForTotal 기준)
     // 반납 자산이 state 쿼리 없이 포함된 export에서 프로젝트 내 모든 자산이
@@ -444,7 +444,7 @@ const exportDf = async (req, res) => {
           return isAReturned ? 1 : -1; 
         }
 
-        // 2. 반납 상태가 같을 경우: 기존처럼 이름순(가나다순)으로 정렬
+        // 2. 프로젝트 ID 순으로 정렬
         return (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0);
       })
       .forEach((projName) => {
