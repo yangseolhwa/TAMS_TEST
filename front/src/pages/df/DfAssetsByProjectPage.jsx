@@ -102,7 +102,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const typeOptions = dashboard?.typeOptions ?? []
 
@@ -112,7 +111,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    refetchOnWindowFocus: false,
   })
 
   const typeInfoMap = useMemo(() => {
@@ -140,7 +138,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   const { data: assetData, isLoading } = useQuery({
     queryKey: ['dfAssets', queryParams],
     queryFn:  () => fetchDfAssets(queryParams),
-    refetchOnWindowFocus: false,
   })
   const allRows = assetData?.rows ?? []
 
@@ -183,7 +180,7 @@ const DfAssetsByProjectPage = ({ role }) => {
       const info = typeInfoMap[tid]
       if (info?.parentName) cats.add(info.parentName)
     })
-    return cats.size > 0 ? cats : new Set(['PC', 'PLC'])
+    return cats
   }, [projectId, dashboard, typeInfoMap])
 
   const isReturnedFilter = appliedFilters.state === 'returned'

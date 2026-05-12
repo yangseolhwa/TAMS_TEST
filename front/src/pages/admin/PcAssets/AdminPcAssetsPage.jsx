@@ -71,7 +71,6 @@ const AdminPcAssetsPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['enterpriseList', appliedFilters],
     queryFn:  () => fetchEnterpriseList(appliedFilters),
-    refetchOnWindowFocus: false,
   })
   const rows       = data?.rows       ?? []
   const categories = data?.categories ?? []
