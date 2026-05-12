@@ -59,7 +59,7 @@ export const createInitialItem = () => ({
 
 // ─── SW 라이선스 섹션 (토글) ─────────────────────────────────────────────────
 const SwLicenseSection = ({ item, index, onItemChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const handleAddKey = () => {
     onItemChange(index, {
