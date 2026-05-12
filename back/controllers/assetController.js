@@ -16,18 +16,15 @@ const {
 const VALID_ENTERPRISE_STATES = ['in_use', 'stored', 'returned'];
 const VALID_SW_STATES         = ['in_use', 'available', 'returned'];
 const VALID_DF_STATES         = ['in_use', 'stored', 'rented'];
-const VALID_DF_QUERY_STATES = ['in_use', 'stored', 'rented', 'returned'];
+const VALID_DF_QUERY_STATES   = ['in_use', 'stored', 'rented', 'returned'];
 
 /**
  * item_type 해결 헬퍼
- *  - item_type_id 있음 → 카테고리 일치 검증 후 id 반환
- *  - item_type_name만 있음 → 동일 카테고리 내 이름 검색:
- *      존재하면 id 반환 / 없으면 코드 자동배정 후 신규 생성
  */
 async function resolveEnterpriseItemType(category_id, item_type_id, item_type_name, t) {
   const opts  = t ? { transaction: t } : {};
   const catId = Number(category_id);
- 
+
   if (item_type_id) {
     const found = await AssetEnterpriseItemType.findOne({
       where: { id: Number(item_type_id), category_id: catId }, ...opts,
@@ -39,32 +36,29 @@ async function resolveEnterpriseItemType(category_id, item_type_id, item_type_na
     }
     return found.id;
   }
- 
+
   const trimmed = (item_type_name ?? '').trim();
   if (!trimmed) {
     const err = new Error('자산 종류를 선택하거나 직접 입력해주세요.');
     err.statusCode = 400;
     throw err;
   }
- 
-  // 동일 카테고리 + 동일 이름 우선 검색
+
   const existing = await AssetEnterpriseItemType.findOne({
     where: { category_id: catId, name: trimmed }, ...opts,
   });
   if (existing) return existing.id;
- 
-  // 신규 생성 — 다음 알파벳 코드 자동배정
+
   const allInCat = await AssetEnterpriseItemType.findAll({
     where: { category_id: catId }, attributes: ['code'], ...opts,
   });
   const used     = new Set(allInCat.map(r => (r.code ?? '').toUpperCase()));
   const nextAlpha = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(c => !used.has(c));
- 
+
   let nextCode;
   if (nextAlpha) {
     nextCode = nextAlpha;
   } else {
-    // 26개 초과 시: 기존 X{n} 코드 중 최댓값 + 1
     const existingXNums = allInCat
       .map(r => r.code)
       .filter(c => /^X\d+$/.test(c ?? ''))
@@ -72,7 +66,7 @@ async function resolveEnterpriseItemType(category_id, item_type_id, item_type_na
     const maxX = existingXNums.length > 0 ? Math.max(...existingXNums) : -1;
     nextCode = `X${maxX + 1}`;
   }
- 
+
   const created = await AssetEnterpriseItemType.create(
     { category_id: catId, name: trimmed, code: nextCode }, opts,
   );
@@ -82,10 +76,9 @@ async function resolveEnterpriseItemType(category_id, item_type_id, item_type_na
 const USER_INCLUDE = {
   model: User,
   attributes: ['id', 'email', 'role'],
-  include: [{ model: Profile, as: 'profile', attributes: ['name']}]
+  include: [{ model: Profile, as: 'profile', attributes: ['name'] }]
 };
 
-// "office-A-123" 형태의 자산 번호 생성
 function buildItemNumber(plain) {
   const cat  = plain.item_category?.name ?? null;
   const code = plain.item_type?.code     ?? null;
@@ -95,8 +88,6 @@ function buildItemNumber(plain) {
 // ─────────────────────────────────────────
 // 공통 유틸
 // ─────────────────────────────────────────
-
-// 날짜 범위 WHERE 조건 생성 (Invalid Date 방어 포함)
 function buildDateWhere(field, from, to) {
   const cond = {};
   const fromDate = from ? new Date(from) : null;
@@ -106,7 +97,6 @@ function buildDateWhere(field, from, to) {
   return Object.keys(cond).length > 0 ? { [field]: cond } : {};
 }
 
-// YYYY-MM-DD 포맷 변환
 function toDateStr(val) {
   if (!val) return null;
   const d = new Date(val);
@@ -114,40 +104,25 @@ function toDateStr(val) {
   return d.toISOString().slice(0, 10);
 }
 
-// 공통 아카이빙 헬퍼 (배치 처리)
 const ARCHIVE_BATCH_SIZE = 1000;
 
 async function archiveHistory({ HistoryModel, ArchiveModel, where, mapFn, userId, archiveRange, t }) {
   let totalArchived = 0;
-
   while (true) {
-    const batch = await HistoryModel.findAll({
-      where,
-      limit: ARCHIVE_BATCH_SIZE,
-      transaction: t,
-    });
+    const batch = await HistoryModel.findAll({ where, limit: ARCHIVE_BATCH_SIZE, transaction: t });
     if (batch.length === 0) break;
-
     const now = new Date();
     await ArchiveModel.bulkCreate(
-      batch.map((h) => ({
-        ...mapFn(h),
-        archived_at:   now,
-        archived_by:   userId,
-        archive_range: archiveRange,
-      })),
+      batch.map((h) => ({ ...mapFn(h), archived_at: now, archived_by: userId, archive_range: archiveRange })),
       { transaction: t }
     );
-
     await HistoryModel.destroy({
       where: { id: { [Op.in]: batch.map((h) => h.id) } },
       transaction: t,
     });
-
     totalArchived += batch.length;
     if (batch.length < ARCHIVE_BATCH_SIZE) break;
   }
-
   return totalArchived;
 }
 
@@ -176,7 +151,6 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '유효하지 않은 카테고리 ID입니다.' });
   }
 
-  // enterprise 조회 (returned 제외)
   let enterprise = [];
   if (!type || type === 'enterprise') {
     const where = role === 'admin'
@@ -186,10 +160,10 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
     if (state)       where.state       = state;
     if (keyword) {
       where[Op.or] = [
-        { manufacturer:      { [Op.like]: `%${keyword}%` } },
-        { serial_number:     { [Op.like]: `%${keyword}%` } },
-        { spec:              { [Op.like]: `%${keyword}%` } },
-        { location:          { [Op.like]: `%${keyword}%` } },
+        { manufacturer:  { [Op.like]: `%${keyword}%` } },
+        { serial_number: { [Op.like]: `%${keyword}%` } },
+        { spec:          { [Op.like]: `%${keyword}%` } },
+        { location:      { [Op.like]: `%${keyword}%` } },
       ];
     }
     enterprise = await AssetEnterprise.findAll({
@@ -203,7 +177,6 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
     });
   }
 
-  // sw 조회 (asset_sw.state = returned 제외)
   let sw = [];
   if (!type || type === 'sw') {
     const swWhere = { state: { [Op.ne]: 'returned' } };
@@ -214,9 +187,7 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
         { manufacturer: { [Op.like]: `%${keyword}%` } },
       ];
     }
-
     const licenseWhere = role === 'admin' ? {} : { user_id: userId };
-
     sw = await AssetSw.findAll({
       where: swWhere,
       include: [{
@@ -231,13 +202,13 @@ exports.getPersonalAssets = asyncWrapper(async (req, res) => {
   }
 
   res.status(200).json({
-  enterprise: enterprise.map(e => {
-    const p = e.toJSON();
-    p.item_number = buildItemNumber(p);
-    return p;
-  }),
-  sw,
-});
+    enterprise: enterprise.map(e => {
+      const p = e.toJSON();
+      p.item_number = buildItemNumber(p);
+      return p;
+    }),
+    sw,
+  });
 });
 
 
@@ -254,14 +225,13 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   if (item_type_id && isNaN(Number(item_type_id))) return res.status(400).json({ message: '유효하지 않은 자산 종류 ID입니다.' });
 
   const projectWhere = project_id ? { id: Number(project_id) } : {};
-
-  const itemWhere = {}; 
+  const itemWhere = {};
   if (state)        itemWhere.state         = state;
   if (manufacturer) itemWhere.manufacturer  = { [Op.like]: `%${manufacturer}%` };
   if (item_type_id) itemWhere.asset_type_id = Number(item_type_id);
   if (keyword) {
     itemWhere[Op.or] = [
-      { model_number:         { [Op.like]: `%${keyword}%` } },
+      { model_number:       { [Op.like]: `%${keyword}%` } },
       { serial_number:      { [Op.like]: `%${keyword}%` } },
       { spec:               { [Op.like]: `%${keyword}%` } },
       { location:           { [Op.like]: `%${keyword}%` } },
@@ -278,11 +248,7 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
       where: itemWhere,
       required: true,
       include: [
-        {
-          model: AssetProjectItemType,
-          as: 'item_type',
-          attributes: ['id', 'name', 'parent_id'],
-        },
+        { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name', 'parent_id'] },
         { ...USER_INCLUDE, as: 'manager' },
       ],
     }],
@@ -292,26 +258,17 @@ exports.getDfAssets = asyncWrapper(async (req, res) => {
   res.status(200).json({ projects });
 });
 
+
 // ─────────────────────────────────────────
-// DF 자산 종류 계층 조회 (등록 폼용)
-// GET /api/assets/df/types
-// 응답: { types: [{ id, name, children: [{ id, name }] }] }
+// DF 자산 종류 계층 조회
 // ─────────────────────────────────────────
 exports.getDfItemTypes = asyncWrapper(async (req, res) => {
   const parents = await AssetProjectItemType.findAll({
     where: { parent_id: null },
     attributes: ['id', 'name'],
-    include: [{
-      model: AssetProjectItemType,
-      as: 'children',
-      attributes: ['id', 'name'],
-    }],
-    order: [
-      ['name', 'ASC'],
-      [{ model: AssetProjectItemType, as: 'children' }, 'name', 'ASC'],
-    ],
+    include: [{ model: AssetProjectItemType, as: 'children', attributes: ['id', 'name'] }],
+    order: [['name', 'ASC'], [{ model: AssetProjectItemType, as: 'children' }, 'name', 'ASC']],
   });
-
   res.status(200).json({ types: parents });
 });
 
@@ -322,50 +279,41 @@ exports.getDfItemTypes = asyncWrapper(async (req, res) => {
 exports.registerEnterprise = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   let { is_existing, assets } = req.body;
- 
+
   if (assets && !Array.isArray(assets)) assets = [assets];
   if (!assets || assets.length === 0) {
     return res.status(400).json({ message: '등록할 자산 정보를 입력해주세요.' });
   }
- 
+
   const maxCount = role === 'admin' ? 1 : 5;
   if (assets.length > maxCount) {
     return res.status(400).json({ message: `최대 ${maxCount}개까지 등록할 수 있습니다.` });
   }
- 
-  // ── 입력 유효성 검사 ────────────────────────────────────────────
+
   for (const asset of assets) {
     if (is_existing) {
       if (!asset.asset_id) return res.status(400).json({ message: '기존 자산 ID를 선택해주세요.' });
       const orig = await AssetEnterprise.findByPk(asset.asset_id);
       if (!orig) return res.status(404).json({ message: `ID ${asset.asset_id}에 해당하는 자산이 없습니다.` });
     } else {
-      if (!asset.category_id) {
-        return res.status(400).json({ message: '카테고리는 필수 입력 항목입니다.' });
-      }
+      if (!asset.category_id) return res.status(400).json({ message: '카테고리는 필수 입력 항목입니다.' });
       if (!asset.item_type_id && !asset.item_type_name) {
         return res.status(400).json({ message: '자산 종류를 선택하거나 직접 입력해주세요.' });
       }
-      if (!asset.manufacturer) {
-        return res.status(400).json({ message: '제조사는 필수 입력 항목입니다.' });
-      }
+      if (!asset.manufacturer) return res.status(400).json({ message: '제조사는 필수 입력 항목입니다.' });
     }
-    if (!asset.acquisition_date) {
-      return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
-    }
+    if (!asset.acquisition_date) return res.status(400).json({ message: '취득일은 필수 입력 항목입니다.' });
   }
- 
-  // ── 관리자 → 즉시 in_use 등록 ──────────────────────────────────
+
   if (role === 'admin') {
     const a = assets[0];
- 
     const created = await sequelize.transaction(async (t) => {
       let finalCategoryId, finalItemTypeId, baseData;
- 
+
       if (is_existing) {
-        const original   = await AssetEnterprise.findByPk(a.asset_id, { transaction: t });
-        finalCategoryId  = original.category_id;
-        finalItemTypeId  = original.item_type_id;
+        const original  = await AssetEnterprise.findByPk(a.asset_id, { transaction: t });
+        finalCategoryId = original.category_id;
+        finalItemTypeId = original.item_type_id;
         baseData = {
           manufacturer:     a.manufacturer     ?? original.manufacturer,
           spec:             a.spec             ?? null,
@@ -390,7 +338,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
           department_id:    a.department_id ?? null,
         };
       }
- 
+
       const asset = await AssetEnterprise.create({
         ...baseData,
         category_id:      finalCategoryId,
@@ -399,7 +347,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         user_id:          userId,
         state:            'in_use',
       }, { transaction: t });
- 
+
       await AssetEnterpriseHistory.create({
         asset_enterprise_id: asset.id,
         user_id:             userId,
@@ -407,22 +355,19 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         before_value:        null,
         after_value:         'in_use',
       }, { transaction: t });
- 
+
       return asset;
     });
- 
+
     return res.status(201).json({ message: '자산이 등록되었습니다.', asset: created });
   }
- 
-  // ── 일반 회원 → pending 요청 생성 ──────────────────────────────
-  // item_type_name → 요청 시점에 resolve (신규면 즉시 생성, id로 저장)
+
   const requestRows = [];
   for (const asset of assets) {
     let resolvedItemTypeId = null;
- 
     if (!is_existing) {
       try {
-          resolvedItemTypeId = await sequelize.transaction(async (t) => {
+        resolvedItemTypeId = await sequelize.transaction(async (t) => {
           return await resolveEnterpriseItemType(
             Number(asset.category_id),
             asset.item_type_id  ?? null,
@@ -434,7 +379,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         return res.status(e.statusCode ?? 400).json({ message: e.message });
       }
     }
- 
+
     requestRows.push({
       asset_id:          is_existing ? asset.asset_id : null,
       requester_id:      userId,
@@ -455,7 +400,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
             }
           : {
               category_id:      Number(asset.category_id),
-              item_type_id:     resolvedItemTypeId,  // 항상 id로 저장
+              item_type_id:     resolvedItemTypeId,
               manufacturer:     asset.manufacturer,
               spec:             asset.spec            ?? null,
               serial_number:    asset.serial_number   ?? null,
@@ -466,13 +411,12 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
       ),
     });
   }
- 
-  const createdRequests = await AssetEnterpriseRequest.bulkCreate(requestRows);
 
+  const createdRequests = await AssetEnterpriseRequest.bulkCreate(requestRows);
   await AssetEnterpriseHistory.bulkCreate(
     requestRows.map((row) => ({
-      asset_enterprise_id: row.asset_id ?? null,  // 신규 자산이면 null
-      user_id:             userId,                // 요청자 ID
+      asset_enterprise_id: row.asset_id ?? null,
+      user_id:             userId,
       change_type:         'request',
       before_value:        null,
       after_value:         'pending',
@@ -488,49 +432,36 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
 
 // ─────────────────────────────────────────
 // SW 자산 등록
-// asset_sw_id 있음 → 기존 SW
-// asset_sw_id 없음 → 신규 SW
 // ─────────────────────────────────────────
 exports.registerSw = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   const {
-    asset_sw_id,
-    name, manufacturer, version, quantity, acquisition_date, remarks,
-    related_link,
-    license_required,   // boolean: true=라이선스형(기본), false=구독형
-    add_quantity,       // 구독형 기존 SW 수량 추가 시 사용
+    asset_sw_id, name, manufacturer, version, quantity, acquisition_date, remarks,
+    related_link, license_required, add_quantity,
   } = req.body;
- 
+
   let licenses = req.body.licenses ?? [];
   if (!Array.isArray(licenses)) licenses = [licenses];
- 
+
   const isExisting = !!asset_sw_id;
- 
-   // ── 입력 유효성 검사 ───────────────────────────────────────────────
+
   let existingSw = null;
   if (isExisting) {
     existingSw = await AssetSw.findByPk(asset_sw_id);
-    if (!existingSw) {
-      return res.status(404).json({ message: `ID ${asset_sw_id}에 해당하는 SW가 없습니다.` });
-    }
-    if (existingSw.state === 'returned') {
-      return res.status(400).json({ message: '반납된 SW입니다.' });
-    }
- 
+    if (!existingSw) return res.status(404).json({ message: `ID ${asset_sw_id}에 해당하는 SW가 없습니다.` });
+    if (existingSw.state === 'returned') return res.status(400).json({ message: '반납된 SW입니다.' });
+
     if (!existingSw.license_required) {
-      // 구독형: add_quantity 필수
       const qty = Number(add_quantity);
       if (!add_quantity || isNaN(qty) || qty < 1) {
         return res.status(400).json({ message: '추가할 수량을 1 이상 입력해주세요.' });
       }
     } else {
-      // 라이선스형: 라이선스 필수
       if (licenses.length === 0) {
         return res.status(400).json({ message: '기존 SW에 추가할 라이선스를 입력해주세요.' });
       }
     }
   } else {
-    // 신규 SW
     if (!name || !manufacturer) {
       return res.status(400).json({ message: 'SW명, 제조사는 필수 입력 항목입니다.' });
     }
@@ -542,50 +473,41 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       return res.status(400).json({ message });
     }
   }
- 
-  // 라이선스 개별 유효성 검사
+
   for (const lic of licenses) {
-    if (!lic.license_key) {
-      return res.status(400).json({ message: '라이선스 키를 입력해주세요.' });
-    }
-    if (!lic.key_type) {
-      return res.status(400).json({ message: '라이선스 키 유형을 선택해주세요. (serial / credential)' });
-    }
+    if (!lic.license_key) return res.status(400).json({ message: '라이선스 키를 입력해주세요.' });
+    if (!lic.key_type)    return res.status(400).json({ message: '라이선스 키 유형을 선택해주세요. (serial / credential)' });
     if (lic.license_type && !['per_seat', 'shared'].includes(lic.license_type)) {
       return res.status(400).json({ message: '유효하지 않은 라이선스 타입입니다. (per_seat / shared)' });
     }
   }
- 
+
   const maxCount = role === 'admin' ? 1 : 5;
   if (licenses.length > maxCount) {
     return res.status(400).json({ message: `라이선스는 최대 ${maxCount}개까지 등록할 수 있습니다.` });
   }
- 
-  // ── 관리자 → 즉시 등록 ────────────────────────────────────────────
+
   if (role === 'admin') {
     const result = await sequelize.transaction(async (t) => {
       let swId     = isExisting ? Number(asset_sw_id) : null;
       let targetSw = existingSw ?? null;
- 
-      // 신규 SW 생성
+
       if (!isExisting) {
         const isLicenseRequired = license_required !== false;
         targetSw = await AssetSw.create({
-          name,
-          manufacturer,
+          name, manufacturer,
           version:          version          ?? null,
-          quantity:  Number(quantity),
+          quantity:         Number(quantity),
           acquisition_date: acquisition_date ?? null,
           license_required: isLicenseRequired,
-          related_link:     related_link     ?? null,
           sw_type:          isLicenseRequired ? 'license' : 'subscription',
+          related_link:     related_link     ?? null,
           remarks:          remarks          ?? null,
           state:            'available',
         }, { transaction: t });
         swId = targetSw.id;
       }
- 
-      // 구독형 수량 추가 (기존 SW)
+
       if (isExisting && !targetSw.license_required) {
         const qty = Number(add_quantity);
         await targetSw.increment('quantity', { by: qty, transaction: t });
@@ -593,16 +515,11 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         await recalcSwState(swId, t);
         return { sw: targetSw, licenses: [] };
       }
- 
-      // 라이선스 등록
+
       if (licenses.length > 0 && targetSw.quantity > 0) {
-        const existingCount = await AssetSwLicense.count({
-          where: { asset_sw_id: swId }, transaction: t,
-        });
+        const existingCount = await AssetSwLicense.count({ where: { asset_sw_id: swId }, transaction: t });
         if (existingCount + licenses.length > targetSw.quantity) {
-          const err = new Error(
-            `라이선스 수량 한도(${targetSw.quantity}개)를 초과합니다. 현재 ${existingCount}개 등록됨.`
-          );
+          const err = new Error(`라이선스 수량 한도(${targetSw.quantity}개)를 초과합니다. 현재 ${existingCount}개 등록됨.`);
           err.statusCode = 400;
           throw err;
         }
@@ -621,7 +538,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           issue_date:       lic.issue_date       ?? null,
           state:            'in_use',
         }, { transaction: t });
- 
+
         await AssetSwHistory.create({
           asset_sw_id:  swId,
           license_id:   license.id,
@@ -633,32 +550,24 @@ exports.registerSw = asyncWrapper(async (req, res) => {
 
         createdLicenses.push(license);
       }
- 
-      // SW state 재계산
-      if (licenses.length > 0) {
-        await recalcSwState(swId, t);
-      }
- 
+
+      if (licenses.length > 0) await recalcSwState(swId, t);
+
       const sw = await AssetSw.findByPk(swId, { transaction: t });
       return { sw, licenses: createdLicenses };
     });
- 
+
     const message = licenses.length === 0
       ? (isExisting ? '수량이 추가되었습니다.' : 'SW가 등록되었습니다.')
       : `SW 자산이 등록되었습니다. (라이선스 ${licenses.length}개)`;
- 
+
     return res.status(201).json({ message, sw: result.sw, licenses: result.licenses });
   }
- 
-  // ── 일반 회원 → pending 요청 생성 ──────────────────────────────────
-  const isLicenseRequired = isExisting
-    ? existingSw.license_required
-    : license_required !== false;
- 
+
+  const isLicenseRequired = isExisting ? existingSw.license_required : license_required !== false;
   let requestRows;
- 
+
   if (!isLicenseRequired) {
-    // 구독형: 수량 추가 요청 1건
     requestRows = [{
       asset_sw_id:       isExisting ? Number(asset_sw_id) : null,
       requester_id:      userId,
@@ -668,19 +577,11 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       required_quantity: isExisting ? Number(add_quantity) : Number(quantity),
       request_reason:    req.body.request_reason ?? null,
       new_asset_data: JSON.stringify({
-        ...(!isExisting ? {
-          name, manufacturer,
-          version:          version          ?? null,
-          acquisition_date: acquisition_date ?? null,
-          related_link:     related_link     ?? null,
-          remarks:          remarks          ?? null,
-          license_required: false,
-        } : {}),
+        ...(!isExisting ? { name, manufacturer, version: version ?? null, acquisition_date: acquisition_date ?? null, related_link: related_link ?? null, remarks: remarks ?? null, license_required: false } : {}),
         add_quantity: isExisting ? Number(add_quantity) : Number(quantity),
       }),
     }];
   } else if (licenses.length > 0) {
-    // 라이선스형: 라이선스 수만큼 요청
     requestRows = licenses.map((lic) => ({
       asset_sw_id:       isExisting ? Number(asset_sw_id) : null,
       requester_id:      userId,
@@ -690,15 +591,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       required_quantity: 1,
       request_reason:    lic.request_reason ?? null,
       new_asset_data: JSON.stringify({
-        ...(!isExisting ? {
-          name, manufacturer,
-          version:          version          ?? null,
-          quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용),
-          acquisition_date: acquisition_date ?? null,
-          related_link:     related_link     ?? null,
-          remarks:          remarks          ?? null,
-          license_required: true,
-        } : {}),
+        ...(!isExisting ? { name, manufacturer, version: version ?? null, quantity: Number(quantity), acquisition_date: acquisition_date ?? null, related_link: related_link ?? null, remarks: remarks ?? null, license_required: true } : {}),
         license_key:      lic.license_key,
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
@@ -707,7 +600,6 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       }),
     }));
   } else {
-    // 라이선스형 신규 SW만 등록 (라이선스 없음)
     requestRows = [{
       asset_sw_id:       null,
       requester_id:      userId,
@@ -716,32 +608,22 @@ exports.registerSw = asyncWrapper(async (req, res) => {
       request_date:      new Date(),
       required_quantity: 1,
       request_reason:    req.body.request_reason ?? null,
-      new_asset_data: JSON.stringify({
-        name, manufacturer,
-        version:          version          ?? null,
-        quantity:         Number(quantity),  // capacity 전달 (승인 시 SW 생성에 사용),
-        acquisition_date: acquisition_date ?? null,
-        related_link:     related_link     ?? null,
-        remarks:          remarks          ?? null,
-        license_required: true,
-        license_key:      null,
-      }),
+      new_asset_data: JSON.stringify({ name, manufacturer, version: version ?? null, quantity: Number(quantity), acquisition_date: acquisition_date ?? null, related_link: related_link ?? null, remarks: remarks ?? null, license_required: true, license_key: null }),
     }];
   }
- 
-  const createdRequests = await AssetSwRequest.bulkCreate(requestRows);
 
+  const createdRequests = await AssetSwRequest.bulkCreate(requestRows);
   await AssetSwHistory.bulkCreate(
     requestRows.map((row) => ({
-      asset_sw_id:  row.asset_sw_id ?? null,  // 신규 SW이면 null
+      asset_sw_id:  row.asset_sw_id ?? null,
       license_id:   null,
-      user_id:      userId,                   // 요청자 ID
+      user_id:      userId,
       change_type:  'request',
       before_value: null,
       after_value:  'pending',
     }))
   );
- 
+
   res.status(201).json({
     message: 'SW 등록 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
     requests: createdRequests,
@@ -750,7 +632,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// DF 자산 등록 (admin / user 공통, 즉시 등록)
+// DF 자산 등록
 // ─────────────────────────────────────────
 exports.registerDf = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
@@ -792,7 +674,6 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     const resolvedItems = await Promise.all(
       items.map(async (item) => {
         if (item.asset_type_id) return { ...item, resolved_type_id: Number(item.asset_type_id) };
-        // 직접 입력: parent_type_id의 자식으로 중분류 findOrCreate
         const [child] = await AssetProjectItemType.findOrCreate({
           where:    { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
           defaults: { name: item.sub_type_name.trim(), parent_id: Number(item.parent_type_id) },
@@ -840,20 +721,15 @@ exports.registerDf = asyncWrapper(async (req, res) => {
     return createdItems;
   });
 
-  res.status(201).json({
-    message: `DF 자산 ${created.length}개가 등록되었습니다.`,
-    items: created,
-  });
+  res.status(201).json({ message: `DF 자산 ${created.length}개가 등록되었습니다.`, items: created });
 });
 
-// =============================================================
-// assetController.js → getRequests 함수 전체 교체
-// 변경 사항:
-//   1. SW include: 전체 속성 + 라이선스(role 기반 키 노출) 추가
-//   2. Enterprise assign 보강: 전체 필드 + 담당자(User) 포함
-//   3. Enterprise register(기존 자산) 보강: plain.asset 세팅 추가
-// =============================================================
 
+// ─────────────────────────────────────────
+// 자산 등록 요청 목록 조회
+// [Rev13] - 기존 SW/Enterprise 전체 정보 응답
+//         - Enterprise N+1 → 배치 조회로 개선
+// ─────────────────────────────────────────
 exports.getRequests = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
 
@@ -878,7 +754,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
     include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
   };
 
-  // ── [변경 1] 라이선스 키/비밀번호는 admin만 노출 ──────────────────
+  // 라이선스 키/비밀번호는 admin만 노출
   const swLicenseAttrs = role === 'admin'
     ? ['id', 'license_key', 'license_password', 'key_type', 'license_type', 'state', 'user_id', 'user_note', 'issue_date']
     : ['id', 'key_type', 'license_type', 'state', 'user_id', 'user_note', 'issue_date'];
@@ -889,7 +765,6 @@ exports.getRequests = asyncWrapper(async (req, res) => {
       include: [REQUESTER_INCLUDE],
       order: [['created_at', 'DESC']],
     }),
-    // ── [변경 1] SW include: 전체 속성 + 라이선스 중첩 include ────────
     AssetSwRequest.findAll({
       where: buildWhere(),
       include: [
@@ -930,100 +805,87 @@ exports.getRequests = asyncWrapper(async (req, res) => {
     }
   }
 
+  // [N+1 수정] asset_ids 선수집 → 단일 findAll
+  const assetIdsToFetch = [
+    ...new Set(
+      enterpriseRequests
+        .filter(r => r.asset_id)
+        .map(r => r.asset_id)
+    ),
+  ];
+
+  const assetMap = {};
+  if (assetIdsToFetch.length > 0) {
+    const assets = await AssetEnterprise.findAll({
+      where: { id: { [Op.in]: assetIdsToFetch } },
+      attributes: [
+        'id', 'state', 'responsible_type',
+        'manufacturer', 'spec', 'serial_number',
+        'location', 'acquisition_date', 'remarks',
+      ],
+      include: [
+        { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
+        { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
+        {
+          model: User,
+          attributes: ['id', 'email', 'role'],
+          include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+        },
+      ],
+    });
+    assets.forEach(a => {
+      const j = a.toJSON();
+      assetMap[a.id] = { ...j, item_number: buildItemNumber(j) };
+    });
+  }
+
   const [categories, itemTypes] = await Promise.all([
     categoryIds.size > 0
-      ? AssetEnterpriseCategory.findAll({
-          where: { id: { [Op.in]: [...categoryIds] } },
-          attributes: ['id', 'name'],
-        })
+      ? AssetEnterpriseCategory.findAll({ where: { id: { [Op.in]: [...categoryIds] } }, attributes: ['id', 'name'] })
       : [],
     itemTypeIds.size > 0
-      ? AssetEnterpriseItemType.findAll({
-          where: { id: { [Op.in]: [...itemTypeIds] } },
-          attributes: ['id', 'name', 'code'],
-        })
+      ? AssetEnterpriseItemType.findAll({ where: { id: { [Op.in]: [...itemTypeIds] } }, attributes: ['id', 'name', 'code'] })
       : [],
   ]);
 
   const catMap  = Object.fromEntries(categories.map(c => [c.id, c.toJSON()]));
   const typeMap = Object.fromEntries(itemTypes.map(t => [t.id, t.toJSON()]));
 
-  const enterpriseResult = await Promise.all(
-    enterpriseRequests.map(async (r) => {
-      const plain = r.toJSON();
+  // 루프 내 DB 쿼리 없음 — Map O(1) 참조
+  const enterpriseResult = enterpriseRequests.map((r) => {
+    const plain = r.toJSON();
 
-      if (r.request_type === 'register' && plain.new_asset_data) {
-        try {
-          const d = JSON.parse(plain.new_asset_data);
-          plain.category  = d.category_id  ? (catMap[d.category_id]  ?? null) : null;
-          plain.item_type = d.item_type_id ? (typeMap[d.item_type_id] ?? null) : null;
-        } catch {
-          plain.category  = null;
-          plain.item_type = null;
-        }
-
-        // ── [변경 3] register + 기존 자산(asset_id)이면 자산 전체 조회 ──
-        if (r.asset_id) {
-          const asset = await AssetEnterprise.findByPk(r.asset_id, {
-            attributes: [
-              'id', 'state', 'responsible_type',
-              'manufacturer', 'spec', 'serial_number',
-              'location', 'acquisition_date', 'remarks',
-            ],
-            include: [
-              { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
-              { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
-              {
-                model: User,
-                attributes: ['id', 'email', 'role'],
-                include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
-              },
-            ],
-          });
-          if (asset) {
-            const assetJson = asset.toJSON();
-            plain.category  = assetJson.item_category ?? plain.category;
-            plain.item_type = assetJson.item_type     ?? plain.item_type;
-            plain.asset     = {
-              ...assetJson,
-              item_number: buildItemNumber(assetJson),
-            };
-          }
-        }
+    if (r.request_type === 'register' && plain.new_asset_data) {
+      try {
+        const d = JSON.parse(plain.new_asset_data);
+        plain.category  = d.category_id  ? (catMap[d.category_id]  ?? null) : null;
+        plain.item_type = d.item_type_id ? (typeMap[d.item_type_id] ?? null) : null;
+      } catch {
+        plain.category  = null;
+        plain.item_type = null;
       }
 
-      if (r.request_type === 'assign' && r.asset_id) {
-        // ── [변경 2] assign: 전체 자산 필드 + 담당자(User) 포함 ──────────
-        const asset = await AssetEnterprise.findByPk(r.asset_id, {
-          attributes: [
-            'id', 'state', 'responsible_type',
-            'manufacturer', 'spec', 'serial_number',
-            'location', 'acquisition_date', 'remarks',
-          ],
-          include: [
-            { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
-            { model: AssetEnterpriseItemType, as: 'item_type',     attributes: ['id', 'name', 'code'] },
-            {
-              model: User,
-              attributes: ['id', 'email', 'role'],
-              include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
-            },
-          ],
-        });
-        const assetJson      = asset?.toJSON() ?? null;
-        plain.category       = assetJson?.item_category ?? null;
-        plain.item_type      = assetJson?.item_type     ?? null;
-        plain.asset          = assetJson
-          ? { ...assetJson, item_number: buildItemNumber(assetJson) }
-          : null;
+      if (r.asset_id) {
+        const assetJson    = assetMap[r.asset_id] ?? null;
+        plain.category     = assetJson?.item_category ?? plain.category;
+        plain.item_type    = assetJson?.item_type     ?? plain.item_type;
+        plain.asset        = assetJson;
+      } else {
+        plain.asset = null;
       }
+    }
 
-      return plain;
-    })
-  );
+    if (r.request_type === 'assign' && r.asset_id) {
+      const assetJson  = assetMap[r.asset_id] ?? null;
+      plain.category   = assetJson?.item_category ?? null;
+      plain.item_type  = assetJson?.item_type     ?? null;
+      plain.asset      = assetJson;
+    }
+
+    return plain;
+  });
 
   // ── SW 요청 보강 ──────────────────────────────────────────────────
-  // assign: new_asset_data의 license_id → 요청 대상 라이선스 특정
   const swResult = await Promise.all(
     swRequests.map(async (r) => {
       const plain = r.toJSON();
@@ -1053,84 +915,67 @@ exports.getRequests = asyncWrapper(async (req, res) => {
   res.status(200).json({ enterprise: enterpriseResult, sw: swResult });
 });
 
+
 // ─────────────────────────────────────────
-// 관리자 Enterprise 요청 승인 (register + assign 통합)
+// 관리자 Enterprise 요청 승인
 // ─────────────────────────────────────────
 exports.approveEnterprise = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
   const { requestId } = req.params;
- 
+
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 승인할 수 있습니다.' });
- 
+
   const request = await AssetEnterpriseRequest.findByPk(requestId);
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
- 
-  // ── assign 요청 분기 ──────────────────────────────────────────────
+
   if (request.request_type === 'assign') {
     const asset = await sequelize.transaction(async (t) => {
-      // 락 걸고 재조회 (동시 승인 방지)
-      const lockedAsset = await AssetEnterprise.findByPk(request.asset_id, {
-        lock: t.LOCK.UPDATE,
-        transaction: t,
-      });
+      const lockedAsset = await AssetEnterprise.findByPk(request.asset_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!lockedAsset) {
-        const err = new Error('자산을 찾을 수 없습니다.');
-        err.statusCode = 404;
-        throw err;
+        const err = new Error('자산을 찾을 수 없습니다.'); err.statusCode = 404; throw err;
       }
       if (lockedAsset.state !== 'stored' || lockedAsset.responsible_type !== 'vacant') {
-        const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.');
-        err.statusCode = 409;
-        throw err;
+        const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.'); err.statusCode = 409; throw err;
       }
- 
+
       await AssetEnterpriseHistory.create({
-        asset_enterprise_id: lockedAsset.id,
-        user_id:             userId,
-        change_type:         'assign',
-        before_value:        lockedAsset.state,
-        after_value:         'in_use',
+        asset_enterprise_id: lockedAsset.id, user_id: userId,
+        change_type: 'assign', before_value: lockedAsset.state, after_value: 'in_use',
       }, { transaction: t });
- 
+
       lockedAsset.state            = 'in_use';
       lockedAsset.responsible_type = 'personal';
       lockedAsset.user_id          = request.requester_id;
       await lockedAsset.save({ transaction: t });
- 
+
       request.status       = 'approved';
       request.processed_at = new Date();
       await request.save({ transaction: t });
- 
+
       return lockedAsset;
     });
- 
+
     return res.status(200).json({
       message: '자산 할당 요청이 승인되었습니다.',
-      asset:   {
-        id:               asset.id,
-        state:            asset.state,
-        responsible_type: asset.responsible_type,
-        user_id:          asset.user_id,
-      },
+      asset:   { id: asset.id, state: asset.state, responsible_type: asset.responsible_type, user_id: asset.user_id },
       request: { id: request.id, status: request.status, processed_at: request.processed_at },
     });
   }
- 
-  // ── register 요청 분기 ────────────────────────────────────────────
+
   if (request.request_type !== 'register') {
     return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
   }
- 
+
   let assetData = {};
- 
+
   if (request.asset_id) {
     const original = await AssetEnterprise.findByPk(request.asset_id);
     if (!original) return res.status(404).json({ message: '원본 자산을 찾을 수 없습니다.' });
- 
+
     let overrides = {};
     try { overrides = JSON.parse(request.new_asset_data) ?? {}; } catch {}
- 
+
     assetData = {
       category_id:      original.category_id,
       item_type_id:     original.item_type_id,
@@ -1142,16 +987,12 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       department_id:    overrides.department_id    ?? null,
     };
   } else {
-    if (!request.new_asset_data) {
-      return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
-    }
-    try {
-      assetData = JSON.parse(request.new_asset_data);
-    } catch {
+    if (!request.new_asset_data) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+    try { assetData = JSON.parse(request.new_asset_data); } catch {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
   }
- 
+
   const created = await sequelize.transaction(async (t) => {
     const asset = await AssetEnterprise.create({
       ...assetData,
@@ -1160,24 +1001,22 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       department_id:    assetData.department_id ?? null,
       state:            'in_use',
     }, { transaction: t });
- 
+
     await AssetEnterpriseHistory.create({
-      asset_enterprise_id: asset.id,
-      user_id:             userId,
-      change_type:         'register',
-      before_value:        null,
-      after_value:         'in_use',
+      asset_enterprise_id: asset.id, user_id: request.requester_id,
+      change_type: 'register', before_value: null, after_value: 'in_use',
     }, { transaction: t });
- 
+
     request.status       = 'approved';
     request.processed_at = new Date();
     await request.save({ transaction: t });
- 
+
     return asset;
   });
- 
+
   res.status(200).json({ message: '자산 등록 요청이 승인되었습니다.', asset: created });
 });
+
 
 // ─────────────────────────────────────────
 // 관리자 Enterprise 요청 거절
@@ -1186,100 +1025,142 @@ exports.rejectEnterprise = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   const { requestId } = req.params;
   const { rejection_reason } = req.body;
- 
+
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 처리할 수 있습니다.' });
- 
+
   const request = await AssetEnterpriseRequest.findByPk(requestId);
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
- 
+
   request.status           = 'rejected';
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
 
   await AssetEnterpriseHistory.create({
-    asset_enterprise_id: request.asset_id ?? null,  // 신규 자산 요청이면 null
-    user_id:             request.requester_id,       // 요청자 ID (admin 아님)
+    asset_enterprise_id: request.asset_id ?? null,
+    user_id:             request.requester_id,
     change_type:         'rejected',
     before_value:        'pending',
     after_value:         'rejected',
   });
- 
+
   res.status(200).json({ message: '자산 등록 요청이 거절되었습니다.', request });
 });
 
 
 // ─────────────────────────────────────────
-// 관리자 SW 요청 승인 (register + assign 통합)
+// 관리자 SW 요청 승인
+// [Fix] subscription_assign 블록 복구
+// [Fix] 구독형 register 시 requester 라이선스 생성 복구
+// [Fix] 수량 체크 버그 수정 (>= → >, 중복 쿼리 제거)
 // ─────────────────────────────────────────
 exports.approveSw = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
   const { requestId } = req.params;
- 
+
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 승인할 수 있습니다.' });
- 
+
   const request = await AssetSwRequest.findByPk(requestId);
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
- 
+
   // ── assign 요청 분기 ──────────────────────────────────────────────
   if (request.request_type === 'assign') {
     if (!request.new_asset_data) {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
- 
+
     let parsedData = {};
     try {
       parsedData = JSON.parse(request.new_asset_data) ?? {};
     } catch {
       return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
     }
- 
-    const { license_id } = parsedData;
-    if (!license_id) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
- 
-    const { sw, license } = await sequelize.transaction(async (t) => {
-      // 락 걸고 재조회 (동시 승인 방지)
-      const lockedLicense = await AssetSwLicense.findByPk(license_id, {
-        lock: t.LOCK.UPDATE,
-        transaction: t,
+
+    const { license_id, subscription_assign } = parsedData;
+
+    // ── 구독형 할당 요청 승인 ─────────────────────────────────────────
+    if (subscription_assign) {
+      const { sw, license } = await sequelize.transaction(async (t) => {
+        const lockedSw = await AssetSw.findByPk(request.asset_sw_id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (!lockedSw) {
+          const err = new Error('SW를 찾을 수 없습니다.'); err.statusCode = 404; throw err;
+        }
+        if (lockedSw.license_required) {
+          const err = new Error('라이선스형 SW입니다. 요청 데이터를 확인해주세요.'); err.statusCode = 400; throw err;
+        }
+
+        if (lockedSw.quantity > 0) {
+          const inUseCount = await AssetSwLicense.count({
+            where: { asset_sw_id: lockedSw.id, state: 'in_use' }, transaction: t,
+          });
+          if (inUseCount >= lockedSw.quantity) {
+            const err = new Error(`할당 가능 수량(${lockedSw.quantity}개)을 초과했습니다.`); err.statusCode = 400; throw err;
+          }
+        }
+
+        const newLicense = await AssetSwLicense.create({
+          asset_sw_id:      lockedSw.id,
+          user_id:          request.requester_id,
+          user_note:        null, license_key: null, license_password: null,
+          key_type:         null, license_type: 'per_seat', issue_date: null, state: 'in_use',
+        }, { transaction: t });
+
+        await AssetSwHistory.create({
+          asset_sw_id: lockedSw.id, license_id: newLicense.id, user_id: userId,
+          change_type: 'assign', before_value: null, after_value: 'in_use',
+        }, { transaction: t });
+
+        await recalcSwState(lockedSw.id, t);
+
+        request.status       = 'approved';
+        request.processed_at = new Date();
+        await request.save({ transaction: t });
+
+        const updatedSw = await AssetSw.findByPk(lockedSw.id, { transaction: t });
+        return { sw: updatedSw, license: newLicense };
       });
+
+      return res.status(200).json({
+        message: '구독형 SW 할당 요청이 승인되었습니다.',
+        sw:      { id: sw.id, name: sw.name, manufacturer: sw.manufacturer, state: sw.state },
+        license: { id: license.id },
+        request: { id: request.id, status: request.status, processed_at: request.processed_at },
+      });
+    }
+
+    // ── 라이선스형 할당 요청 승인 ─────────────────────────────────────
+    if (!license_id) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
+
+    const { sw, license } = await sequelize.transaction(async (t) => {
+      const lockedLicense = await AssetSwLicense.findByPk(license_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!lockedLicense) {
-        const err = new Error('라이선스를 찾을 수 없습니다.');
-        err.statusCode = 404;
-        throw err;
+        const err = new Error('라이선스를 찾을 수 없습니다.'); err.statusCode = 404; throw err;
       }
       if (lockedLicense.state !== 'available') {
-        const err = new Error('이미 사용 중인 라이선스입니다. 다시 확인해주세요.');
-        err.statusCode = 409;
-        throw err;
+        const err = new Error('이미 사용 중인 라이선스입니다. 다시 확인해주세요.'); err.statusCode = 409; throw err;
       }
- 
+
       await AssetSwHistory.create({
-        asset_sw_id:  lockedLicense.asset_sw_id,
-        license_id:   lockedLicense.id,
-        user_id:      userId,
-        change_type:  'assign',
-        before_value: 'available',
-        after_value:  'in_use',
+        asset_sw_id: lockedLicense.asset_sw_id, license_id: lockedLicense.id, user_id: userId,
+        change_type: 'assign', before_value: 'available', after_value: 'in_use',
       }, { transaction: t });
- 
+
       lockedLicense.state   = 'in_use';
       lockedLicense.user_id = request.requester_id;
       await lockedLicense.save({ transaction: t });
- 
-      // SW state 재계산
+
       await recalcSwState(lockedLicense.asset_sw_id, t);
- 
+
       request.status       = 'approved';
       request.processed_at = new Date();
       await request.save({ transaction: t });
- 
+
       const updatedSw = await AssetSw.findByPk(lockedLicense.asset_sw_id, { transaction: t });
       return { sw: updatedSw, license: lockedLicense };
     });
- 
+
     return res.status(200).json({
       message: '라이선스 할당 요청이 승인되었습니다.',
       sw:      { id: sw.id, name: sw.name, manufacturer: sw.manufacturer, state: sw.state },
@@ -1287,27 +1168,26 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       request: { id: request.id, status: request.status, processed_at: request.processed_at },
     });
   }
- 
+
   // ── register 요청 분기 ────────────────────────────────────────────
   if (request.request_type !== 'register') {
     return res.status(400).json({ message: `처리할 수 없는 요청 타입입니다: ${request.request_type}` });
   }
- 
+
   if (!request.new_asset_data) {
     return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
   }
- 
+
   let parsedData = {};
   try {
     parsedData = JSON.parse(request.new_asset_data) ?? {};
   } catch {
     return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
   }
- 
+
   const { sw, license } = await sequelize.transaction(async (t) => {
     let swId = request.asset_sw_id ?? null;
- 
-    // 신규 SW 생성 (asset_sw_id 없으면 신규)
+
     if (!swId) {
       const isLicenseRequired = parsedData.license_required !== false;
       const newSw = await AssetSw.create({
@@ -1324,33 +1204,60 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       }, { transaction: t });
       swId = newSw.id;
     }
- 
+
     const targetSw = await AssetSw.findByPk(swId, { transaction: t });
- 
-    // 구독형: 수량 추가
+
+    // ── 구독형: 수량 추가 + requester에게 라이선스 생성 ──────────────
     if (!targetSw.license_required) {
       const qty = parsedData.add_quantity ?? request.required_quantity ?? 0;
       if (qty > 0) {
         await targetSw.increment('quantity', { by: qty, transaction: t });
       }
       await targetSw.reload({ transaction: t });
- 
+
+      // requester에게 구독 자리 생성
+      const subLicense = await AssetSwLicense.create({
+        asset_sw_id:      targetSw.id,
+        user_id:          request.requester_id,
+        user_note:        null, license_key: null, license_password: null,
+        key_type:         null, license_type: 'per_seat', issue_date: null, state: 'in_use',
+      }, { transaction: t });
+
+      await AssetSwHistory.create({
+        asset_sw_id:  targetSw.id, license_id: subLicense.id,
+        user_id:      request.requester_id, change_type: 'register',
+        before_value: null, after_value: 'in_use',
+      }, { transaction: t });
+
+      await recalcSwState(targetSw.id, t);
+
       request.status       = 'approved';
       request.processed_at = new Date();
       await request.save({ transaction: t });
- 
-      return { sw: targetSw, license: null };
+
+      const updatedSw = await AssetSw.findByPk(targetSw.id, { transaction: t });
+      return { sw: updatedSw, license: subLicense };
     }
- 
-    // 라이선스 없는 SW 요청 (license_key: null)
+
+    // 라이선스 없는 SW 요청
     if (!parsedData.license_key) {
       request.status       = 'approved';
       request.processed_at = new Date();
       await request.save({ transaction: t });
- 
       return { sw: targetSw, license: null };
     }
- 
+
+    // ── 수량 한도 체크 (create 이후이므로 > 사용) ─────────────────────
+    // [Fix] targetSw 재사용 (중복 findByPk 제거), >= → >
+    if (targetSw.quantity > 0) {
+      const existingCount = await AssetSwLicense.count({ where: { asset_sw_id: swId }, transaction: t });
+      if (existingCount > targetSw.quantity) {
+        const err = new Error(`라이선스 수량 한도(${targetSw.quantity}개)를 초과하여 승인할 수 없습니다.`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
     // 라이선스 생성
     const createdLicense = await AssetSwLicense.create({
       asset_sw_id:      swId,
@@ -1363,40 +1270,23 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       issue_date:       parsedData.issue_date      ?? null,
       state:            'in_use',
     }, { transaction: t });
- 
+
     await AssetSwHistory.create({
-      asset_sw_id:  swId,
-      license_id:   createdLicense.id,
-      user_id:      userId,
-      change_type:  'register',
-      before_value: null,
-      after_value:  'in_use',
+      asset_sw_id:  swId, license_id: createdLicense.id,
+      user_id:      request.requester_id, change_type: 'register',
+      before_value: null, after_value: 'in_use',
     }, { transaction: t });
- 
-    const targetSwForApprove = await AssetSw.findByPk(swId, { transaction: t });
-    if (targetSwForApprove && targetSwForApprove.quantity > 0) {
-      const existingCount = await AssetSwLicense.count({
-        where: { asset_sw_id: swId }, transaction: t,
-      });
-      if (existingCount >= targetSwForApprove.quantity) {
-        const err = new Error(
-          `라이선스 수량 한도(${targetSwForApprove.quantity}개)에 도달하여 승인할 수 없습니다.`
-        );
-        err.statusCode = 400;
-        throw err;
-      }
-    }
 
     await recalcSwState(swId, t);
- 
+
     request.status       = 'approved';
     request.processed_at = new Date();
     await request.save({ transaction: t });
- 
+
     const createdSw = await AssetSw.findByPk(swId, { transaction: t });
     return { sw: createdSw, license: createdLicense };
   });
- 
+
   res.status(200).json({
     message: '등록 요청이 승인되었습니다.',
     sw:      { id: sw.id, name: sw.name, manufacturer: sw.manufacturer, state: sw.state, quantity: sw.quantity },
@@ -1407,6 +1297,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
   });
 });
 
+
 // ─────────────────────────────────────────
 // 관리자 SW 요청 거절
 // ─────────────────────────────────────────
@@ -1414,44 +1305,38 @@ exports.rejectSw = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   const { requestId } = req.params;
   const { rejection_reason } = req.body;
- 
+
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 처리할 수 있습니다.' });
- 
+
   const request = await AssetSwRequest.findByPk(requestId);
   if (!request)                     return res.status(404).json({ message: '요청을 찾을 수 없습니다.' });
   if (request.status !== 'pending') return res.status(400).json({ message: '이미 처리된 요청입니다.' });
- 
+
   request.status           = 'rejected';
   request.rejection_reason = rejection_reason ?? null;
   request.processed_at     = new Date();
   await request.save();
 
   await AssetSwHistory.create({
-    asset_sw_id:  request.asset_sw_id ?? null,  // 신규 SW 요청이면 null
+    asset_sw_id:  request.asset_sw_id ?? null,
     license_id:   null,
-    user_id:      request.requester_id,          // 요청자 ID (admin 아님)
+    user_id:      request.requester_id,
     change_type:  'rejected',
     before_value: 'pending',
     after_value:  'rejected',
   });
- 
+
   res.status(200).json({ message: 'SW 등록 요청이 거절되었습니다.', request });
 });
 
-// =============================================================
-// 시나리오 분기 (자산의 현재 상태 기준):
-//   1. 유저 보유 자산 반납
-//      → state='stored', responsible_type='vacant', user_id=첫 번째 admin.id
-//   2. admin 본인 보유 자산 반납
-//      → state='stored', responsible_type='vacant', user_id=null
-//   3. stored+vacant+null 상태에서 반납 (최종 폐기 단계)
-//      → state='returned', responsible_type='vacant', user_id=null
-//
-// 할당 관련 함수(getEnterpriseAvailable, requestEnterpriseAssign,
-// assignEnterprise, approveEnterprise)는 이미 state='stored' AND
-// responsible_type='vacant' 조건만 사용하므로 수정 불필요.
-// =============================================================
 
+// ─────────────────────────────────────────
+// Enterprise 자산 반납
+// [Rev13] 3단계 반납 시나리오
+//   1. 유저 보유 → stored + vacant + user_id=첫번째 admin
+//   2. admin 보유 → stored + vacant + user_id=null
+//   3. stored+vacant+null → returned (최종 폐기)
+// ─────────────────────────────────────────
 exports.returnEnterprise = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   const { asset_ids } = req.body;
@@ -1472,22 +1357,19 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
   if (assets.length !== asset_ids.length)
     return res.status(400).json({ message: '반납할 수 없는 자산이 포함되어 있습니다. (권한 없음 또는 이미 반납됨)' });
 
-  // ── 현재 담당자 역할 일괄 조회 (시나리오 1/2 분기용) ────────────
+  // 현재 담당자 역할 일괄 조회 (시나리오 1/2 분기용)
   const holderIds = [...new Set(assets.map(a => a.user_id).filter(Boolean))];
   const holderRoleMap = {};
   if (holderIds.length > 0) {
     const holderUsers = await User.findAll({
-      where:      { id: { [Op.in]: holderIds } },
-      attributes: ['id', 'role'],
+      where: { id: { [Op.in]: holderIds } }, attributes: ['id', 'role'],
     });
     holderUsers.forEach(u => { holderRoleMap[u.id] = u.role; });
   }
 
-  // ── 시나리오 1용: 첫 번째 admin 조회 ────────────────────────────
+  // 시나리오 1용: 첫 번째 admin
   const firstAdmin = await User.findOne({
-    where:      { role: 'admin' },
-    order:      [['id', 'ASC']],
-    attributes: ['id'],
+    where: { role: 'admin' }, order: [['id', 'ASC']], attributes: ['id'],
   });
 
   await sequelize.transaction(async (t) => {
@@ -1499,7 +1381,7 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
         asset.responsible_type === 'vacant' &&
         asset.user_id          === null
       ) {
-        // ── 시나리오 3: 관리자 없는 보관 상태 → 최종 폐기 ───────────
+        // 시나리오 3: 최종 폐기
         newState   = 'returned';
         newUserId  = null;
         afterValue = 'returned';
@@ -1509,12 +1391,12 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
           : 'user';
 
         if (holderRole === 'admin') {
-          // ── 시나리오 2: admin 보유 → 관리자 해제 후 보관 ───────────
+          // 시나리오 2: admin 보유 자산 → 관리자 해제
           newState   = 'stored';
           newUserId  = null;
           afterValue = 'stored';
         } else {
-          // ── 시나리오 1: 유저 보유 → 첫 번째 admin 인수 후 보관 ──────
+          // 시나리오 1: 유저 보유 자산 → 첫번째 admin 인수
           newState   = 'stored';
           newUserId  = firstAdmin?.id ?? null;
           afterValue = 'stored';
@@ -1555,74 +1437,48 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
 
 // ─────────────────────────────────────────
 // SW 라이선스 반납
-// - license.state: in_use → available
-// - license.user_id → null
-// - AssetSwHistory change_type: 'returned'
 // ─────────────────────────────────────────
 exports.returnSw = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
   const { license_ids, sw_ids } = req.body;
- 
+
   const hasLicenses = Array.isArray(license_ids) && license_ids.length > 0;
   const hasSw       = Array.isArray(sw_ids)      && sw_ids.length > 0;
- 
+
   if (!hasLicenses && !hasSw) {
     return res.status(400).json({ message: '반납할 라이선스 또는 SW를 선택해주세요.' });
   }
- 
-  // sw_ids는 admin 전용
+
   if (hasSw && role !== 'admin') {
     return res.status(403).json({ message: 'SW 직접 반납은 관리자만 할 수 있습니다.' });
   }
- 
-  // ── 사전 유효성 검증 (트랜잭션 외부) ────────────────────────────
+
   let licenses = [];
   let sws      = [];
- 
+
   if (hasLicenses) {
-    const licenseWhere = {
-      id:    { [Op.in]: license_ids },
-      state: 'in_use',
-    };
+    const licenseWhere = { id: { [Op.in]: license_ids }, state: 'in_use' };
     if (role !== 'admin') licenseWhere.user_id = userId;
- 
+
     licenses = await AssetSwLicense.findAll({ where: licenseWhere });
- 
-    if (licenses.length === 0) {
-      return res.status(404).json({ message: '반납할 수 있는 라이선스가 없습니다.' });
-    }
+
+    if (licenses.length === 0) return res.status(404).json({ message: '반납할 수 있는 라이선스가 없습니다.' });
     if (licenses.length !== license_ids.length) {
-      return res.status(400).json({
-        message: '반납할 수 없는 라이선스가 포함되어 있습니다. (권한 없음 또는 이미 미사용 상태)',
-      });
+      return res.status(400).json({ message: '반납할 수 없는 라이선스가 포함되어 있습니다. (권한 없음 또는 이미 미사용 상태)' });
     }
   }
- 
+
   if (hasSw) {
-    sws = await AssetSw.findAll({
-      where: { id: { [Op.in]: sw_ids }, state: { [Op.ne]: 'returned' } },
-    });
- 
-    if (sws.length === 0) {
-      return res.status(404).json({ message: '반납할 수 있는 SW가 없습니다.' });
-    }
+    sws = await AssetSw.findAll({ where: { id: { [Op.in]: sw_ids }, state: { [Op.ne]: 'returned' } } });
+
+    if (sws.length === 0) return res.status(404).json({ message: '반납할 수 있는 SW가 없습니다.' });
     if (sws.length !== sw_ids.length) {
-      return res.status(400).json({
-        message: '반납할 수 없는 SW가 포함되어 있습니다. (이미 반납됨)',
-      });
+      return res.status(400).json({ message: '반납할 수 없는 SW가 포함되어 있습니다. (이미 반납됨)' });
     }
- 
-    // 활성 라이선스 확인
-    // — 동일 요청의 license_ids에 포함된 라이선스는 "반납 예정"으로 간주하여 제외
+
     for (const sw of sws) {
-      const activeLicenseWhere = {
-        asset_sw_id: sw.id,
-        state:       'in_use',
-      };
-      if (hasLicenses) {
-        activeLicenseWhere.id = { [Op.notIn]: license_ids };
-      }
- 
+      const activeLicenseWhere = { asset_sw_id: sw.id, state: 'in_use' };
+      if (hasLicenses) activeLicenseWhere.id = { [Op.notIn]: license_ids };
       const activeLicenseCount = await AssetSwLicense.count({ where: activeLicenseWhere });
       if (activeLicenseCount > 0) {
         return res.status(400).json({
@@ -1631,45 +1487,30 @@ exports.returnSw = asyncWrapper(async (req, res) => {
       }
     }
   }
- 
-  // ── 트랜잭션 처리 ─────────────────────────────────────────────────
+
   let returnedLicenseCount = 0;
   let returnedSwCount      = 0;
- 
+
   await sequelize.transaction(async (t) => {
- 
-    // ─ 라이선스 반납 ──────────────────────────────────────────────
     if (hasLicenses) {
       const affectedSwIds = new Set();
- 
+
       for (const license of licenses) {
         await AssetSwHistory.create({
-          asset_sw_id:  license.asset_sw_id,
-          license_id:   license.id,
-          user_id:      userId,
-          change_type:  'returned',
-          before_value: 'in_use',
-          after_value:  'available',
+          asset_sw_id:  license.asset_sw_id, license_id: license.id, user_id: userId,
+          change_type:  'returned', before_value: 'in_use', after_value: 'available',
         }, { transaction: t });
- 
+
         license.state   = 'available';
         license.user_id = null;
         await license.save({ transaction: t });
         affectedSwIds.add(license.asset_sw_id);
       }
       returnedLicenseCount = licenses.length;
- 
-      // 영향받은 SW 마스터 state 재계산
-      // — sw_ids에도 포함된 SW는 어차피 returned로 처리되므로 건너뜀
-      const recalcIds = [...affectedSwIds].filter(
-        id => !(hasSw && sw_ids.includes(id))
-      );
- 
-      if (recalcIds.length > 0) {
-        await recalcSwStateBatch(recalcIds, t);
-      }
- 
-      // 반납 요청 기록
+
+      const recalcIds = [...affectedSwIds].filter(id => !(hasSw && sw_ids.includes(id)));
+      if (recalcIds.length > 0) await recalcSwStateBatch(recalcIds, t);
+
       await AssetSwRequest.bulkCreate(
         licenses.map((license) => ({
           asset_sw_id:       license.asset_sw_id,
@@ -1683,31 +1524,24 @@ exports.returnSw = asyncWrapper(async (req, res) => {
         { transaction: t }
       );
     }
- 
-    // ─ SW 직접 반납 (admin 전용) ──────────────────────────────────
+
     if (hasSw) {
       for (const sw of sws) {
         await AssetSwHistory.create({
-          asset_sw_id:  sw.id,
-          license_id:   null,           // SW 레벨 이벤트이므로 license 없음
-          user_id:      userId,
-          change_type:  'returned',
-          before_value: sw.state,
-          after_value:  'returned',
+          asset_sw_id:  sw.id, license_id: null, user_id: userId,
+          change_type:  'returned', before_value: sw.state, after_value: 'returned',
         }, { transaction: t });
- 
         sw.state = 'returned';
         await sw.save({ transaction: t });
       }
       returnedSwCount = sws.length;
     }
   });
- 
-  // ── 응답 ──────────────────────────────────────────────────────────
+
   const parts = [];
   if (returnedLicenseCount > 0) parts.push(`라이선스 ${returnedLicenseCount}개`);
   if (returnedSwCount > 0)      parts.push(`SW ${returnedSwCount}개`);
- 
+
   res.status(200).json({
     message:           `${parts.join(', ')}가 반납되었습니다.`,
     returned_licenses: returnedLicenseCount,
@@ -1718,7 +1552,6 @@ exports.returnSw = asyncWrapper(async (req, res) => {
 
 // ─────────────────────────────────────────
 // DF 자산 반납
-// - AssetProjectHistory change_type: 'returned'
 // ─────────────────────────────────────────
 exports.returnDf = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
@@ -1729,27 +1562,19 @@ exports.returnDf = asyncWrapper(async (req, res) => {
   }
 
   const items = await AssetProjectItem.findAll({
-    where: {
-      id:    { [Op.in]: item_ids },
-      state: { [Op.ne]: 'returned' },
-    },
+    where: { id: { [Op.in]: item_ids }, state: { [Op.ne]: 'returned' } },
   });
 
-  if (items.length === 0)                 return res.status(404).json({ message: '반납할 수 있는 자산이 없습니다.' });
-  if (items.length !== item_ids.length)   return res.status(400).json({ message: '반납할 수 없는 자산이 포함되어 있습니다. (이미 반납됨)' });
+  if (items.length === 0)               return res.status(404).json({ message: '반납할 수 있는 자산이 없습니다.' });
+  if (items.length !== item_ids.length) return res.status(400).json({ message: '반납할 수 없는 자산이 포함되어 있습니다. (이미 반납됨)' });
 
   await sequelize.transaction(async (t) => {
     for (const item of items) {
       await AssetProjectHistory.create({
-        asset_project_item_id: item.id,
-        project_id:            item.project_id,
-        user_id:               userId,
-        change_type:           'returned',
-        before_value:          item.state,
-        after_value:           'returned',
+        asset_project_item_id: item.id, project_id: item.project_id, user_id: userId,
+        change_type: 'returned', before_value: item.state, after_value: 'returned',
       }, { transaction: t });
-
-      item.state = 'returned';
+      item.state       = 'returned';
       item.return_date = new Date();
       await item.save({ transaction: t });
     }
@@ -1760,8 +1585,7 @@ exports.returnDf = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// Enterprise 자산 이동 (location 변경)
-// - AssetEnterpriseHistory change_type: 'move'
+// Enterprise 자산 이동
 // ─────────────────────────────────────────
 exports.moveEnterprise = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
@@ -1774,10 +1598,7 @@ exports.moveEnterprise = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '이동할 위치를 입력해주세요.' });
   }
 
-  const where = {
-    id:    { [Op.in]: asset_ids },
-    state: { [Op.ne]: 'returned' },
-  };
+  const where = { id: { [Op.in]: asset_ids }, state: { [Op.ne]: 'returned' } };
   if (role !== 'admin') where.user_id = userId;
 
   const assets = await AssetEnterprise.findAll({ where });
@@ -1787,13 +1608,9 @@ exports.moveEnterprise = asyncWrapper(async (req, res) => {
   await sequelize.transaction(async (t) => {
     for (const asset of assets) {
       await AssetEnterpriseHistory.create({
-        asset_enterprise_id: asset.id,
-        user_id:             userId,
-        change_type:         'move',
-        before_value:        asset.location ?? null,
-        after_value:         location,
+        asset_enterprise_id: asset.id, user_id: userId,
+        change_type: 'move', before_value: asset.location ?? null, after_value: location,
       }, { transaction: t });
-
       asset.location = location;
       await asset.save({ transaction: t });
     }
@@ -1804,8 +1621,7 @@ exports.moveEnterprise = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// DF 자산 이동 (location 변경)
-// - AssetProjectHistory change_type: 'move'
+// DF 자산 이동
 // ─────────────────────────────────────────
 exports.moveDf = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
@@ -1819,10 +1635,7 @@ exports.moveDf = asyncWrapper(async (req, res) => {
   }
 
   const items = await AssetProjectItem.findAll({
-    where: {
-      id:    { [Op.in]: item_ids },
-      state: { [Op.ne]: 'returned' },
-    },
+    where: { id: { [Op.in]: item_ids }, state: { [Op.ne]: 'returned' } },
   });
 
   if (items.length === 0)                 return res.status(404).json({ message: '이동할 수 있는 자산이 없습니다.' });
@@ -1831,14 +1644,9 @@ exports.moveDf = asyncWrapper(async (req, res) => {
   await sequelize.transaction(async (t) => {
     for (const item of items) {
       await AssetProjectHistory.create({
-        asset_project_item_id: item.id,
-        project_id:            item.project_id,
-        user_id:               userId,
-        change_type:           'move',
-        before_value:          item.location ?? null,
-        after_value:           location,
+        asset_project_item_id: item.id, project_id: item.project_id, user_id: userId,
+        change_type: 'move', before_value: item.location ?? null, after_value: location,
       }, { transaction: t });
-
       item.location = location;
       await item.save({ transaction: t });
     }
@@ -1847,42 +1655,32 @@ exports.moveDf = asyncWrapper(async (req, res) => {
   res.status(200).json({ message: `${items.length}개의 자산 위치가 변경되었습니다.` });
 });
 
-// =============================================================
-// 변경 사항:
-//   - 아이템 attributes에 'state' 추가
-//   - 프로젝트 내 모든 아이템이 state='returned'이면 end_project: true
-//   - 그 외는 end_project: false
-// =============================================================
 
+// ─────────────────────────────────────────
+// DF 대시보드
+// [Rev13] end_project 필드 추가
+// ─────────────────────────────────────────
 exports.getDfDashboard = asyncWrapper(async (req, res) => {
   const items = await AssetProjectItem.findAll({
     where: {},
-    attributes: ['id', 'project_id', 'asset_type_id', 'state'],  // ← state 추가
+    attributes: ['id', 'project_id', 'asset_type_id', 'state'],
     include: [
       { model: AssetProject,         as: 'project',   attributes: ['id', 'name'] },
       { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
     ],
   });
 
-  // 프로젝트별 집계
   const projectMap = {};
   for (const item of items) {
     const pid   = item.project_id;
     const pname = item.project?.name ?? '미지정';
 
     if (!projectMap[pid]) {
-      projectMap[pid] = {
-        id:           pid,
-        name:         pname,
-        total_count:  0,
-        by_type:      {},
-        all_returned: true,   // ← 초기값 true, 하나라도 미반납이면 false
-      };
+      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {}, all_returned: true };
     }
 
     projectMap[pid].total_count += 1;
 
-    // 하나라도 returned가 아닌 아이템이 있으면 false
     if (item.state !== 'returned') {
       projectMap[pid].all_returned = false;
     }
@@ -1900,24 +1698,21 @@ exports.getDfDashboard = asyncWrapper(async (req, res) => {
     name:        p.name,
     total_count: p.total_count,
     by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
-    end_project: p.all_returned,   // ← 추가
+    end_project: p.all_returned,
   })).sort((a, b) => a.name.localeCompare(b.name));
 
-  res.status(200).json({
-    total: items.length,
-    projects,
-  });
+  res.status(200).json({ total: items.length, projects });
 });
+
 
 // ─────────────────────────────────────────
 // 내자산 대시보드 (admin 전용)
-// GET /assets/dashboard
+// [Fix] s.User → l.User (라이선스 레벨 User 접근)
 // ─────────────────────────────────────────
 exports.getDashboard = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
- 
-  // ── SW 집계 ──────────────────────────────
+
   const swList = await AssetSw.findAll({
     where: { state: { [Op.ne]: 'returned' } },
     attributes: ['id', 'name', 'version', 'manufacturer', 'quantity', 'license_required', 'sw_type', 'state', 'related_link'],
@@ -1929,57 +1724,48 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
     }],
     order: [['name', 'ASC']],
   });
- 
+
   const sw = swList.map((s) => {
-  const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
-  return {
-    id:              s.id,
-    name:            s.name,
-    version:         s.version,
-    manufacturer:    s.manufacturer,
-    quantity:        s.quantity,
-    license_required:s.license_required,
-    sw_type:         s.sw_type,
-    user:            s.User ? {
-      id: s.User.id,
-      email: s.User.email,
-      role: s.User.role,
-      name: s.User.profile?.name ?? null,
-    } : null,
-    state:           s.state,
-    related_link:    s.related_link,
-    in_use_count:    inUseCount,
-    available_count: s.quantity - inUseCount,
-    licenses: s.licenses.map((l) => ({
-      id:               l.id,
-      license_key:      l.license_key,
-      license_password: l.license_password,
-      key_type:         l.key_type,
-      license_type:     l.license_type,
-      user_note:        l.user_note,
-      state:            l.state,
-      user: l.User ? {
-        id:    l.User.id,
-        email: l.User.email,
-        role:  l.User.role,
-        name:  l.User.profile?.name ?? null,
-      } : null,
-    })),
-  };
-});
- 
+    const inUseCount = s.licenses.filter(l => l.state === 'in_use').length;
+    return {
+      id:               s.id,
+      name:             s.name,
+      version:          s.version,
+      manufacturer:     s.manufacturer,
+      quantity:         s.quantity,
+      license_required: s.license_required,
+      sw_type:          s.sw_type,
+      state:            s.state,
+      related_link:     s.related_link,
+      in_use_count:     inUseCount,
+      available_count:  s.quantity - inUseCount,
+      licenses: s.licenses.map((l) => ({
+        id:               l.id,
+        license_key:      l.license_key,
+        license_password: l.license_password,
+        key_type:         l.key_type,
+        license_type:     l.license_type,
+        user_note:        l.user_note,
+        state:            l.state,
+        user: l.User ? {           // [Fix] s.User → l.User
+          id:    l.User.id,
+          email: l.User.email,
+          role:  l.User.role,
+          name:  l.User.profile?.name ?? null,
+        } : null,
+      })),
+    };
+  });
+
   const swTotal = {
     total_sw_count:      sw.length,
     total_license_count: sw.reduce((acc, s) => acc + s.quantity, 0),
     total_in_use:        sw.reduce((acc, s) => acc + s.in_use_count, 0),
     list: sw,
   };
- 
-  // ── Enterprise(PC) 집계 — GROUP BY COUNT 방식 (Association 불필요) ──
+
   const [enterpriseTotal, countRows, itemTypes] = await Promise.all([
-    AssetEnterprise.count({
-      where: { state: { [Op.ne]: 'returned' } },
-    }),
+    AssetEnterprise.count({ where: { state: { [Op.ne]: 'returned' } } }),
     AssetEnterprise.findAll({
       where: { state: { [Op.ne]: 'returned' } },
       attributes: [
@@ -1989,31 +1775,24 @@ exports.getDashboard = asyncWrapper(async (req, res) => {
       group: ['item_type_id'],
       raw: true,
     }),
-    AssetEnterpriseItemType.findAll({
-      attributes: ['id', 'code', 'name'],
-      order: [['name', 'ASC']],
-    }),
+    AssetEnterpriseItemType.findAll({ attributes: ['id', 'code', 'name'], order: [['name', 'ASC']] }),
   ]);
- 
-  const countMap = Object.fromEntries(
-    countRows.map((r) => [r.item_type_id, parseInt(r.count, 10)])
-  );
- 
+
+  const countMap = Object.fromEntries(countRows.map((r) => [r.item_type_id, parseInt(r.count, 10)]));
+
   const enterprise = {
-    total_count: enterpriseTotal,
+    total_count:  enterpriseTotal,
     by_item_type: itemTypes
       .map((t) => ({ id: t.id, code: t.code, name: t.name, count: countMap[t.id] || 0 }))
       .filter((t) => t.count > 0),
   };
- 
+
   res.status(200).json({ sw: swTotal, enterprise });
 });
 
 
 // ─────────────────────────────────────────
 // SW 전체 조회 (admin 전용)
-// GET /assets/sw/list
-// query: name, manufacturer, user_id
 // ─────────────────────────────────────────
 exports.getSwList = asyncWrapper(async (req, res) => {
   const { role } = req.user;
@@ -2043,27 +1822,21 @@ exports.getSwList = asyncWrapper(async (req, res) => {
   const result = swList.map((sw) => {
     const inUseCount = sw.licenses.filter(l => l.state === 'in_use').length;
     return {
-      id:              sw.id,
-      name:            sw.name,
-      version:         sw.version,
-      manufacturer:    sw.manufacturer,
-      quantity:        sw.quantity,
+      id:               sw.id,
+      name:             sw.name,
+      version:          sw.version,
+      manufacturer:     sw.manufacturer,
+      quantity:         sw.quantity,
       license_required: sw.license_required,
       sw_type:          sw.sw_type,
-      user:             sw.User ? {
-        id: sw.User.id, 
-        email: sw.User.email,
-        role: sw.User.role,
-        name: sw.User.profile?.name
-      } : null,
       acquisition_date: sw.acquisition_date,
-      state:           sw.state,
-      related_link:    sw.related_link,
-      remarks:         sw.remarks,
-      in_use_count:    inUseCount,
-      available_count: sw.quantity - inUseCount,
-      created_at:      sw.created_at,
-      updated_at:      sw.updated_at,
+      state:            sw.state,
+      related_link:     sw.related_link,
+      remarks:          sw.remarks,
+      in_use_count:     inUseCount,
+      available_count:  sw.quantity - inUseCount,
+      created_at:       sw.created_at,
+      updated_at:       sw.updated_at,
       licenses: sw.licenses.map(l => ({
         id:               l.id,
         license_key:      l.license_key,
@@ -2081,15 +1854,13 @@ exports.getSwList = asyncWrapper(async (req, res) => {
   res.status(200).json({ total: result.length, list: result });
 });
 
+
 // ─────────────────────────────────────────
 // SW 목록 조회 (등록용 콤보박스)
-// GET /api/assets/sw/list-simple
-// - returned 제외 전체
-// - 라이선스 키/비밀번호 미포함
 // ─────────────────────────────────────────
 exports.getSwListSimple = asyncWrapper(async (req, res) => {
   const { keyword } = req.query;
- 
+
   const where = { state: { [Op.ne]: 'returned' } };
   if (keyword) {
     where[Op.or] = [
@@ -2097,23 +1868,20 @@ exports.getSwListSimple = asyncWrapper(async (req, res) => {
       { manufacturer: { [Op.like]: `%${keyword}%` } },
     ];
   }
- 
+
   const list = await AssetSw.findAll({
     where,
     attributes: ['id', 'name', 'manufacturer', 'version', 'license_required', 'sw_type', 'state', 'related_link', 'quantity'],
     order: [['name', 'ASC']],
   });
- 
+
   res.status(200).json({ total: list.length, list });
 });
 
+
 // ─────────────────────────────────────────
-// SW 할당 가능 목록 조회 (할당용 콤보박스)
-// GET /api/assets/sw/available
-// - 라이선스형: available 라이선스가 1개 이상 존재하는 SW (DB 레벨 INNER JOIN)
-// - 구독형: returned 아닌 SW (수량 관리이므로 SW 자체 표시)
-// - admin: license_key / license_password 포함
-// - user:  license_key / license_password 미포함
+// SW 할당 가능 목록 조회
+// [Fix] sw.User 필드 제거 (AssetSw ↔ User 직접 연관 없음)
 // ─────────────────────────────────────────
 exports.getSwAvailable = asyncWrapper(async (req, res) => {
   const { keyword } = req.query;
@@ -2128,73 +1896,89 @@ exports.getSwAvailable = asyncWrapper(async (req, res) => {
 
   const SW_ATTRS = ['id', 'name', 'manufacturer', 'version', 'license_required', 'sw_type', 'state', 'quantity'];
 
-  // ── 라이선스형: available 라이선스 존재하는 SW만 (INNER JOIN) ───
   const licenseTypeSw = await AssetSw.findAll({
-    where: {
-      state:            { [Op.ne]: 'returned' },
-      license_required: true,
-      ...keywordWhere,
-    },
+    where: { state: { [Op.ne]: 'returned' }, license_required: true, ...keywordWhere },
     attributes: SW_ATTRS,
     include: [{
       model:      AssetSwLicense,
       as:         'licenses',
       where:      { state: 'available' },
-      attributes: isAdmin ? ['id', 'license_key', 'license_password', 'key_type', 'license_type'] : ['id', 'key_type', 'license_type'],
-      required:   true,   // INNER JOIN — available 라이선스 없는 SW 제외
-    }]
+      attributes: isAdmin
+        ? ['id', 'license_key', 'license_password', 'key_type', 'license_type']
+        : ['id', 'key_type', 'license_type'],
+      required: true,
+    }],
   });
 
-  // ── 구독형: returned 아닌 SW 전체 ────────────────────────────────
   const subscriptionSw = await AssetSw.findAll({
-    where: {
-      state:            { [Op.ne]: 'returned' },
-      license_required: false,
-      ...keywordWhere,
-    },
+    where: { state: { [Op.ne]: 'returned' }, license_required: false, ...keywordWhere },
     attributes: SW_ATTRS,
   });
 
+  const allSwIds = [
+    ...licenseTypeSw.map(s => s.id),
+    ...subscriptionSw.map(s => s.id),
+  ];
+
+  let inUseCountMap = {};
+  if (allSwIds.length > 0) {
+    const inUseCounts = await AssetSwLicense.findAll({
+      where:      { asset_sw_id: { [Op.in]: allSwIds }, state: 'in_use' },
+      attributes: ['asset_sw_id', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+      group:      ['asset_sw_id'],
+      raw:        true,
+    });
+    inUseCountMap = Object.fromEntries(inUseCounts.map(r => [r.asset_sw_id, Number(r.count)]));
+  }
+
   const result = [
-    ...licenseTypeSw.map(sw => ({
-      id:               sw.id,
-      name:             sw.name,
-      manufacturer:     sw.manufacturer,
-      version:          sw.version,
-      license_required: true,
-      sw_type:          sw.sw_type,
-      state:            sw.state,
-      quantity:         sw.quantity,
-      available_licenses: sw.licenses.map(l => ({
-        id:           l.id,
-        key_type:     l.key_type,
-        license_type: l.license_type,
-        ...(isAdmin && {
-          license_key:      l.license_key,
-          license_password: l.license_password,
-        }),
-      })),
-    })),
-    ...subscriptionSw.map(sw => ({
-      id:               sw.id,
-      name:             sw.name,
-      manufacturer:     sw.manufacturer,
-      version:          sw.version,
-      license_required: false,
-      sw_type:          sw.sw_type,
-      state:            sw.state,
-      quantity:         sw.quantity,
-      available_licenses: [],
-    })),
+    ...licenseTypeSw.map(sw => {
+      const inUseCount = inUseCountMap[sw.id] ?? 0;
+      return {
+        id:               sw.id,
+        name:             sw.name,
+        manufacturer:     sw.manufacturer,
+        version:          sw.version,
+        license_required: true,
+        sw_type:          sw.sw_type,
+        state:            sw.state,
+        quantity:         sw.quantity,
+        available_count:  sw.licenses.length,
+        in_use_count:     inUseCount,
+        available_licenses: sw.licenses.map(l => ({
+          id:           l.id,
+          key_type:     l.key_type,
+          license_type: l.license_type,
+          ...(isAdmin && { license_key: l.license_key, license_password: l.license_password }),
+        })),
+      };
+    }),
+    ...subscriptionSw.map(sw => {
+      const inUseCount    = inUseCountMap[sw.id] ?? 0;
+      const availableCount = Math.max(0, sw.quantity - inUseCount);
+      return {
+        id:               sw.id,
+        name:             sw.name,
+        manufacturer:     sw.manufacturer,
+        version:          sw.version,
+        license_required: false,
+        sw_type:          sw.sw_type,
+        state:            sw.state,
+        quantity:         sw.quantity,
+        available_count:  availableCount,
+        in_use_count:     inUseCount,
+        available_licenses: [],
+        // [Fix] sw.User 필드 제거 — AssetSw는 User와 직접 연관 없음
+      };
+    }),
   ].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
   res.status(200).json({ total: result.length, list: result });
 });
 
+
 // ─────────────────────────────────────────
 // SW 라이선스 할당 (admin 전용)
-// PATCH /assets/sw/assign
-// body: { license_id, user_id }
 // ─────────────────────────────────────────
 exports.assignSwLicense = asyncWrapper(async (req, res) => {
   const { role, userId: adminId } = req.user;
@@ -2210,7 +1994,6 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
   const targetUser = await User.findByPk(user_id);
   if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
 
-  // ── 라이선스형: license_id 기준 ──────────────────────────────────
   if (license_id) {
     const license = await AssetSwLicense.findByPk(license_id);
     if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
@@ -2219,24 +2002,14 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
     }
 
     await sequelize.transaction(async (t) => {
-      // 락 재조회 (동시 할당 방지)
-      const lockedLicense = await AssetSwLicense.findByPk(license_id, {
-        lock: t.LOCK.UPDATE,
-        transaction: t,
-      });
+      const lockedLicense = await AssetSwLicense.findByPk(license_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (lockedLicense.state !== 'available') {
-        const err = new Error('이미 할당된 라이선스입니다. 다시 확인해주세요.');
-        err.statusCode = 409;
-        throw err;
+        const err = new Error('이미 할당된 라이선스입니다. 다시 확인해주세요.'); err.statusCode = 409; throw err;
       }
 
       await AssetSwHistory.create({
-        asset_sw_id:  lockedLicense.asset_sw_id,
-        license_id:   lockedLicense.id,
-        user_id:      adminId,
-        change_type:  'assign',
-        before_value: 'available',
-        after_value:  'in_use',
+        asset_sw_id: lockedLicense.asset_sw_id, license_id: lockedLicense.id, user_id: adminId,
+        change_type: 'assign', before_value: 'available', after_value: 'in_use',
       }, { transaction: t });
 
       lockedLicense.state   = 'in_use';
@@ -2248,7 +2021,6 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
     return res.status(200).json({ message: '라이선스가 할당되었습니다.', license_id, user_id });
   }
 
-  // ── 구독형: asset_sw_id 기준 ─────────────────────────────────────
   const sw = await AssetSw.findByPk(asset_sw_id);
   if (!sw) return res.status(404).json({ message: 'SW를 찾을 수 없습니다.' });
   if (sw.state === 'returned') return res.status(400).json({ message: '반납된 SW입니다.' });
@@ -2258,71 +2030,77 @@ exports.assignSwLicense = asyncWrapper(async (req, res) => {
 
   const newLicense = await sequelize.transaction(async (t) => {
     const license = await AssetSwLicense.create({
-      asset_sw_id:      Number(asset_sw_id),
-      user_id:          Number(user_id),
-      user_note:        null,
-      license_key:      null,
-      license_password: null,
-      key_type:         null,
-      license_type:     'per_seat',
-      state:            'in_use',
+      asset_sw_id:      Number(asset_sw_id), user_id: Number(user_id),
+      user_note:        null, license_key: null, license_password: null,
+      key_type:         null, license_type: 'per_seat', state: 'in_use',
     }, { transaction: t });
 
     await AssetSwHistory.create({
-      asset_sw_id:  Number(asset_sw_id),
-      license_id:   license.id,
-      user_id:      adminId,
-      change_type:  'assign',
-      before_value: null,
-      after_value:  'in_use',
+      asset_sw_id:  Number(asset_sw_id), license_id: license.id, user_id: adminId,
+      change_type:  'assign', before_value: null, after_value: 'in_use',
     }, { transaction: t });
 
-    const lockedSw = await AssetSw.findByPk(Number(asset_sw_id), { 
-      lock: t.LOCK.UPDATE, 
-      transaction: t, 
-    });
-    // 락 획득 후 최신 할당 수량을 다시 계산하여 stale read 방지
+    const lockedSw = await AssetSw.findByPk(Number(asset_sw_id), { lock: t.LOCK.UPDATE, transaction: t });
     const currentInUseCount = await AssetSwLicense.count({
-      where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' },
-      transaction: t,
+      where: { asset_sw_id: Number(asset_sw_id), state: 'in_use' }, transaction: t,
     });
 
     if (!lockedSw) {
-      const err = new Error('SW를 찾을 수 없습니다.');
-      err.statusCode = 404;
-      throw err;
+      const err = new Error('SW를 찾을 수 없습니다.'); err.statusCode = 404; throw err;
     }
-
     if (lockedSw.quantity > 0 && currentInUseCount > lockedSw.quantity) {
-      const err = new Error('할당 가능 수량(' + lockedSw.quantity + '개)을 초과했습니다.');
-      err.statusCode = 400;
-      throw err;
+      const err = new Error(`할당 가능 수량(${lockedSw.quantity}개)을 초과했습니다.`); err.statusCode = 400; throw err;
     }
 
-    await recalcSwState(Number(asset_sw_id), t);  
-
+    await recalcSwState(Number(asset_sw_id), t);
     return license;
   });
 
   res.status(200).json({ message: '구독형 SW가 할당되었습니다.', license_id: newLicense.id, asset_sw_id, user_id });
 });
 
+
 // ─────────────────────────────────────────
 // SW 라이선스 할당 요청 (user)
-// POST /api/assets/sw/assign/request
-// body: { asset_sw_id, license_id, request_reason? }
+// [Fix] 구독형 SW 분기 복구 (license_id 불필요)
 // ─────────────────────────────────────────
 exports.requestSwAssign = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
   const { asset_sw_id, license_id, request_reason } = req.body;
- 
+
   if (!asset_sw_id) return res.status(400).json({ message: 'SW ID를 입력해주세요.' });
-  if (!license_id)  return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
- 
+
   const sw = await AssetSw.findByPk(asset_sw_id);
   if (!sw) return res.status(404).json({ message: 'SW를 찾을 수 없습니다.' });
   if (sw.state === 'returned') return res.status(400).json({ message: '반납된 SW입니다.' });
- 
+
+  // ── 구독형 SW: license_id 불필요 ─────────────────────────────────
+  if (!sw.license_required) {
+    const request = await AssetSwRequest.create({
+      asset_sw_id:       Number(asset_sw_id),
+      requester_id:      userId,
+      status:            'pending',
+      request_type:      'assign',
+      request_date:      new Date(),
+      required_quantity: 1,
+      request_reason:    request_reason ?? null,
+      new_asset_data:    JSON.stringify({ subscription_assign: true }),
+    });
+
+    await AssetSwHistory.create({
+      asset_sw_id:  Number(asset_sw_id), license_id: null, user_id: userId,
+      change_type:  'request', before_value: null, after_value: 'pending',
+    });
+
+    return res.status(201).json({
+      message: '구독형 SW 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
+      request,
+    });
+  }
+
+  // ── 라이선스형 SW: license_id 필수 ──────────────────────────────
+  if (!license_id) return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
+
   const license = await AssetSwLicense.findByPk(license_id);
   if (!license) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
   if (Number(license.asset_sw_id) !== Number(asset_sw_id)) {
@@ -2331,7 +2109,7 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   if (license.state !== 'available') {
     return res.status(400).json({ message: '사용 가능한 상태의 라이선스만 요청할 수 있습니다.' });
   }
- 
+
   const request = await AssetSwRequest.create({
     asset_sw_id:       Number(asset_sw_id),
     requester_id:      userId,
@@ -2344,33 +2122,27 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   });
 
   await AssetSwHistory.create({
-    asset_sw_id:  Number(asset_sw_id),
-    license_id:   Number(license_id),
-    user_id:      userId,               // 요청자 ID
-    change_type:  'request',
-    before_value: 'available',          // 라이선스 현재 상태
-    after_value:  'pending',
+    asset_sw_id:  Number(asset_sw_id), license_id: Number(license_id), user_id: userId,
+    change_type:  'request', before_value: 'available', after_value: 'pending',
   });
- 
+
   res.status(201).json({
     message: '라이선스 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
     request,
   });
 });
 
+
 // ─────────────────────────────────────────
 // Enterprise(PC) 전체 조회 (admin 전용)
-// GET /assets/enterprise/list
-// query: category_id, item_type_id, manufacturer, location,
-//        state, user_id, department_id
 // ─────────────────────────────────────────
 exports.getEnterpriseList = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
- 
+
   const { category_id, item_type_id, manufacturer, location,
           state, user_id, department_id, keyword } = req.query;
- 
+
   const where = { state: { [Op.ne]: 'returned' } };
   if (state)         where.state         = state;
   if (category_id)   where.category_id   = Number(category_id);
@@ -2387,7 +2159,7 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
       { location:      { [Op.like]: `%${keyword}%` } },
     ];
   }
- 
+
   const list = await AssetEnterprise.findAll({
     where,
     include: [
@@ -2397,8 +2169,7 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
         model: User,
         attributes: ['id', 'email', 'role'],
         include: [{
-          model: Profile,
-          as: 'profile',
+          model: Profile, as: 'profile',
           attributes: ['name', 'department_id', 'company_rank'],
           include: [{ model: Department, as: 'department', attributes: ['id', 'name'] }],
         }],
@@ -2406,34 +2177,26 @@ exports.getEnterpriseList = asyncWrapper(async (req, res) => {
     ],
     order: [['created_at', 'DESC']],
   });
- 
+
   res.status(200).json({
-  total: list.length,
-  list: list.map(e => {
-    const p = e.toJSON();
-    p.item_number = buildItemNumber(p);
-    return p;
-  }),
-});
+    total: list.length,
+    list: list.map(e => {
+      const p = e.toJSON();
+      p.item_number = buildItemNumber(p);
+      return p;
+    }),
+  });
 });
 
+
 // ─────────────────────────────────────────
-// Enterprise 목록 조회 (등록용 콤보박스 — 카테고리 계층형)
-// GET /api/assets/enterprise/list-simple
-// 응답 구조:
-//   categories[]
-//     └ item_types[]
-//         └ manufacturers[] (중복 제거, null 제외)
-// - returned 제외
-// - 카테고리 → item_type → 제조사 순 정렬 (한국어)
+// Enterprise 목록 조회 (등록용 콤보박스)
 // ─────────────────────────────────────────
 exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
   const rows = await AssetEnterprise.findAll({
     where: { state: { [Op.ne]: 'returned' } },
     attributes: [
-      'category_id',
-      'item_type_id',
-      'manufacturer',
+      'category_id', 'item_type_id', 'manufacturer',
       [sequelize.fn('COUNT', sequelize.col('AssetEnterprise.id')), 'cnt'],
     ],
     include: [
@@ -2460,9 +2223,7 @@ exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
       typeMap[type.id] = { id: type.id, name: type.name, code: type.code, manufacturers: [] };
     }
 
-    if (row.manufacturer) {
-      typeMap[type.id].manufacturers.push(row.manufacturer);
-    }
+    if (row.manufacturer) typeMap[type.id].manufacturers.push(row.manufacturer);
   }
 
   const categories = Object.values(categoryMap)
@@ -2483,18 +2244,14 @@ exports.getEnterpriseListSimple = asyncWrapper(async (req, res) => {
   res.status(200).json({ categories });
 });
 
+
 // ─────────────────────────────────────────
-// Enterprise 할당 가능 목록 조회 (할당용 콤보박스)
-// GET /api/assets/enterprise/available
-// - state = 'stored' AND responsible_type = 'vacant'
+// Enterprise 할당 가능 목록 조회
 // ─────────────────────────────────────────
 exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
   const { category_id, item_type_id, keyword } = req.query;
- 
-  const where = {
-    state:            'stored',
-    responsible_type: 'vacant',
-  };
+
+  const where = { state: 'stored', responsible_type: 'vacant' };
   if (category_id)  where.category_id  = Number(category_id);
   if (item_type_id) where.item_type_id = Number(item_type_id);
   if (keyword) {
@@ -2503,7 +2260,7 @@ exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
       { serial_number: { [Op.like]: `%${keyword}%` } },
     ];
   }
- 
+
   const list = await AssetEnterprise.findAll({
     where,
     attributes: ['id', 'manufacturer', 'serial_number', 'spec', 'location', 'acquisition_date'],
@@ -2513,7 +2270,7 @@ exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
     ],
     order: [['id', 'ASC']],
   });
- 
+
   res.status(200).json({
     total: list.length,
     list: list.map(e => {
@@ -2524,10 +2281,9 @@ exports.getEnterpriseAvailable = asyncWrapper(async (req, res) => {
   });
 });
 
+
 // ─────────────────────────────────────────
-// 내자산 히스토리 조회 (SW + Enterprise)
-// GET /assets/history/personal
-// query: type(sw|enterprise), asset_sw_id, item_type_id, from, to
+// 내자산 히스토리 조회
 // ─────────────────────────────────────────
 exports.getPersonalHistory = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
@@ -2536,15 +2292,13 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
   let swHistory = [];
   let enterpriseHistory = [];
 
-  // ── SW 히스토리 ──────────────────────────
   if (!type || type === 'sw') {
-    const swWhere = { ...buildDateWhere('created_at', from, to)};
+    const swWhere = { ...buildDateWhere('created_at', from, to) };
     if (role !== 'admin') swWhere.user_id = userId;
 
     const swInclude = [
       {
-        model: AssetSw,
-        as: 'sw',
+        model: AssetSw, as: 'sw',
         attributes: ['id', 'name', 'version', 'manufacturer'],
         ...(asset_sw_id ? { where: { id: Number(asset_sw_id) } } : {}),
         required: !!asset_sw_id,
@@ -2554,56 +2308,43 @@ exports.getPersonalHistory = asyncWrapper(async (req, res) => {
     ];
 
     swHistory = await AssetSwHistory.findAll({
-      where: swWhere,
-      include: swInclude,
-      order: [['created_at', 'DESC']],
+      where: swWhere, include: swInclude, order: [['created_at', 'DESC']],
     });
   }
 
-  // ── Enterprise 히스토리 ──────────────────
   if (!type || type === 'enterprise') {
     const entWhere = { ...buildDateWhere('created_at', from, to) };
     if (role !== 'admin') entWhere.user_id = userId;
 
     const entInclude = [
       {
-        model: AssetEnterprise,
-        as: 'asset',
+        model: AssetEnterprise, as: 'asset',
         attributes: ['id', 'manufacturer', 'serial_number', 'state'],
         ...(item_type_id ? { where: { item_type_id: Number(item_type_id) } } : {}),
         required: !!item_type_id,
-        include: [
-          { model: AssetEnterpriseItemType, as: 'item_type', attributes: ['id', 'name', 'code'] },
-        ],
+        include: [{ model: AssetEnterpriseItemType, as: 'item_type', attributes: ['id', 'name', 'code'] }],
       },
       { ...USER_INCLUDE, as: 'changedBy' },
     ];
 
     enterpriseHistory = await AssetEnterpriseHistory.findAll({
-      where: entWhere,
-      include: entInclude,
-      order: [['created_at', 'DESC']],
+      where: entWhere, include: entInclude, order: [['created_at', 'DESC']],
     });
   }
 
-  res.status(200).json({
-    sw:         swHistory,
-    enterprise: enterpriseHistory,
-  });
+  res.status(200).json({ sw: swHistory, enterprise: enterpriseHistory });
 });
+
 
 // ─────────────────────────────────────────
 // Enterprise 자산 할당 요청 (user)
-// POST /api/assets/enterprise/assign/request
-// body: { asset_id, request_reason? }
-// 조건: state === 'stored' AND responsible_type === 'vacant'
 // ─────────────────────────────────────────
 exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
   const { asset_id, request_reason } = req.body;
- 
+
   if (!asset_id) return res.status(400).json({ message: '자산 ID를 입력해주세요.' });
- 
+
   const asset = await AssetEnterprise.findByPk(asset_id, {
     include: [
       { model: AssetEnterpriseCategory, as: 'item_category', attributes: ['id', 'name'] },
@@ -2614,19 +2355,14 @@ exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
   if (asset.state !== 'stored' || asset.responsible_type !== 'vacant') {
     return res.status(400).json({ message: '보관 중이며 담당자가 없는 자산만 할당 요청할 수 있습니다.' });
   }
- 
-  // 동일 자산에 대해 이미 pending 요청이 있는지 확인
+
   const existingPending = await AssetEnterpriseRequest.findOne({
-    where: {
-      asset_id,
-      status:       'pending',
-      request_type: 'assign',
-    },
+    where: { asset_id, status: 'pending', request_type: 'assign' },
   });
   if (existingPending) {
     return res.status(409).json({ message: '해당 자산에 이미 처리 중인 할당 요청이 있습니다.' });
   }
- 
+
   const request = await AssetEnterpriseRequest.create({
     asset_id:          Number(asset_id),
     requester_id:      userId,
@@ -2639,83 +2375,64 @@ exports.requestEnterpriseAssign = asyncWrapper(async (req, res) => {
   });
 
   await AssetEnterpriseHistory.create({
-    asset_enterprise_id: Number(asset_id),
-    user_id:             userId,            // 요청자 ID
-    change_type:         'request',
-    before_value:        asset.state,       // 현재 자산 상태 (stored)
-    after_value:         'pending',
+    asset_enterprise_id: Number(asset_id), user_id: userId,
+    change_type: 'request', before_value: asset.state, after_value: 'pending',
   });
- 
+
   res.status(201).json({
     message: '자산 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
     request,
   });
 });
 
+
 // ─────────────────────────────────────────
 // Enterprise 자산 직접 할당 (admin 전용)
-// PATCH /api/assets/enterprise/assign
-// body: { asset_id, user_id }
-// 조건: state === 'stored' AND responsible_type === 'vacant'
 // ─────────────────────────────────────────
 exports.assignEnterprise = asyncWrapper(async (req, res) => {
   const { role, userId: adminId } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
- 
+
   const { asset_id, user_id } = req.body;
- 
+
   if (!asset_id) return res.status(400).json({ message: '자산 ID를 입력해주세요.' });
   if (!user_id)  return res.status(400).json({ message: '할당할 사용자 ID를 입력해주세요.' });
- 
-  // 사전 유효성 검사 (트랜잭션 외부)
+
   const asset = await AssetEnterprise.findByPk(asset_id);
   if (!asset) return res.status(404).json({ message: '자산을 찾을 수 없습니다.' });
   if (asset.state !== 'stored' || asset.responsible_type !== 'vacant') {
     return res.status(400).json({ message: '보관 중이며 담당자가 없는 자산만 할당할 수 있습니다.' });
   }
- 
+
   const targetUser = await User.findByPk(user_id);
   if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
- 
+
   await sequelize.transaction(async (t) => {
-    // 락 재조회 (동시 할당 방지)
-    const lockedAsset = await AssetEnterprise.findByPk(asset_id, {
-      lock: t.LOCK.UPDATE,
-      transaction: t,
-    });
+    const lockedAsset = await AssetEnterprise.findByPk(asset_id, { lock: t.LOCK.UPDATE, transaction: t });
     if (!lockedAsset) {
-      const err = new Error('자산을 찾을 수 없습니다.');
-      err.statusCode = 404;
-      throw err;
+      const err = new Error('자산을 찾을 수 없습니다.'); err.statusCode = 404; throw err;
     }
     if (lockedAsset.state !== 'stored' || lockedAsset.responsible_type !== 'vacant') {
-      const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.');
-      err.statusCode = 409;
-      throw err;
+      const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.'); err.statusCode = 409; throw err;
     }
- 
+
     await AssetEnterpriseHistory.create({
-      asset_enterprise_id: lockedAsset.id,
-      user_id:             adminId,
-      change_type:         'assign',
-      before_value:        lockedAsset.state,
-      after_value:         'in_use',
+      asset_enterprise_id: lockedAsset.id, user_id: adminId,
+      change_type: 'assign', before_value: lockedAsset.state, after_value: 'in_use',
     }, { transaction: t });
- 
+
     lockedAsset.state            = 'in_use';
     lockedAsset.responsible_type = 'personal';
     lockedAsset.user_id          = user_id;
     await lockedAsset.save({ transaction: t });
   });
- 
+
   res.status(200).json({ message: '자산이 할당되었습니다.', asset_id, user_id });
 });
 
 
 // ─────────────────────────────────────────
 // DF 히스토리 조회
-// GET /assets/history/df
-// query: project_id, asset_type_id, from, to
 // ─────────────────────────────────────────
 exports.getDfHistory = asyncWrapper(async (req, res) => {
   const { project_id, asset_type_id, from, to } = req.query;
@@ -2725,14 +2442,11 @@ exports.getDfHistory = asyncWrapper(async (req, res) => {
   Object.assign(where, buildDateWhere('created_at', from, to));
 
   const itemInclude = {
-    model: AssetProjectItem,
-    as: 'item',
+    model: AssetProjectItem, as: 'item',
     attributes: ['id', 'item_number', 'model_number', 'manufacturer', 'serial_number', 'state'],
     ...(asset_type_id ? { where: { asset_type_id: Number(asset_type_id) } } : {}),
     required: !!asset_type_id,
-    include: [
-      { model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] },
-    ],
+    include: [{ model: AssetProjectItemType, as: 'item_type', attributes: ['id', 'name'] }],
   };
 
   const history = await AssetProjectHistory.findAll({
@@ -2750,9 +2464,7 @@ exports.getDfHistory = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// SW 히스토리 아카이빙 (admin 전용)
-// POST /assets/history/sw/archive
-// body: { before?, after?, asset_sw_ids? }
+// SW 히스토리 아카이빙
 // ─────────────────────────────────────────
 exports.archiveSwHistory = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
@@ -2774,18 +2486,12 @@ exports.archiveSwHistory = asyncWrapper(async (req, res) => {
 
   const archived = await sequelize.transaction(async (t) => {
     return archiveHistory({
-      HistoryModel: AssetSwHistory,
-      ArchiveModel: AssetSwHistoryArchive,
+      HistoryModel: AssetSwHistory, ArchiveModel: AssetSwHistoryArchive,
       where, userId, archiveRange, t,
       mapFn: (h) => ({
-        history_id:   h.id,
-        asset_sw_id:  h.asset_sw_id,
-        license_id:   h.license_id,
-        user_id:      h.user_id,
-        change_type:  h.change_type,
-        before_value: h.before_value,
-        after_value:  h.after_value,
-        created_at:   h.created_at,
+        history_id:   h.id, asset_sw_id: h.asset_sw_id, license_id: h.license_id,
+        user_id:      h.user_id, change_type: h.change_type,
+        before_value: h.before_value, after_value: h.after_value, created_at: h.created_at,
       }),
     });
   });
@@ -2796,8 +2502,7 @@ exports.archiveSwHistory = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// Enterprise 히스토리 아카이빙 (admin 전용)
-// POST /assets/history/enterprise/archive
+// Enterprise 히스토리 아카이빙
 // ─────────────────────────────────────────
 exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
@@ -2819,17 +2524,12 @@ exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
 
   const archived = await sequelize.transaction(async (t) => {
     return archiveHistory({
-      HistoryModel: AssetEnterpriseHistory,
-      ArchiveModel: AssetEnterpriseHistoryArchive,
+      HistoryModel: AssetEnterpriseHistory, ArchiveModel: AssetEnterpriseHistoryArchive,
       where, userId, archiveRange, t,
       mapFn: (h) => ({
-        history_id:          h.id,
-        asset_enterprise_id: h.asset_enterprise_id,
-        user_id:             h.user_id,
-        change_type:         h.change_type,
-        before_value:        h.before_value,
-        after_value:         h.after_value,
-        created_at:          h.created_at,
+        history_id:          h.id, asset_enterprise_id: h.asset_enterprise_id,
+        user_id:             h.user_id, change_type: h.change_type,
+        before_value:        h.before_value, after_value: h.after_value, created_at: h.created_at,
       }),
     });
   });
@@ -2840,8 +2540,7 @@ exports.archiveEnterpriseHistory = asyncWrapper(async (req, res) => {
 
 
 // ─────────────────────────────────────────
-// DF 히스토리 아카이빙 (admin 전용)
-// POST /assets/history/df/archive
+// DF 히스토리 아카이빙
 // ─────────────────────────────────────────
 exports.archiveDfHistory = asyncWrapper(async (req, res) => {
   const { role, userId } = req.user;
@@ -2863,18 +2562,12 @@ exports.archiveDfHistory = asyncWrapper(async (req, res) => {
 
   const archived = await sequelize.transaction(async (t) => {
     return archiveHistory({
-      HistoryModel: AssetProjectHistory,
-      ArchiveModel: AssetProjectHistoryArchive,
+      HistoryModel: AssetProjectHistory, ArchiveModel: AssetProjectHistoryArchive,
       where, userId, archiveRange, t,
       mapFn: (h) => ({
-        history_id:            h.id,
-        asset_project_item_id: h.asset_project_item_id,
-        project_id:            h.project_id,
-        user_id:               h.user_id,
-        change_type:           h.change_type,
-        before_value:          h.before_value,
-        after_value:           h.after_value,
-        created_at:            h.created_at,
+        history_id:            h.id, asset_project_item_id: h.asset_project_item_id,
+        project_id:            h.project_id, user_id: h.user_id, change_type: h.change_type,
+        before_value:          h.before_value, after_value: h.after_value, created_at: h.created_at,
       }),
     });
   });
@@ -2883,103 +2576,82 @@ exports.archiveDfHistory = asyncWrapper(async (req, res) => {
   res.status(200).json({ message: `DF 히스토리 ${archived}건이 아카이빙되었습니다.`, archived, archive_range: archiveRange });
 });
 
+
 // ─────────────────────────────────────────
-// SW 히스토리 아카이브 조회 (admin 전용)
-// GET /api/assets/history/sw/archive
-// query: asset_sw_id, archive_range, from, to
+// SW 히스토리 아카이브 조회
 // ─────────────────────────────────────────
 exports.getSwHistoryArchive = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
 
   const { asset_sw_id, archive_range, from, to } = req.query;
-
   const where = { ...buildDateWhere('archived_at', from, to) };
   if (asset_sw_id)   where.asset_sw_id   = Number(asset_sw_id);
   if (archive_range) where.archive_range = archive_range;
 
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
+  const page   = Number(req.query.page)  || 1;
+  const limit  = Number(req.query.limit) || 20;
   const offset = (page - 1) * limit;
 
   const { count, rows: list } = await AssetSwHistoryArchive.findAndCountAll({
-    where,
-    order: [['archived_at', 'DESC']],
-    limit,
-    offset,
+    where, order: [['archived_at', 'DESC']], limit, offset,
   });
 
   res.status(200).json({ total: count, list });
 });
 
+
 // ─────────────────────────────────────────
-// Enterprise 히스토리 아카이브 조회 (admin 전용)
-// GET /api/assets/history/enterprise/archive
-// query: asset_enterprise_id, archive_range, from, to
+// Enterprise 히스토리 아카이브 조회
 // ─────────────────────────────────────────
 exports.getEnterpriseHistoryArchive = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
 
   const { asset_enterprise_id, archive_range, from, to } = req.query;
-
   const where = { ...buildDateWhere('archived_at', from, to) };
   if (asset_enterprise_id) where.asset_enterprise_id = Number(asset_enterprise_id);
   if (archive_range)       where.archive_range       = archive_range;
 
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
+  const page   = Number(req.query.page)  || 1;
+  const limit  = Number(req.query.limit) || 20;
   const offset = (page - 1) * limit;
 
   const { count, rows: list } = await AssetEnterpriseHistoryArchive.findAndCountAll({
-    where,
-    order: [['archived_at', 'DESC']],
-    limit,
-    offset,
+    where, order: [['archived_at', 'DESC']], limit, offset,
   });
 
   res.status(200).json({ total: count, list });
 });
 
+
 // ─────────────────────────────────────────
-// DF 히스토리 아카이브 조회 (admin 전용)
-// GET /api/assets/history/df/archive
-// query: project_id, asset_project_item_id, archive_range, from, to
+// DF 히스토리 아카이브 조회
 // ─────────────────────────────────────────
 exports.getDfHistoryArchive = asyncWrapper(async (req, res) => {
   const { role } = req.user;
   if (role !== 'admin') return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
 
   const { project_id, asset_project_item_id, archive_range, from, to } = req.query;
-
   const where = { ...buildDateWhere('archived_at', from, to) };
   if (project_id)            where.project_id            = Number(project_id);
   if (asset_project_item_id) where.asset_project_item_id = Number(asset_project_item_id);
   if (archive_range)         where.archive_range         = archive_range;
 
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
+  const page   = Number(req.query.page)  || 1;
+  const limit  = Number(req.query.limit) || 20;
   const offset = (page - 1) * limit;
 
   const { count, rows: list } = await AssetProjectHistoryArchive.findAndCountAll({
-    where,
-    order: [['archived_at', 'DESC']],
-    limit,
-    offset,
+    where, order: [['archived_at', 'DESC']], limit, offset,
   });
 
   res.status(200).json({ total: count, list });
 });
 
-// ═════════════════════════════════════════════════════════════
-// 자산 상태 변경 (DF / Enterprise / SW)
-// ═════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────
 // DF 자산 상태 변경
-// PATCH /api/assets/df/state
-// body: { item_ids: [1, 2], state: "stored" }
-// 변경 가능 상태: in_use / stored / rented  (returned 제외 — 반납은 /df/return)
 // ─────────────────────────────────────────
 exports.changeDfState = asyncWrapper(async (req, res) => {
   const { userId } = req.user;
@@ -2993,15 +2665,10 @@ exports.changeDfState = asyncWrapper(async (req, res) => {
   }
 
   const items = await AssetProjectItem.findAll({
-    where: {
-      id:    { [Op.in]: item_ids },
-      state: { [Op.ne]: 'returned' },
-    },
+    where: { id: { [Op.in]: item_ids }, state: { [Op.ne]: 'returned' } },
   });
 
-  if (items.length === 0) {
-    return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
-  }
+  if (items.length === 0) return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
   if (items.length !== item_ids.length) {
     return res.status(400).json({ message: '변경할 수 없는 자산이 포함되어 있습니다. (이미 반납됨)' });
   }
@@ -3013,12 +2680,8 @@ exports.changeDfState = asyncWrapper(async (req, res) => {
       if (item.state === state) continue;
 
       await AssetProjectHistory.create({
-        asset_project_item_id: item.id,
-        project_id:            item.project_id,
-        user_id:               userId,
-        change_type:           'change',
-        before_value:          item.state,
-        after_value:           state,
+        asset_project_item_id: item.id, project_id: item.project_id, user_id: userId,
+        change_type: 'change', before_value: item.state, after_value: state,
       }, { transaction: t });
 
       item.state = state;
@@ -3030,19 +2693,12 @@ exports.changeDfState = asyncWrapper(async (req, res) => {
   if (changedCount === 0) {
     return res.status(200).json({ message: '이미 해당 상태인 자산만 선택되었습니다.', changed: 0 });
   }
-  res.status(200).json({
-    message: `${changedCount}개의 자산 상태가 변경되었습니다.`,
-    changed: changedCount,
-  });
+  res.status(200).json({ message: `${changedCount}개의 자산 상태가 변경되었습니다.`, changed: changedCount });
 });
 
 
 // ─────────────────────────────────────────
 // Enterprise 자산 상태 변경
-// PATCH /api/assets/enterprise/state
-// body: { asset_ids: [1, 2], state: "stored" }
-// 변경 가능 상태: in_use / stored  (returned 제외 — 반납은 /enterprise/return)
-// admin: 전체 자산 / user: 본인 자산만
 // ─────────────────────────────────────────
 exports.changeEnterpriseState = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
@@ -3057,17 +2713,12 @@ exports.changeEnterpriseState = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '유효하지 않은 상태값입니다. (in_use / stored)' });
   }
 
-  const where = {
-    id:    { [Op.in]: asset_ids },
-    state: { [Op.ne]: 'returned' },
-  };
+  const where = { id: { [Op.in]: asset_ids }, state: { [Op.ne]: 'returned' } };
   if (role !== 'admin') where.user_id = userId;
 
   const assets = await AssetEnterprise.findAll({ where });
 
-  if (assets.length === 0) {
-    return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
-  }
+  if (assets.length === 0) return res.status(404).json({ message: '상태를 변경할 수 있는 자산이 없습니다.' });
   if (assets.length !== asset_ids.length) {
     return res.status(400).json({ message: '변경할 수 없는 자산이 포함되어 있습니다. (권한 없음 또는 이미 반납됨)' });
   }
@@ -3079,11 +2730,8 @@ exports.changeEnterpriseState = asyncWrapper(async (req, res) => {
       if (asset.state === state) continue;
 
       await AssetEnterpriseHistory.create({
-        asset_enterprise_id: asset.id,
-        user_id:             userId,
-        change_type:         'change',
-        before_value:        asset.state,
-        after_value:         state,
+        asset_enterprise_id: asset.id, user_id: userId,
+        change_type: 'change', before_value: asset.state, after_value: state,
       }, { transaction: t });
 
       asset.state = state;
@@ -3095,20 +2743,12 @@ exports.changeEnterpriseState = asyncWrapper(async (req, res) => {
   if (changedCount === 0) {
     return res.status(200).json({ message: '이미 해당 상태인 자산만 선택되었습니다.', changed: 0 });
   }
-  res.status(200).json({
-    message: `${changedCount}개의 자산 상태가 변경되었습니다.`,
-    changed: changedCount,
-  });
+  res.status(200).json({ message: `${changedCount}개의 자산 상태가 변경되었습니다.`, changed: changedCount });
 });
 
 
 // ─────────────────────────────────────────
 // SW 라이선스 상태 변경 (admin 전용)
-// PATCH /api/assets/sw/state
-// body: { license_ids: [1, 2], state: "available" }
-// 변경 가능 상태: in_use / available
-// assign/return과 달리 user_id 유지, 히스토리 change_type: 'change'
-// 변경 후 영향받은 asset_sw 마스터 state 자동 재계산
 // ─────────────────────────────────────────
 exports.changeSwState = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
@@ -3125,13 +2765,9 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
     return res.status(400).json({ message: '유효하지 않은 상태값입니다. (in_use / available)' });
   }
 
-  const licenses = await AssetSwLicense.findAll({
-    where: { id: { [Op.in]: license_ids } },
-  });
+  const licenses = await AssetSwLicense.findAll({ where: { id: { [Op.in]: license_ids } } });
 
-  if (licenses.length === 0) {
-    return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
-  }
+  if (licenses.length === 0) return res.status(404).json({ message: '라이선스를 찾을 수 없습니다.' });
   if (licenses.length !== license_ids.length) {
     return res.status(400).json({ message: '존재하지 않는 라이선스가 포함되어 있습니다.' });
   }
@@ -3145,12 +2781,8 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
       if (license.state === state) continue;
 
       await AssetSwHistory.create({
-        asset_sw_id:  license.asset_sw_id,
-        license_id:   license.id,
-        user_id:      userId,
-        change_type:  'change',
-        before_value: license.state,
-        after_value:  state,
+        asset_sw_id:  license.asset_sw_id, license_id: license.id, user_id: userId,
+        change_type:  'change', before_value: license.state, after_value: state,
       }, { transaction: t });
 
       license.state = state;
@@ -3159,15 +2791,11 @@ exports.changeSwState = asyncWrapper(async (req, res) => {
       changedCount++;
     }
 
-    // 영향받은 SW 마스터 state 재계산
     await recalcSwStateBatch([...affectedSwIds], t);
   });
 
   if (changedCount === 0) {
     return res.status(200).json({ message: '이미 해당 상태인 라이선스만 선택되었습니다.', changed: 0 });
   }
-  res.status(200).json({
-    message: `${changedCount}개의 라이선스 상태가 변경되었습니다.`,
-    changed: changedCount,
-  });
+  res.status(200).json({ message: `${changedCount}개의 라이선스 상태가 변경되었습니다.`, changed: changedCount });
 });
