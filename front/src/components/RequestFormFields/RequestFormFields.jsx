@@ -251,7 +251,6 @@ const RequestFormFields = ({
   } = useQuery({
     queryKey: ["enterpriseAssetsForForm"],
     queryFn:  fetchEnterpriseAssetsForForm,
-    refetchOnWindowFocus: false,
   });
 
   const {
@@ -260,7 +259,6 @@ const RequestFormFields = ({
   } = useQuery({
     queryKey: ["swAssetsForForm"],
     queryFn:  fetchSwAssetsForForm,
-    refetchOnWindowFocus: false,
   });
 
   const pcCategories = useMemo(() => enterpriseAssets ?? [], [enterpriseAssets]);

@@ -54,8 +54,6 @@ const AdminRequestHistoryPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn: fetchAssetRequests,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
   });
 
   const pcRows = useMemo(() => data?.enterpriseRows ?? [], [data]);

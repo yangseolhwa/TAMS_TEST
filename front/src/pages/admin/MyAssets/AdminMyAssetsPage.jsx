@@ -14,7 +14,6 @@ const AdminMyAssetsPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn:  fetchDashboard,
-    refetchOnWindowFocus: false,
   })
 
   // useMemo로 감싸서 무한루프 방지

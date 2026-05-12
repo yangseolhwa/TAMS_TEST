@@ -91,7 +91,6 @@ const DfAssetsListPage = ({ role }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const projectOptions = dashboard?.projectOptions ?? []
   const typeOptions    = dashboard?.typeOptions    ?? []
@@ -100,7 +99,6 @@ const DfAssetsListPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    refetchOnWindowFocus: false,
   })
 
   const typeInfoMap = useMemo(() => {
@@ -117,7 +115,6 @@ const DfAssetsListPage = ({ role }) => {
   const { data: assetData, isLoading } = useQuery({
     queryKey: ['dfAssets', appliedFilters],
     queryFn:  () => fetchDfAssets(appliedFilters),
-    refetchOnWindowFocus: false,
   })
 
   // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정

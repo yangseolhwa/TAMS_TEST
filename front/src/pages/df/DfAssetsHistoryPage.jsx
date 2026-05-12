@@ -77,7 +77,6 @@ const DfAssetsHistoryPage = ({ role }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const projectOptions = dashboard?.projectOptions ?? []
   const typeOptions    = dashboard?.typeOptions    ?? []
@@ -92,7 +91,6 @@ const DfAssetsHistoryPage = ({ role }) => {
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['dfHistory', apiParams],
     queryFn:  () => fetchDfHistory(apiParams),
-    refetchOnWindowFocus: false,
   })
 
   // ── 클라이언트 키워드 필터 ────────────────────────────────────────────────

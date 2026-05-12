@@ -50,7 +50,6 @@ const UserMyAssetsPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['myAssets'],
     queryFn:  fetchMyAssets,
-    refetchOnWindowFocus: false,
     staleTime: 0,
   })
 

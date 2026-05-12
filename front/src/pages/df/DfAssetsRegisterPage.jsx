@@ -61,7 +61,6 @@ const DfAssetsRegisterPage = ({ role }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const projectOptions = dashboard?.projectOptions ?? []
 
@@ -69,7 +68,6 @@ const DfAssetsRegisterPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    refetchOnWindowFocus: false,
     onSuccess: (data) => { window.__dfTypeGroupsCache = data },
   })
 
