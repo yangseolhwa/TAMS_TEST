@@ -69,7 +69,6 @@ const UserRequestHistoryPage = () => {
             rows={isLoading ? [] : enterpriseRows}
             statusMap={STATUS_MAP}
             selectable={false}
-            totalCount={enterpriseRows.length}
           />
         </Card>
       </section>
@@ -89,7 +88,6 @@ const UserRequestHistoryPage = () => {
             rows={isLoading ? [] : swRows}
             statusMap={STATUS_MAP}
             selectable={false}
-            totalCount={swRows.length}
           />
         </Card>
       </section>
