@@ -2376,9 +2376,9 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   await AssetSwHistory.create({
     asset_sw_id:  Number(asset_sw_id),
     license_id:   Number(license_id),
-    user_id:      userId,
+    user_id:      userId,               // 요청자 ID
     change_type:  'request',
-    before_value: 'available',
+    before_value: 'available',          // 라이선스 현재 상태
     after_value:  'pending',
   });
  

@@ -11,6 +11,7 @@ import RequestFormFields, {
 } from "../../../components/RequestFormFields/RequestFormFields";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
 import styles from "./UserRequestPage.module.css";
+import common from '../../AssetPage.common.module.css'
 import {
   requestEnterpriseAsset,
   requestSwAsset,
@@ -115,6 +116,7 @@ const UserRequestPage = () => {
             name:             swName,
             manufacturer,
             license_required: item.licenseRequired,
+            quantity:         Number(item.quantity),
             ...(version                   && { version }),
             ...(item.acquisitionDateSw    && { acquisition_date: item.acquisitionDateSw }),
             ...(item.swRemarks.trim()     && { remarks:          item.swRemarks.trim() }),
@@ -123,8 +125,7 @@ const UserRequestPage = () => {
           };
 
           if (!item.licenseRequired) {
-            // 구독형: 수량 전송
-            body.quantity = Number(item.quantity);
+
           } else {
             // 라이선스형: 라이선스 키 배열 전송 (빈 값 제외)
             body.licenses = item.licenseKeys
@@ -223,8 +224,8 @@ const UserRequestPage = () => {
           toast.error("SW: 제조사를 선택하거나 직접 입력해주세요.");
           return;
         }
-        if (!item.licenseRequired && Number(item.quantity) < 1) {
-          toast.error("SW: 구독형은 수량을 입력해주세요.");
+        if (Number(item.quantity) < 1) {
+          toast.error("SW: 수량을 1 이상 입력해주세요.");
           return;
         }
         if (item.licenseRequired) {
@@ -246,10 +247,9 @@ const UserRequestPage = () => {
 
   // ── 렌더링 ─────────────────────────────────────────────────────────────────
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader title="내 자산 등록 요청" />
-
-      <section className={styles.section}>
+      <section>
         <Card>
           <Banner
             text={

@@ -100,7 +100,6 @@ const DfAssetsListPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   })
 
@@ -352,7 +351,6 @@ const DfAssetsListPage = ({ role }) => {
             onSelectionChange={setSelectedIds}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
-            maxHeight="calc(100vh - 500px)"
           />
         </Card>
       </section>

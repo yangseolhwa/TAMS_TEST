@@ -17,6 +17,7 @@ import {
 import common from '../../AssetPage.common.module.css'
 import styles from './AdminPcAssetsPage.module.css'
 
+
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
   { key: 'no',             label: 'No' },
@@ -274,7 +275,6 @@ const AdminPcAssetsPage = () => {
             onSelectionChange={setSelectedIds}
             totalCount={rows.length}
             highlight={appliedFilters.keyword}
-            maxHeight="calc(100vh - 500px)"
           />
         </Card>
       </section>

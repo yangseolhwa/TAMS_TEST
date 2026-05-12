@@ -4,6 +4,10 @@
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .innerTabs {
@@ -39,4 +43,8 @@
 
 .content {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }

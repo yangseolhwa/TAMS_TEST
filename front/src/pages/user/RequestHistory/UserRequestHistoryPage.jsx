@@ -4,6 +4,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import Card from "../../../components/Card/Card";
 import DataTable from "../../../components/DataTable/DataTable";
 import styles from "./UserRequestHistoryPage.module.css";
+import common from '../../AssetPage.common.module.css'
 import { fetchAssetRequests } from "../../../services/assetService";
 import Banner from "../../../components/Banner/Banner";
 
@@ -42,6 +43,7 @@ const UserRequestHistoryPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn:  fetchAssetRequests,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 
@@ -49,15 +51,8 @@ const UserRequestHistoryPage = () => {
   const swRows         = useMemo(() => data?.swRows         ?? [], [data]);
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader title="내 자산 요청 내역" />
-      <Banner
-        text={
-          <>
-            자산 요청 내역은 <strong>24시간</strong> 후에 자동으로 삭제됩니다.
-          </>
-        }
-      />
 
       {/* PC 섹션 */}
       <section className={styles.section}>
@@ -75,7 +70,6 @@ const UserRequestHistoryPage = () => {
             statusMap={STATUS_MAP}
             selectable={false}
             totalCount={enterpriseRows.length}
-            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>
@@ -96,7 +90,6 @@ const UserRequestHistoryPage = () => {
             statusMap={STATUS_MAP}
             selectable={false}
             totalCount={swRows.length}
-            maxHeight="calc(100vh - 740px)"
           />
         </Card>
       </section>

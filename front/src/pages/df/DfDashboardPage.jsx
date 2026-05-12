@@ -4,6 +4,7 @@ import PageHeader from '../../components/PageHeader/PageHeader'
 import Card from '../../components/Card/Card'
 import { fetchDfDashboard } from '../../services/assetService'
 import styles from './DfDashboardPage.module.css'
+import common from '../AssetPage.common.module.css'
 
 const DfDashboardPage = ({ role }) => {
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ const DfDashboardPage = ({ role }) => {
 
   if (isLoading) {
     return (
-      <div className={styles.page}>
+      <div className={common.page}>
         <PageHeader title="DF 자산 현황" desc="DF 자산의 프로젝트별 현황을 조회합니다." />
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>불러오는 중...</p>
       </div>
@@ -48,7 +49,7 @@ const DfDashboardPage = ({ role }) => {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={common.page}>
       <PageHeader
         title="DF 자산 현황"
         desc="DF 자산의 프로젝트별 현황을 조회합니다."
