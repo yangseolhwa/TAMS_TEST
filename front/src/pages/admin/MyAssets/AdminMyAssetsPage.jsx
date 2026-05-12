@@ -225,9 +225,9 @@ const AdminMyAssetsPage = () => {
               </button>
             </div>
           </div>
-          <div className={styles.swColumnHeader}>
+          <div className={styles.pcColumnHeader}>
             <span className={styles.swColName}>자산 종류</span>
-            <span className={styles.swColCount}>총 수량</span>
+            <span className={styles.swColName}>수량</span>
           </div>
 
           <ul className={styles.swDashboardList}>
