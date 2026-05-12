@@ -326,6 +326,42 @@
 }
 
 /* =====================
+   SW 컬럼 소제목 행
+   ===================== */
+.swColumnHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 160px 40px;
+  align-items: center;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  background-color: var(--color-bg);
+}
+
+.swColName {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.swColCount {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.swColUser {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.swColChevron {
+}
+
+/* =====================
    SW 현황 대시보드
    ===================== */
 
@@ -378,7 +414,6 @@
    모든 텍스트 왼쪽 정렬로 통일 → 컬럼 간격 일정하게 유지
    소프트웨어명: 1fr | 총수량: 100px | 사용중: 100px | 사용자: 160px | chevron: 40px
    ──────────────────────────────────────────────────────────────── */
-.swDashboardHeader,
 .swDashboardRow,
 .swLicenseRow {
   display: grid;
@@ -386,37 +421,6 @@
   align-items: center;
   padding: 10px 16px;
   box-sizing: border-box;
-}
-
-/* ── 헤더 ── */
-.swDashboardHeader {
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.swDashboardHeaderName {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-/* 총수량 / 사용중 헤더: 왼쪽 정렬 + 왼쪽 여백으로 데이터와 맞춤 */
-.swDashboardHeaderCount {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-align: left;
-}
-
-/* 사용자 헤더: 왼쪽 정렬 */
-.swDashboardHeaderUser {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-align: left;
-}
-
-.swDashboardHeaderChevron {
-  /* 자리만 차지 */
 }
 
 /* ── 아코디언 목록 ── */
@@ -484,12 +488,13 @@
 /* ── 라이선스 패널 ── */
 .swLicensePanel {
   overflow: hidden;
-  background-color: var(--color-accent-bg);
+  background-color: var(--color-surface);
   transition: max-height 300ms ease-in-out;
+  border-left: 3px solid var(--color-accent);
 }
 
 .swLicensePanelOpen {
-  border-top: 1px solid var(--color-accent-border);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .swLicenseList {
@@ -498,9 +503,12 @@
 }
 
 .swLicenseRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px 160px 40px;
+  align-items: center;
   padding: 7px 16px;
   border-bottom: 1px solid var(--color-accent-border);
-  background-color: var(--color-accent-bg);
+  background-color: var(--color-surface);
   transition: background-color var(--transition-fast);
 }
 
@@ -509,7 +517,7 @@
 }
 
 .swLicenseRow:hover {
-  background-color: var(--color-accent-border);
+  background-color: var(--color-bg);
 }
 
 .swLicenseKey {
@@ -551,22 +559,15 @@
   font-size: 13px;
   color: var(--color-text-secondary);
   text-align: center;
-  background-color: var(--color-accent-bg);
+  background-color: var(--color-surface);
 }
 
 /* =====================
    PC 현황 대시보드
    ===================== */
-.pcDashboardHeader {
-  display: grid;
-  grid-template-columns: 1fr 100px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--color-border-light);
-}
-
 .pcDashboardRow {
   display: grid;
-  grid-template-columns: 1fr 100px;
+  grid-template-columns: 1fr 100px 100px 160px 40px;
   align-items: center;
   width: 100%;
   padding: 12px 16px;
