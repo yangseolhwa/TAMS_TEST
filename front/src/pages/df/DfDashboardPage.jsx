@@ -12,7 +12,6 @@ const DfDashboardPage = ({ role }) => {
   const { data, isLoading } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
 
   const projects       = data?.projects       ?? []

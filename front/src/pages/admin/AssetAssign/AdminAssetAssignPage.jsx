@@ -58,19 +58,16 @@ const AdminAssetAssignPage = () => {
   const { data: pcList = [], isLoading: pcLoading } = useQuery({
     queryKey: ['enterpriseAvailable'],
     queryFn:  fetchEnterpriseAvailable,
-    refetchOnWindowFocus: false,
   })
 
   const { data: swList = [], isLoading: swLoading } = useQuery({
     queryKey: ['swAvailable'],
     queryFn:  fetchSwAvailable,
-    refetchOnWindowFocus: false,
   })
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn:  () => fetchUsers(),
-    refetchOnWindowFocus: false,
   })
 
   // ── 필터링 ────────────────────────────────────────────────────────────────

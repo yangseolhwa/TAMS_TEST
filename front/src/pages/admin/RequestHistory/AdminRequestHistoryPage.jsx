@@ -54,8 +54,6 @@ const AdminRequestHistoryPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn: fetchAssetRequests,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
   });
 
   const pcRows = useMemo(() => data?.enterpriseRows ?? [], [data]);
@@ -154,7 +152,6 @@ const AdminRequestHistoryPage = () => {
             columns={pcColumns}
             rows={isLoading ? [] : pcRows}
             selectable={false}
-            totalCount={pcRows.length}
           />
         </Card>
       </section>
@@ -173,7 +170,6 @@ const AdminRequestHistoryPage = () => {
             columns={swColumns}
             rows={isLoading ? [] : swRows}
             selectable={false}
-            totalCount={swRows.length}
           />
         </Card>
       </section>

@@ -89,7 +89,6 @@ const AdminSwAssetsPage = () => {
       ...(appliedFilters.name.trim()         && { name:         appliedFilters.name.trim() }),
       ...(appliedFilters.manufacturer.trim() && { manufacturer: appliedFilters.manufacturer.trim() }),
     }),
-    refetchOnWindowFocus: false,
   })
 
   const rawList = data?.list ?? []
