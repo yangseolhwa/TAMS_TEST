@@ -1419,6 +1419,12 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
   });
 
   await sequelize.transaction(async (t) => {
+    // 시나리오 1에서 동일한 firstAdmin이 모든 자산에 적용되므로
+    // 루프 전에 한 번만 조회하여 재사용
+    const firstAdminLocation = firstAdmin
+      ? await resolveLocationByResponsible({ userId: firstAdmin.id, responsibleType: 'personal' }, t)
+      : null;
+
     for (const asset of assets) {
       let newState, newUserId, afterValue;
 
@@ -1457,16 +1463,12 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
         after_value:         afterValue,
       }, { transaction: t });
 
-      // newUserId가 있으면 (시나리오 1: firstAdmin 인수) → admin 이름으로 location 세팅
-      // newUserId가 null이면 (시나리오 2: admin 해제 / 시나리오 3: 폐기) → null
-      const autoLocation = newUserId
-        ? await resolveLocationByResponsible({ userId: newUserId, responsibleType: 'personal' }, t)
-        : null;
-
+      // 시나리오 1: firstAdminLocation 재사용 (루프 밖에서 1회 조회)
+      // 시나리오 2/3: null
       asset.state            = newState;
       asset.responsible_type = 'vacant';
       asset.user_id          = newUserId;
-      asset.location         = autoLocation;
+      asset.location         = newUserId ? firstAdminLocation : null;
       await asset.save({ transaction: t });
     }
 
