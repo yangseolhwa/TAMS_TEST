@@ -144,23 +144,23 @@ const AdminMyAssetsPage = () => {
 
       {/* SW 현황 대시보드 */}
       <section className={styles.section}>
-        <div className={styles.swDashboardTitleBar}>
-          <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
-          <div className={styles.swDashboardTitleRight}>
-            <span className={styles.swDashboardTitleCount}>총 {swTotal}건</span>
-            <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate('/admin/sw-assets')}>
-              조회 &gt;
-            </button>
-          </div>
-        </div>
-
         <Card>
-          <div className={styles.swDashboardHeader}>
-            <span className={styles.swDashboardHeaderName}>소프트웨어명</span>
-            <span className={styles.swDashboardHeaderCount}>총 수량</span>
-            <span className={styles.swDashboardHeaderCount}>사용 중</span>
-            <span className={styles.swDashboardHeaderUser}>사용자</span>
-            <span className={styles.swDashboardHeaderChevron} />
+          <div className={styles.swDashboardTitleBar}>
+            <span className={styles.swDashboardTitleText}>전체 SW 현황</span>
+            <div className={styles.swDashboardTitleRight}>
+              <span className={styles.swDashboardTitleCount}>총 {swTotal}건</span>
+              <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate('/admin/sw-assets')}>
+                조회 &gt;
+              </button>
+            </div>
+          </div>
+        
+          <div className={styles.swColumnHeader}>
+            <span className={styles.swColName}>소프트웨어명</span>
+            <span className={styles.swColCount}>총 수량</span>
+            <span className={styles.swColCount}>사용 중</span>
+            <span className={styles.swColUser}>사용자</span>
+            <span className={styles.swColChevron} />
           </div>
 
           <ul className={styles.swDashboardList}>
@@ -215,20 +215,19 @@ const AdminMyAssetsPage = () => {
 
       {/* PC 현황 대시보드 */}
       <section className={styles.section}>
-        <div className={styles.swDashboardTitleBar}>
-          <span className={styles.swDashboardTitleText}>전체 PC 현황</span>
-          <div className={styles.swDashboardTitleRight}>
-            <span className={styles.swDashboardTitleCount}>총 {pcTotal}건</span>
-            <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate('/admin/pc-assets')}>
-              조회 &gt;
-            </button>
-          </div>
-        </div>
-
         <Card>
-          <div className={styles.pcDashboardHeader}>
-            <span className={styles.swDashboardHeaderName}>자산 종류</span>
-            <span className={styles.swDashboardHeaderCount}>수량</span>
+          <div className={styles.swDashboardTitleBar}>
+            <span className={styles.swDashboardTitleText}>전체 PC 현황</span>
+            <div className={styles.swDashboardTitleRight}>
+              <span className={styles.swDashboardTitleCount}>총 {pcTotal}건</span>
+              <button type="button" className={styles.swDashboardViewBtn} onClick={() => navigate('/admin/pc-assets')}>
+                조회 &gt;
+              </button>
+            </div>
+          </div>
+          <div className={styles.pcColumnHeader}>
+            <span className={styles.swColName}>자산 종류</span>
+            <span className={styles.swColName}>수량</span>
           </div>
 
           <ul className={styles.swDashboardList}>
