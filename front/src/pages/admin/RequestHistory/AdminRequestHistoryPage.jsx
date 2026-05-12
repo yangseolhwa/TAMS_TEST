@@ -21,24 +21,26 @@ import {
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
-  { key: "no",           label: "No"       },
-  { key: "requestedAt",  label: "요청일"   },
-  { key: "userName",     label: "요청자"   },
-  { key: "itemTypeName", label: "자산 종류" },
-  { key: "manufacturer", label: "제조사"   },
-  { key: "spec",         label: "규격"     },
-  { key: "serialNumber", label: "시리얼"   },
+  { key: "no",            label: "No"       },
+  { key: "requestedAt",   label: "요청일"   },
+  { key: "userName",      label: "요청자"   },
+  { key: "itemTypeName",  label: "자산 종류" },
+  { key: "manufacturer",  label: "제조사"   },
+  { key: "spec",          label: "규격"     },
+  { key: "serialNumber",  label: "시리얼"   },
+  { key: "requestReason", label: "요청 사유" },
 ];
 
 const SW_COLUMNS = [
-  { key: "no",             label: "No"            },
-  { key: "requestedAt",    label: "요청일"        },
-  { key: "userName",       label: "요청자"        },
-  { key: "assetName",      label: "소프트웨어명"  },
-  { key: "manufacturer",   label: "제조사"        },
-  { key: "version",        label: "버전"          },
-  { key: "licenseKey",     label: "라이선스 키"   },
+  { key: "no",              label: "No"            },
+  { key: "requestedAt",     label: "요청일"        },
+  { key: "userName",        label: "요청자"        },
+  { key: "assetName",       label: "소프트웨어명"  },
+  { key: "manufacturer",    label: "제조사"        },
+  { key: "version",         label: "버전"          },
+  { key: "licenseKey",      label: "라이선스 키"   },
   { key: "licensePassword", label: "라이선스 PW"  },
+  { key: "requestReason",   label: "요청 사유" },
 ];
 // ─────────────────────────────────────────────────────────────────────────────
 

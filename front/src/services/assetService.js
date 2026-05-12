@@ -235,11 +235,12 @@ export const fetchAssetRequests = async () => {
       no:              i + 1,
       requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
       userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
-      itemTypeName:    item.asset?.item_type?.name ?? parsed.item_type_name ?? null,
+      itemTypeName: item.item_type?.name ?? item.asset?.item_type?.name ?? parsed.item_type_name ?? null,
       manufacturer:    item.asset?.manufacturer  ?? parsed.manufacturer  ?? null,
       serialNumber:    item.asset?.serial_number ?? parsed.serial_number ?? null,
       spec:            item.asset?.spec          ?? parsed.spec          ?? null,
       status:          item.status?.toUpperCase(),
+      requestReason:   item.request_reason ?? null,
       rejectionReason: item.rejection_reason ?? null,
     }
   })
@@ -259,6 +260,7 @@ export const fetchAssetRequests = async () => {
       licenseKey:      item.license_detail?.license_key ?? parsed.licenses?.[0]?.license_key ?? parsed.license_key ?? null,
       licensePassword: item.license_detail?.license_password ?? parsed.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
       status:          item.status?.toUpperCase(),
+      requestReason:   item.request_reason ?? null,
       rejectionReason: item.rejection_reason ?? null,
     }
   })
