@@ -102,9 +102,9 @@
   padding: 11px 12px;
   font-size: 13px;
   color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .swAccordionChevron {
@@ -174,9 +174,8 @@
   padding: 8px 12px;
   font-size: 13px;
   color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* =====================
