@@ -55,10 +55,10 @@ const COLUMNS = [
       return renderMultiLine(keys, styles.multiLine)
     },
   },
-  { key: 'relatedLink',label: '관련 링크',
+  { key: 'relatedLink', label: '관련 링크',
     renderCell: (row) => row.relatedLink
-          ? <a className={common.link} href={row.relatedLink} target="_blank" rel="noreferrer">{row.relatedLink}</a>
-          : '—'
+      ? <a className={common.link} href={row.relatedLink} target="_blank" rel="noreferrer">{row.relatedLink}</a>
+      : '—'
   },
   { key: 'manufacturer', label: '제조사'  },
   {
@@ -117,11 +117,11 @@ const AdminSwAssetsPage = () => {
   const allList  = allSwData?.list ?? []
   const userList = usersData       ?? []
 
-  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const rows = useMemo(() =>
     rawList
       .filter((sw) => matchesAnyField(
-        [sw.name, sw.manufacturer, sw.version],
+        [sw.name, sw.manufacturer, sw.version, sw.remarks],
         appliedFilters.keyword
       ))
       .map((sw, i) => ({
@@ -198,12 +198,7 @@ const AdminSwAssetsPage = () => {
               ))}
             </select>
 
-            <ActionButton
-              variant="white"
-              size="sm"
-              label="초기화"
-              onClick={handleFilterReset}
-            />
+            <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
             <div className={common.filterSearchWrap}>
               <input

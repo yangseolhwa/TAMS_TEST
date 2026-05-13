@@ -11,7 +11,6 @@ import styles from './AdminAssetHistoryPage.module.css'
 import common from '../../AssetPage.common.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-
 const CHANGE_TYPE_STATUS_MAP = {
   '등록':     { label: '등록',     color: 'green'  },
   '반납':     { label: '반납',     color: 'return' },
@@ -88,13 +87,17 @@ const AdminAssetHistoryPage = () => {
     queryFn:  () => fetchPersonalHistory(apiParams),
   })
 
-  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
     return rows
       .filter((row) =>
         matchesAnyField(
-          [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue],
+          [
+            row.requestedAt, row.changeType,
+            row.beforeValue, row.afterValue,
+            row.assetName,   row.detail,    row.user,
+          ],
           appliedKeyword
         )
       )
@@ -162,7 +165,7 @@ const AdminAssetHistoryPage = () => {
                 <input
                   type="text"
                   className={styles.filterInput}
-                  placeholder="자산명 / 처리자 검색"
+                  placeholder="검색어를 입력하세요"
                   value={filterForm.keyword}
                   onChange={(e) => handleFilterChange('keyword', e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

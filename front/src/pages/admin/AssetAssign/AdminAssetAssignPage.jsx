@@ -71,12 +71,16 @@ const AdminAssetAssignPage = () => {
     queryFn:  () => fetchUsers(),
   })
 
-  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
     return pcList.filter((item) =>
       matchesAnyField(
-        [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number],
+        [
+          item.item_number, item.item_type?.name,
+          item.manufacturer, item.spec,
+          item.serial_number, item.location,
+        ],
         pcAppliedKeyword
       )
     )
@@ -429,7 +433,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                    placeholder="검색어를 입력하세요"
                     value={pcKeyword}
                     onChange={(e) => setPcKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setPcAppliedKeyword(pcKeyword)}
@@ -457,7 +461,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="소프트웨어명 / 제조사 검색"
+                    placeholder="검색어를 입력하세요"
                     value={swKeyword}
                     onChange={(e) => setSwKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setSwAppliedKeyword(swKeyword)}
