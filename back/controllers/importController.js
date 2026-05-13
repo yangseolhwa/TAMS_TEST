@@ -107,6 +107,8 @@ const PC_KEYWORD_MAP = {
   remarks:          ['remark', 'remarks', '비고'],
 };
  
+const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
+
 function detectDfColumns(ws) {
   for (let r = 1; r <= 10; r++) {
     const row = [];
@@ -146,7 +148,6 @@ function detectDfColumns(ws) {
     }
 
     // '* Item No' 패턴 컬럼 동적 감지 (두산, KAERI 등 조직명 자동 추출)
-    const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
     let ownerOrgName = null;
     for (let c = 0; c < row.length; c++) {
       const match = row[c].match(OWNER_ITEM_NO_RE);
