@@ -85,6 +85,31 @@ function buildItemNumber(plain) {
   return (cat && code && plain.id) ? `${cat}-${code}-${plain.id}` : null;
 }
 
+/**
+ * responsible_type 기반 location 자동 결정
+ *   personal → 해당 user의 Profile.name
+ *   place    → 해당 asset의 Department.name (department_id 기준)
+ */
+async function resolveLocationByResponsible({ userId, departmentId, responsibleType }, t) {
+  const opts = t ? { transaction: t } : {};
+
+  if (responsibleType === 'personal' && userId) {
+    const profile = await Profile.findOne({
+      where:      { user_id: userId },
+      attributes: ['name'],
+      ...opts,
+    });
+    return profile?.name ?? null;
+  }
+
+  if (responsibleType === 'place' && departmentId) {
+    const dept = await Department.findByPk(departmentId, { attributes: ['name'], ...opts });
+    return dept?.name ?? null;
+  }
+
+  return null;
+}
+
 // ─────────────────────────────────────────
 // 공통 유틸
 // ─────────────────────────────────────────
@@ -339,6 +364,11 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         };
       }
 
+      const autoLocation = await resolveLocationByResponsible(
+        { userId, departmentId: a.department_id ?? null, responsibleType: 'personal' },
+        t,
+      );
+
       const asset = await AssetEnterprise.create({
         ...baseData,
         category_id:      finalCategoryId,
@@ -346,6 +376,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
         responsible_type: 'personal',
         user_id:          userId,
         state:            'in_use',
+        location:         autoLocation,
       }, { transaction: t });
 
       await AssetEnterpriseHistory.create({
@@ -397,6 +428,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location      ?? null,
               department_id:    asset.department_id ?? null,
+              remarks:          asset.remarks ?? null,
             }
           : {
               category_id:      Number(asset.category_id),
@@ -407,6 +439,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location        ?? null,
               department_id:    asset.department_id   ?? null,
+              remarks:          asset.remarks ?? null,
             }
       ),
     });
@@ -724,13 +757,12 @@ exports.registerDf = asyncWrapper(async (req, res) => {
   res.status(201).json({ message: `DF 자산 ${created.length}개가 등록되었습니다.`, items: created });
 });
 
-// =============================================================
-// assetController.js → getRequests 함수 전체 교체
-// 변경 사항:
-//   1. SW include: 전체 속성 + 라이선스(role 기반 키 노출) 추가
-//   2. Enterprise assign 보강: 전체 필드 + 담당자(User) 포함
-//   3. Enterprise register(기존 자산) 보강: plain.asset 세팅 추가
-// =============================================================
+
+// ─────────────────────────────────────────
+// 자산 등록 요청 목록 조회
+// [Rev13] - 기존 SW/Enterprise 전체 정보 응답
+//         - Enterprise N+1 → 배치 조회로 개선
+// ─────────────────────────────────────────
 exports.getRequests = asyncWrapper(async (req, res) => {
   const { userId, role } = req.user;
 
@@ -766,7 +798,6 @@ exports.getRequests = asyncWrapper(async (req, res) => {
       include: [REQUESTER_INCLUDE],
       order: [['created_at', 'DESC']],
     }),
-    // ── [변경 1] SW include: 전체 속성 + 라이선스 중첩 include ────────
     AssetSwRequest.findAll({
       where: buildWhere(),
       include: [
@@ -874,7 +905,6 @@ exports.getRequests = asyncWrapper(async (req, res) => {
         plain.asset        = assetJson;
       } else {
         plain.asset = null;
-
       }
     }
 
@@ -918,6 +948,7 @@ exports.getRequests = asyncWrapper(async (req, res) => {
   res.status(200).json({ enterprise: enterpriseResult, sw: swResult });
 });
 
+
 // ─────────────────────────────────────────
 // 관리자 Enterprise 요청 승인
 // ─────────────────────────────────────────
@@ -941,6 +972,11 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
         const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.'); err.statusCode = 409; throw err;
       }
 
+      const autoLocation = await resolveLocationByResponsible(
+        { userId: request.requester_id, departmentId: lockedAsset.department_id ?? null, responsibleType: 'personal' },
+        t,
+      );
+
       await AssetEnterpriseHistory.create({
         asset_enterprise_id: lockedAsset.id, user_id: userId,
         change_type: 'assign', before_value: lockedAsset.state, after_value: 'in_use',
@@ -949,6 +985,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       lockedAsset.state            = 'in_use';
       lockedAsset.responsible_type = 'personal';
       lockedAsset.user_id          = request.requester_id;
+      lockedAsset.location         = autoLocation;
       await lockedAsset.save({ transaction: t });
 
       request.status       = 'approved';
@@ -987,6 +1024,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       acquisition_date: overrides.acquisition_date,
       location:         overrides.location         ?? null,
       department_id:    overrides.department_id    ?? null,
+      remarks:          overrides.remarks          ?? original.remarks,
     };
   } else {
     if (!request.new_asset_data) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
@@ -996,12 +1034,18 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
   }
 
   const created = await sequelize.transaction(async (t) => {
+    const autoLocation = await resolveLocationByResponsible(
+      { userId: request.requester_id, departmentId: assetData.department_id ?? null, responsibleType: 'personal' },
+      t,
+    );
+
     const asset = await AssetEnterprise.create({
       ...assetData,
       responsible_type: 'personal',
       user_id:          request.requester_id,
       department_id:    assetData.department_id ?? null,
       state:            'in_use',
+      location:         autoLocation,
     }, { transaction: t });
 
     await AssetEnterpriseHistory.create({
@@ -1236,8 +1280,9 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       request.status       = 'approved';
       request.processed_at = new Date();
       await request.save({ transaction: t });
- 
-      return { sw: targetSw, license: null };
+
+      const updatedSw = await AssetSw.findByPk(targetSw.id, { transaction: t });
+      return { sw: updatedSw, license: subLicense };
     }
 
     // 라이선스 없는 SW 요청
@@ -1248,12 +1293,15 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       return { sw: targetSw, license: null };
     }
 
-    // ── 수량 한도 체크 (create 이후이므로 > 사용) ─────────────────────
-    // [Fix] targetSw 재사용 (중복 findByPk 제거), >= → >
-    if (targetSw.quantity > 0) {
-      const existingCount = await AssetSwLicense.count({ where: { asset_sw_id: swId }, transaction: t });
-      if (existingCount > targetSw.quantity) {
-        const err = new Error(`라이선스 수량 한도(${targetSw.quantity}개)를 초과하여 승인할 수 없습니다.`);
+    // ── 수량 한도 체크 (license 생성 이전) ───────────────────────────
+    if (targetSw && targetSw.quantity > 0) {
+      const existingCount = await AssetSwLicense.count({
+        where: { asset_sw_id: swId }, transaction: t,
+      });
+      if (existingCount >= targetSw.quantity) {   // create 이전이므로 >=
+        const err = new Error(
+          `라이선스 수량 한도(${targetSw.quantity}개)에 도달하여 승인할 수 없습니다.`
+        );
         err.statusCode = 400;
         throw err;
       }
@@ -1277,19 +1325,6 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       user_id:      request.requester_id, change_type: 'register',
       before_value: null, after_value: 'in_use',
     }, { transaction: t });
- 
-    if (targetSw && targetSw.quantity > 0) {
-      const existingCount = await AssetSwLicense.count({
-        where: { asset_sw_id: swId }, transaction: t,
-      });
-      if (existingCount > targetSw.quantity) {
-        const err = new Error(
-          `라이선스 수량 한도(${targetSw.quantity}개)를 초과하여 승인할 수 없습니다.`
-        );
-        err.statusCode = 400;
-        throw err;
-      }
-    }
 
     await recalcSwState(swId, t);
 
@@ -1387,6 +1422,12 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
   });
 
   await sequelize.transaction(async (t) => {
+    // 시나리오 1에서 동일한 firstAdmin이 모든 자산에 적용되므로
+    // 루프 전에 한 번만 조회하여 재사용
+    const firstAdminLocation = firstAdmin
+      ? await resolveLocationByResponsible({ userId: firstAdmin.id, responsibleType: 'personal' }, t)
+      : null;
+
     for (const asset of assets) {
       let newState, newUserId, afterValue;
 
@@ -1425,9 +1466,12 @@ exports.returnEnterprise = asyncWrapper(async (req, res) => {
         after_value:         afterValue,
       }, { transaction: t });
 
+      // 시나리오 1: firstAdminLocation 재사용 (루프 밖에서 1회 조회)
+      // 시나리오 2/3: null
       asset.state            = newState;
       asset.responsible_type = 'vacant';
       asset.user_id          = newUserId;
+      asset.location         = newUserId ? firstAdminLocation : null;
       await asset.save({ transaction: t });
     }
 
@@ -1843,12 +1887,6 @@ exports.getSwList = asyncWrapper(async (req, res) => {
       quantity:         sw.quantity,
       license_required: sw.license_required,
       sw_type:          sw.sw_type,
-      user:             sw.User ? {
-        id: sw.User.id, 
-        email: sw.User.email,
-        role: sw.User.role,
-        name: sw.User.profile?.name
-      } : null,
       acquisition_date: sw.acquisition_date,
       state:            sw.state,
       related_link:     sw.related_link,
@@ -2089,12 +2127,11 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   const { asset_sw_id, license_id, request_reason } = req.body;
 
   if (!asset_sw_id) return res.status(400).json({ message: 'SW ID를 입력해주세요.' });
-  // ← license_id 필수 체크는 SW 조회 후 license_required 기준으로 분기
- 
+
   const sw = await AssetSw.findByPk(asset_sw_id);
   if (!sw) return res.status(404).json({ message: 'SW를 찾을 수 없습니다.' });
   if (sw.state === 'returned') return res.status(400).json({ message: '반납된 SW입니다.' });
- 
+
   // ── 구독형 SW: license_id 불필요 ─────────────────────────────────
   if (!sw.license_required) {
     const request = await AssetSwRequest.create({
@@ -2107,18 +2144,18 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
       request_reason:    request_reason ?? null,
       new_asset_data:    JSON.stringify({ subscription_assign: true }),
     });
- 
+
     await AssetSwHistory.create({
       asset_sw_id:  Number(asset_sw_id), license_id: null, user_id: userId,
       change_type:  'request', before_value: null, after_value: 'pending',
     });
- 
+
     return res.status(201).json({
       message: '구독형 SW 할당 요청이 완료되었습니다. 관리자 승인을 기다려주세요.',
       request,
     });
   }
- 
+
   // ── 라이선스형 SW: license_id 필수 ──────────────────────────────
   if (!license_id) return res.status(400).json({ message: '라이선스 ID를 입력해주세요.' });
 
@@ -2141,7 +2178,7 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
     request_reason:    request_reason ?? null,
     new_asset_data:    JSON.stringify({ license_id: Number(license_id) }),
   });
- 
+
   await AssetSwHistory.create({
     asset_sw_id:  Number(asset_sw_id), license_id: Number(license_id), user_id: userId,
     change_type:  'request', before_value: 'available', after_value: 'pending',
@@ -2437,6 +2474,11 @@ exports.assignEnterprise = asyncWrapper(async (req, res) => {
       const err = new Error('현재 할당할 수 없는 상태입니다. 자산 상태를 확인해주세요.'); err.statusCode = 409; throw err;
     }
 
+    const autoLocation = await resolveLocationByResponsible(
+      { userId: user_id, departmentId: lockedAsset.department_id ?? null, responsibleType: 'personal' },
+      t,
+    );
+
     await AssetEnterpriseHistory.create({
       asset_enterprise_id: lockedAsset.id, user_id: adminId,
       change_type: 'assign', before_value: lockedAsset.state, after_value: 'in_use',
@@ -2445,6 +2487,7 @@ exports.assignEnterprise = asyncWrapper(async (req, res) => {
     lockedAsset.state            = 'in_use';
     lockedAsset.responsible_type = 'personal';
     lockedAsset.user_id          = user_id;
+    lockedAsset.location         = autoLocation;
     await lockedAsset.save({ transaction: t });
   });
 

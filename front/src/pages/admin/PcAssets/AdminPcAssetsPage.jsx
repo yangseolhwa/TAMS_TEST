@@ -8,6 +8,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import BackButton from '../../../components/BackButton/BackButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseList,
   changeEnterpriseState,
@@ -51,6 +52,13 @@ const EMPTY_FILTER = {
   state:        '',
   keyword:      '',
 }
+
+const CATEGORY_NAME_MAP = {
+  furniture:  '가구',
+  office:     '사무',
+  industrial: '산업',
+  electrical: '전기',
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminPcAssetsPage = () => {
@@ -67,14 +75,36 @@ const AdminPcAssetsPage = () => {
   const [moveLocation, setMoveLocation] = useState('')
   const [showConfirm,  setShowConfirm]  = useState(false)
 
+  // ── 초성 검색 시 API에 keyword 제외하고 클라이언트 필터링 ──────────────────
+  // keyword가 있으면 API에는 보내지 않고 전체 데이터를 받아서 프론트에서 필터
+  const apiParams = useMemo(() => {
+    const { keyword: _keyword, ...rest } = appliedFilters
+    return Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== '' && v != null)
+    )
+  }, [appliedFilters])
+
   // ── 자산 조회 ─────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ['enterpriseList', appliedFilters],
-    queryFn:  () => fetchEnterpriseList(appliedFilters),
+    queryKey: ['enterpriseList', apiParams],
+    queryFn:  () => fetchEnterpriseList(apiParams),
   })
-  const rows       = data?.rows       ?? []
+  const allRows    = data?.rows       ?? []
   const categories = data?.categories ?? []
   const itemTypes  = data?.itemTypes  ?? []
+
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  const rows = useMemo(() => {
+    if (!appliedFilters.keyword) return allRows
+    return allRows
+      .filter((row) =>
+        matchesAnyField(
+          [row.manufacturer, row.serialNumber, row.spec, row.location, row.itemNumber],
+          appliedFilters.keyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
+  }, [allRows, appliedFilters.keyword])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const invalidate = () => {
@@ -107,6 +137,11 @@ const AdminPcAssetsPage = () => {
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -165,18 +200,20 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.category_id}
-              onChange={(e) => handleFilterChange('category_id', e.target.value)}
+              onChange={(e) => handleSelectChange('category_id', e.target.value)}
             >
               <option value="">카테고리 전체</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {CATEGORY_NAME_MAP[c.name] ?? c.name}
+                </option>
               ))}
             </select>
 
             <select
               className={common.filterSelect}
               value={filterForm.item_type_id}
-              onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('item_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
               {itemTypes.map((t) => (
@@ -187,7 +224,7 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+              onChange={(e) => handleSelectChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
               {PC_STATE_OPTIONS.map((opt) => (

@@ -5,6 +5,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ActionButton from '../../../components/ActionButton/ActionButton'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
 import common from '../../AssetPage.common.module.css'
@@ -87,19 +88,26 @@ const AdminAssetHistoryPage = () => {
     queryFn:  () => fetchPersonalHistory(apiParams),
   })
 
-  // 클라이언트 키워드 필터
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
-    const kw = appliedKeyword.toLowerCase()
-    return rows.filter((row) => {
-      const target = [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue]
-        .filter(Boolean).join(' ').toLowerCase()
-      return target.includes(kw)
-    }).map((row, i) => ({ ...row, no: i + 1 }))
+    return rows
+      .filter((row) =>
+        matchesAnyField(
+          [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue],
+          appliedKeyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
   }, [rows, appliedKeyword])
 
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -108,7 +116,7 @@ const AdminAssetHistoryPage = () => {
   }
 
   const handleSearch = () => {
-    setAppliedFilters(filterForm)
+    setAppliedFilters((prev) => ({ ...prev, from: filterForm.from, to: filterForm.to, keyword: filterForm.keyword }))
     setAppliedKeyword(filterForm.keyword)
   }
 
@@ -126,41 +134,43 @@ const AdminAssetHistoryPage = () => {
             <select
               className={styles.filterSelect}
               value={filterForm.type}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
+              onChange={(e) => handleSelectChange('type', e.target.value)}
             >
               <option value="">자산 유형 전체</option>
               <option value="enterprise">PC</option>
               <option value="sw">SW</option>
             </select>
 
-            <input
-              type="date"
-              className={common.filterDate}
-              value={filterForm.from}
-              onChange={(e) => handleFilterChange('from', e.target.value)}
-            />
-            <span className={common.dateSeparator}>~</span>
-            <input
-              type="date"
-              className={common.filterDate}
-              value={filterForm.to}
-              onChange={(e) => handleFilterChange('to', e.target.value)}
-            />
-
             <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
-            <div className={styles.filterSearchWrap}>
+            <div className={styles.filterRightGroup}>
               <input
-                type="text"
-                className={styles.filterInput}
-                placeholder="자산명 / 처리자 검색"
-                value={filterForm.keyword}
-                onChange={(e) => handleFilterChange('keyword', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                type="date"
+                className={common.filterDate}
+                value={filterForm.from}
+                onChange={(e) => handleFilterChange('from', e.target.value)}
               />
-              <button className={styles.filterSearchBtn} onClick={handleSearch}>
-                <Search size={14} />
-              </button>
+              <span className={common.dateSeparator}>~</span>
+              <input
+                type="date"
+                className={common.filterDate}
+                value={filterForm.to}
+                onChange={(e) => handleFilterChange('to', e.target.value)}
+              />
+
+              <div className={styles.filterSearchWrap}>
+                <input
+                  type="text"
+                  className={styles.filterInput}
+                  placeholder="자산명 / 처리자 검색"
+                  value={filterForm.keyword}
+                  onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button className={styles.filterSearchBtn} onClick={handleSearch}>
+                  <Search size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
