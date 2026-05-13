@@ -172,12 +172,12 @@ const UserAssetAssignPage = () => {
   // ── PC DataTable columns ──────────────────────────────────────────────────
   const pcColumns = useMemo(() => [
     { key: 'no',           label: 'No',        width: '48px' },
-    { key: 'itemNumber',   label: '자산번호',  type: 'dash'  },
-    { key: 'itemTypeName', label: '자산 종류', type: 'dash'  },
-    { key: 'manufacturer', label: '제조사',    type: 'dash'  },
-    { key: 'spec',         label: '규격',      type: 'dash'  },
-    { key: 'serialNumber', label: '시리얼',    type: 'dash'  },
-    { key: 'location',     label: '위치',      type: 'dash'  },
+    { key: 'itemNumber',   label: '자산번호',      },
+    { key: 'itemTypeName', label: '자산 종류',     },
+    { key: 'manufacturer', label: '제조사',        },
+    { key: 'spec',         label: '규격',          },
+    { key: 'serialNumber', label: '시리얼',        },
+    { key: 'location',     label: '위치',          },
     {
       key: 'request_reason',
       label: '요청 사유',
@@ -227,10 +227,10 @@ const UserAssetAssignPage = () => {
   // ── SW DataTable columns ──────────────────────────────────────────────────
   const swColumns = useMemo(() => [
     { key: 'no',             label: 'No',          width: '48px' },
-    { key: 'name',           label: '소프트웨어명', type: 'dash'  },
-    { key: 'manufacturer',   label: '제조사',      type: 'dash'  },
-    { key: 'version',        label: '버전',        type: 'dash'  },
-    { key: 'availableCount', label: '남은 수량',   type: 'dash'  },
+    { key: 'name',           label: '소프트웨어명',     },
+    { key: 'manufacturer',   label: '제조사',          },
+    { key: 'version',        label: '버전',            },
+    { key: 'availableCount', label: '남은 수량',       },
     {
       key: 'request_reason',
       label: '요청 사유',

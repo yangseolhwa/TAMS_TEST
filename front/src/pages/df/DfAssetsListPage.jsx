@@ -24,7 +24,7 @@ import styles from './DfAssetsListPage.module.css'
 // ── 컬럼 정의 ────────────────────────────────────────────────────────────────
 const COLUMNS = [
   { key: 'no',          label: 'No',       width: '48px' },
-  { key: 'projectName', label: '프로젝트명', type: 'dash' },
+  { key: 'projectName', label: '프로젝트명',    },
   {
     key: 'categoryLabel',
     label: '분류',
@@ -36,13 +36,13 @@ const COLUMNS = [
       return <span>{parent} - {sub}</span>
     },
   },
-  { key: 'ownerOrg',     label: '소유 기관',   type: 'dash' },
-  { key: 'equipmentNo',  label: '장비 번호',   type: 'dash' },
-  { key: 'manufacturer', label: '제조사',      type: 'dash' },
-  { key: 'serialNumber', label: '시리얼 번호', type: 'dash' },
-  { key: 'location',     label: '위치',        type: 'dash' },
-  { key: 'acquiredAt',   label: '대여일',      type: 'dash' },
-  { key: 'returnedAt',   label: '반납일',      type: 'dash' },
+  { key: 'ownerOrg',     label: '소유 기관',      },
+  { key: 'equipmentNo',  label: '장비 번호',      },
+  { key: 'manufacturer', label: '제조사',         },
+  { key: 'serialNumber', label: '시리얼 번호',    },
+  { key: 'location',     label: '위치',           },
+  { key: 'acquiredAt',   label: '대여일',       noHighlight: true },
+  { key: 'returnedAt',   label: '반납일',       noHighlight: true },
   { key: 'state',        label: '상태',        type: 'status' },
 ]
 
