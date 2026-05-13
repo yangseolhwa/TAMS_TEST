@@ -428,6 +428,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location      ?? null,
               department_id:    asset.department_id ?? null,
+              remarks:          asset.remarks ?? null,
             }
           : {
               category_id:      Number(asset.category_id),
@@ -438,6 +439,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location        ?? null,
               department_id:    asset.department_id   ?? null,
+              remarks:          asset.remarks ?? null,
             }
       ),
     });
@@ -1022,6 +1024,7 @@ exports.approveEnterprise = asyncWrapper(async (req, res) => {
       acquisition_date: overrides.acquisition_date,
       location:         overrides.location         ?? null,
       department_id:    overrides.department_id    ?? null,
+      remarks:          overrides.remarks          ?? null,
     };
   } else {
     if (!request.new_asset_data) return res.status(400).json({ message: '요청 데이터가 올바르지 않습니다.' });
