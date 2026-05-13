@@ -146,13 +146,13 @@ function detectDfColumns(ws) {
     }
 
     // '* Item No' 패턴 컬럼 동적 감지 (두산, KAERI 등 조직명 자동 추출)
-    const OWNER_ITEM_NO_RE = /^(.+?)\s+item\s+no\.?$/i;
+    const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
     let ownerOrgName = null;
-    for (let c = 0; c < rowLower.length; c++) {
-      const match = rowLower[c].match(OWNER_ITEM_NO_RE);
+    for (let c = 0; c < row.length; c++) {
+      const match = row[c].match(OWNER_ITEM_NO_RE);
       if (match) {
         colMap.owner_item_no = c + 1;
-        ownerOrgName = row[c].trim().replace(/\s+item\s+no\.?$/i, '').trim();
+        ownerOrgName = match[1];
         break;
       }
     }
@@ -242,7 +242,7 @@ const importDf = async (req, res) => {
       let ownerOrg     = null;
       let equipmentNum = null;
       if (colMap.owner_item_no) {
-        const itemNoVal = typeof row.dusan_item_no === 'string' ? row.owner_item_no : null;
+        const itemNoVal = typeof row.owner_item_no === 'string' ? row.owner_item_no : null;
         if (itemNoVal) {
           ownerOrg     = ownerOrgName;
           equipmentNum = itemNoVal;
