@@ -75,8 +75,7 @@ const AdminPcAssetsPage = () => {
   const [moveLocation, setMoveLocation] = useState('')
   const [showConfirm,  setShowConfirm]  = useState(false)
 
-  // ── 초성 검색 시 API에 keyword 제외하고 클라이언트 필터링 ──────────────────
-  // keyword가 있으면 API에는 보내지 않고 전체 데이터를 받아서 프론트에서 필터
+  // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
   const apiParams = useMemo(() => {
     const { keyword: _keyword, ...rest } = appliedFilters
     return Object.fromEntries(
@@ -93,13 +92,17 @@ const AdminPcAssetsPage = () => {
   const categories = data?.categories ?? []
   const itemTypes  = data?.itemTypes  ?? []
 
-  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const rows = useMemo(() => {
     if (!appliedFilters.keyword) return allRows
     return allRows
       .filter((row) =>
         matchesAnyField(
-          [row.manufacturer, row.serialNumber, row.spec, row.location, row.itemNumber],
+          [
+            row.itemNumber, row.itemTypeName, row.departmentName,
+            row.location,   row.userName,     row.acquiredAt,
+            row.manufacturer, row.spec,       row.serialNumber, row.remarks,
+          ],
           appliedFilters.keyword
         )
       )
@@ -238,7 +241,7 @@ const AdminPcAssetsPage = () => {
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange('keyword', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
