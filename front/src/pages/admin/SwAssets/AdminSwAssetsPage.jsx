@@ -121,7 +121,13 @@ const AdminSwAssetsPage = () => {
   const rows = useMemo(() =>
     rawList
       .filter((sw) => matchesAnyField(
-        [sw.name, sw.manufacturer, sw.version, sw.remarks],
+        [
+          sw.name, sw.manufacturer, sw.version, sw.remarks,
+          sw.related_link,
+          ...(sw.licenses ?? []).flatMap((l) => [
+            l.license_key, l.license_password, l.user?.name, l.user?.email,
+          ]),
+        ],
         appliedFilters.keyword
       ))
       .map((sw, i) => ({

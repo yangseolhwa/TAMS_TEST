@@ -73,36 +73,31 @@ const DataTable = ({
   };
 
   const renderCell = (col, row) => {
-    if (col.renderCell) return col.renderCell(row);
-
-    const value = row[col.key];
-
-    if (col.type === "assetType") {
-      if (!value) return <span className={styles.dash}>—</span>;
-      return (
-        <span className={`${styles.badge} ${styles[`assetType_${value}`]}`}>
-          {value}
-        </span>
-      );
+    if (col.renderCell) {
+      const result = col.renderCell(row)
+      if (typeof result === 'string') {
+        return highlight ? applyHighlight(result, highlight) : result
+      }
+      return result
     }
 
-    if (col.type === "status") {
-      if (!statusMap || !statusMap[value])
-        return <span className={styles.dash}>—</span>;
-      const { label, color } = statusMap[value];
+    const value = row[col.key]
+
+    if (col.type === 'status') {
+      if (!statusMap || !statusMap[value]) return <span className={styles.dash}>—</span>
+      const { label, color } = statusMap[value]
       return (
         <span className={`${styles.badge} ${styles[`status_${color}`]}`}>
           {label}
         </span>
-      );
+      )
     }
 
-    if (value == null || value === "") {
-      return <span className={styles.dash}>—</span>;
-    }
+    if (value == null || value === '') return <span className={styles.dash}>—</span>
 
-    return highlight ? applyHighlight(value, highlight) : value;
-  };
+    if (col.noHighlight || col.key === 'no') return value
+    return highlight ? applyHighlight(value, highlight) : value
+  }
 
   // 컬럼 너비 스타일 계산
   const getColStyle = (col) => {
@@ -180,7 +175,7 @@ DataTable.propTypes = {
     PropTypes.shape({
       key:   PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
-      type:  PropTypes.oneOf(["status", "assetType", "dash"]),
+      type:  PropTypes.oneOf(["assetType"]),
       width: PropTypes.string,
     })
   ).isRequired,
