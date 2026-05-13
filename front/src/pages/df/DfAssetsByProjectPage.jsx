@@ -213,6 +213,11 @@ const DfAssetsByProjectPage = ({ role }) => {
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+    resetMode()
+  }
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -330,7 +335,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.item_type_id}
-              onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('item_type_id', e.target.value)}
             >
               <option value="">분류 전체</option>
               {typeOptions.map((t) => (
@@ -341,7 +346,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+              onChange={(e) => handleSelectChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
               {STATE_FILTER_OPTIONS.map((opt) => (

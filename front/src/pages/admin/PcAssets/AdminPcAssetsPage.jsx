@@ -51,6 +51,13 @@ const EMPTY_FILTER = {
   state:        '',
   keyword:      '',
 }
+
+const CATEGORY_NAME_MAP = {
+  furniture:  '가구',
+  office:     '사무',
+  industrial: '산업',
+  electrical: '전기',
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminPcAssetsPage = () => {
@@ -107,6 +114,11 @@ const AdminPcAssetsPage = () => {
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -165,18 +177,20 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.category_id}
-              onChange={(e) => handleFilterChange('category_id', e.target.value)}
+              onChange={(e) => handleSelectChange('category_id', e.target.value)}
             >
               <option value="">카테고리 전체</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {CATEGORY_NAME_MAP[c.name] ?? c.name}
+                </option>
               ))}
             </select>
 
             <select
               className={common.filterSelect}
               value={filterForm.item_type_id}
-              onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('item_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
               {itemTypes.map((t) => (
@@ -187,7 +201,7 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+              onChange={(e) => handleSelectChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
               {PC_STATE_OPTIONS.map((opt) => (
