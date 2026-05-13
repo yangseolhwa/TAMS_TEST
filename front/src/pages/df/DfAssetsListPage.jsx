@@ -22,8 +22,6 @@ import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsListPage.module.css'
 
 // ── 컬럼 정의 ────────────────────────────────────────────────────────────────
-// 전체 조회: No, 프로젝트명, 분류, 소유 기관, 장비 번호,
-//            제조사, 시리얼 번호, 위치, 대여일, 반납일, 비고
 const COLUMNS = [
   { key: 'no',          label: 'No',       width: '48px' },
   { key: 'projectName', label: '프로젝트명', type: 'dash' },
@@ -93,9 +91,7 @@ const DfAssetsListPage = ({ role }) => {
     queryFn:  fetchDfDashboard,
   })
   const projectOptions = dashboard?.projectOptions ?? []
-  const typeOptions    = dashboard?.typeOptions    ?? []
 
-  // ── 분류 계층 — parentCategoryName/subCategoryName 보정용 ───────────
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
@@ -125,8 +121,8 @@ const DfAssetsListPage = ({ role }) => {
     queryFn:  () => fetchDfAssets(apiParams),
   })
 
-  // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정
-  // + 클라이언트 키워드 필터 (초성 검색 포함)
+  // ── parentCategoryName/subCategoryName 보정 + 클라이언트 키워드 필터 ───────
+  // 전체 컬럼 대상
   const rows = useMemo(() => {
     const allRows = (assetData?.rows ?? []).map((row) => {
       const info = typeInfoMap[row.itemTypeId]
@@ -142,7 +138,12 @@ const DfAssetsListPage = ({ role }) => {
     return allRows
       .filter((row) =>
         matchesAnyField(
-          [row.modelName, row.serialNumber, row.location, row.manufacturer, row.projectName],
+          [
+            row.projectName,  row.parentCategoryName, row.subCategoryName,
+            row.ownerOrg,     row.equipmentNo,
+            row.manufacturer, row.serialNumber,
+            row.location,     row.spec,               row.remarks,
+          ],
           appliedFilters.keyword
         )
       )
@@ -293,7 +294,7 @@ const DfAssetsListPage = ({ role }) => {
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="모델명 / 시리얼 / 위치 검색"
+                placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange('keyword', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

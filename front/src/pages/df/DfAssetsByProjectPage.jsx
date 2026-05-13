@@ -30,10 +30,9 @@ const STATUS_MAP = {
   returned: { label: '반납됨', color: 'return' },
 }
 
-// PC 컬럼: No, 분류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '분류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '분류',        type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'manufacturer',    label: '제조사',      type: 'dash'  },
@@ -49,10 +48,9 @@ const PC_COLUMNS = [
   { key: 'state',           label: '상태',        type: 'status'},
 ]
 
-// PLC 컬럼: No, 분류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PLC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '분류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '분류',        type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'serialNumber',    label: '시리얼 번호', type: 'dash'  },
@@ -106,7 +104,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   })
   const typeOptions = dashboard?.typeOptions ?? []
 
-  // ── 분류 계층 — parentCategoryName 보정용 ──────────────────────────────
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
@@ -145,7 +142,7 @@ const DfAssetsByProjectPage = ({ role }) => {
   })
   const allRows = assetData?.rows ?? []
 
-  // ── API 응답 보정 + 클라이언트 키워드 필터 (초성 검색 포함) ──────────────
+  // ── API 응답 보정 + 클라이언트 키워드 필터 — 전체 컬럼 대상 ─────────────
   const resolvedRows = useMemo(() => {
     const corrected = allRows.map((row) => {
       const info = typeInfoMap[row.itemTypeId]
@@ -160,13 +157,18 @@ const DfAssetsByProjectPage = ({ role }) => {
 
     return corrected.filter((row) =>
       matchesAnyField(
-        [row.modelName, row.serialNumber, row.location, row.manufacturer],
+        [
+          row.subCategoryName, row.ownerOrg,     row.equipmentNo,
+          row.manufacturer,    row.productName,  row.modelName,
+          row.serialNumber,    row.spec,         row.location,
+          row.remarks,
+        ],
         appliedFilters.keyword
       )
     )
   }, [allRows, typeInfoMap, appliedFilters.keyword])
 
-  // ── PC / PLC 분리 ─────────────────────────────────────────────────────────
+  // ── PC / PLC / 기타 분리 ──────────────────────────────────────────────────
   const pcRows  = useMemo(
     () => resolvedRows.filter((r) => r.parentCategoryName === 'PC')
                       .map((r, i) => ({ ...r, no: i + 1 })),
@@ -231,6 +233,7 @@ const DfAssetsByProjectPage = ({ role }) => {
     setAppliedFilters((prev) => ({ ...prev, [key]: value }))
     resetMode()
   }
+
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -285,7 +288,7 @@ const DfAssetsByProjectPage = ({ role }) => {
     return ''
   }, [activeMode, selectedIds, stateTarget, moveLocation])
 
-  // ── 액션 버튼 영역 (PC/PLC 두 테이블 공통) ────────────────────────────────
+  // ── 액션 버튼 영역 ────────────────────────────────────────────────────────
   const renderActions = () => {
     if (isReturnedFilter) return null
     if (activeMode === null) return (
@@ -373,7 +376,7 @@ const DfAssetsByProjectPage = ({ role }) => {
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="모델명 / 시리얼 / 위치 검색"
+                placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange('keyword', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -428,7 +431,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             />
           )}
 
-          {/* 기타 (PC/PLC 미분류) */}
+          {/* 기타 */}
           {etcRows.length > 0 && (
             <DataTable
               columns={PLC_COLUMNS}
@@ -453,7 +456,6 @@ const DfAssetsByProjectPage = ({ role }) => {
             />
           )}
 
-          {/* 전체 선택 건수 */}
           {selectedIds.length > 0 && (
             <p className={styles.selectedCount}>
               {selectedIds.length}개 선택됨
