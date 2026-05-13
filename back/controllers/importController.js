@@ -97,7 +97,6 @@ function toFieldVal(v) {
  
 const PC_KEYWORD_MAP = {
   item:             ['item'],
-  dusan_item_no:    ['두산 item no', '두산 item no.', '두산item no'],
   manufacturer:     ['manufacturer', '제조사'],
   product_name:     ['product name', 'productname', 'product_name'],
   model_number:     ['model number', 'model no', 'modelnumber', 'model_number'],
@@ -146,7 +145,19 @@ function detectDfColumns(ws) {
       }
     }
 
-    return { colMap, dataStartRow, sheetType };
+    // '* Item No' 패턴 컬럼 동적 감지 (두산, KAERI 등 조직명 자동 추출)
+    const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
+    let ownerOrgName = null;
+    for (let c = 0; c < row.length; c++) {
+      const match = row[c].match(OWNER_ITEM_NO_RE);
+      if (match) {
+        colMap.owner_item_no = c + 1;
+        ownerOrgName = match[1];
+        break;
+      }
+    }
+
+    return { colMap, dataStartRow, sheetType, ownerOrgName };
   }
   return null;
 }
@@ -175,7 +186,7 @@ const importDf = async (req, res) => {
       results.push({ sheet: ws.name, status: 'skipped', reason: '헤더 감지 실패' });
       continue;
     }
-    const { colMap, dataStartRow, sheetType } = detected;
+    const { colMap, dataStartRow, sheetType, ownerOrgName } = detected;
 
     if (!projectCache[ws.name]) {
       const [proj] = await AssetProject.findOrCreate({
@@ -186,7 +197,7 @@ const importDf = async (req, res) => {
     const project_id = projectCache[ws.name];
 
     const CARRY_FIELDS = [
-      'item', 'manufacturer', 'dusan_item_no',
+      'item', 'manufacturer', 'owner_item_no',
       'product_name', 'model_number', 'acquisition_date',
     ];
     const last = {};
@@ -230,11 +241,11 @@ const importDf = async (req, res) => {
 
       let ownerOrg     = null;
       let equipmentNum = null;
-      if (colMap.dusan_item_no) {
-        const dusanVal = typeof row.dusan_item_no === 'string' ? row.dusan_item_no : null;
-        if (dusanVal) {
-          ownerOrg     = '두산';
-          equipmentNum = dusanVal;
+      if (colMap.owner_item_no) {
+        const itemNoVal = typeof row.owner_item_no === 'string' ? row.owner_item_no : null;
+        if (itemNoVal) {
+          ownerOrg     = ownerOrgName;
+          equipmentNum = itemNoVal;
         }
       }
 
