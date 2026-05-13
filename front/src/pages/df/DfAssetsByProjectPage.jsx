@@ -29,10 +29,10 @@ const STATUS_MAP = {
   returned: { label: '반납됨', color: 'return' },
 }
 
-// PC 컬럼: No, 자산 종류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+// PC 컬럼: No, 분류, 소유 기관, 장비 번호, 제조사, 제품명, 모델명, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '자산 종류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '분류',      type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'manufacturer',    label: '제조사',      type: 'dash'  },
@@ -48,10 +48,10 @@ const PC_COLUMNS = [
   { key: 'state',           label: '상태',        type: 'status'},
 ]
 
-// PLC 컬럼: No, 자산 종류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
+// PLC 컬럼: No, 분류, 소유 기관, 장비 번호, 시리얼 번호, 수량, 규격, 위치, 대여일, 반납일, 상태
 const PLC_COLUMNS = [
   { key: 'no',              label: 'No',          width: '48px' },
-  { key: 'subCategoryName', label: '자산 종류',      type: 'dash'  },
+  { key: 'subCategoryName', label: '분류',      type: 'dash'  },
   { key: 'ownerOrg',        label: '소유 기관',   type: 'dash'  },
   { key: 'equipmentNo',     label: '장비 번호',   type: 'dash'  },
   { key: 'serialNumber',    label: '시리얼 번호', type: 'dash'  },
@@ -105,7 +105,7 @@ const DfAssetsByProjectPage = ({ role }) => {
   })
   const typeOptions = dashboard?.typeOptions ?? []
 
-  // ── 자산 종류 계층 — parentCategoryName 보정용 ──────────────────────────────
+  // ── 분류 계층 — parentCategoryName 보정용 ──────────────────────────────
   // API 응답에서 item_type.parent 가 null 인 경우를 대비해
   // typeGroups(typeId -> {parentName, childName}) 맵으로 보정한다
   const { data: typeGroups = [] } = useQuery({
@@ -213,6 +213,11 @@ const DfAssetsByProjectPage = ({ role }) => {
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+    resetMode()
+  }
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -330,9 +335,9 @@ const DfAssetsByProjectPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.item_type_id}
-              onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('item_type_id', e.target.value)}
             >
-              <option value="">자산 종류 전체</option>
+              <option value="">분류 전체</option>
               {typeOptions.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -341,7 +346,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+              onChange={(e) => handleSelectChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
               {STATE_FILTER_OPTIONS.map((opt) => (

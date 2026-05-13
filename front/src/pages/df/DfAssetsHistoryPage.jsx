@@ -111,6 +111,11 @@ const DfAssetsHistoryPage = ({ role }) => {
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -118,7 +123,7 @@ const DfAssetsHistoryPage = ({ role }) => {
   }
 
   const handleSearch = () => {
-    setAppliedFilters(filterForm)
+    setAppliedFilters((prev) => ({ ...prev, from: filterForm.from, to: filterForm.to, keyword: filterForm.keyword }))
     setAppliedKeyword(filterForm.keyword)
   }
 
@@ -136,7 +141,7 @@ const DfAssetsHistoryPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.project_id}
-              onChange={(e) => handleFilterChange('project_id', e.target.value)}
+              onChange={(e) => handleSelectChange('project_id', e.target.value)}
             >
               <option value="">전체 프로젝트</option>
               {projectOptions.map((p) => (
@@ -147,7 +152,7 @@ const DfAssetsHistoryPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.asset_type_id}
-              onChange={(e) => handleFilterChange('asset_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('asset_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
               {typeOptions.map((t) => (
@@ -155,35 +160,37 @@ const DfAssetsHistoryPage = ({ role }) => {
               ))}
             </select>
 
-            {/* 날짜 범위 */}
-            <input
-              type="date"
-              className={common.filterDate}
-              value={filterForm.from}
-              onChange={(e) => handleFilterChange('from', e.target.value)}
-            />
-            <span className={common.dateSeparator}>~</span>
-            <input
-              type="date"
-              className={common.filterDate}
-              value={filterForm.to}
-              onChange={(e) => handleFilterChange('to', e.target.value)}
-            />
-
             <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
-            <div className={common.filterSearchWrap}>
+            <div className={styles.filterRightGroup}>
+              {/* 날짜 범위 */}
               <input
-                type="text"
-                className={common.filterInput}
-                placeholder="모델명 / 시리얼 / 위치 검색"
-                value={filterForm.keyword}
-                onChange={(e) => handleFilterChange('keyword', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                type="date"
+                className={common.filterDate}
+                value={filterForm.from}
+                onChange={(e) => handleFilterChange('from', e.target.value)}
               />
-              <button className={common.filterSearchBtn} onClick={handleSearch}>
-                <Search size={14} />
-              </button>
+              <span className={common.dateSeparator}>~</span>
+              <input
+                type="date"
+                className={common.filterDate}
+                value={filterForm.to}
+                onChange={(e) => handleFilterChange('to', e.target.value)}
+              />
+
+              <div className={common.filterSearchWrap}>
+                <input
+                  type="text"
+                  className={common.filterInput}
+                  placeholder="모델명 / 시리얼 / 위치 검색"
+                  value={filterForm.keyword}
+                  onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button className={common.filterSearchBtn} onClick={handleSearch}>
+                  <Search size={14} />
+                </button>
+              </div>
             </div>
           </div>
 

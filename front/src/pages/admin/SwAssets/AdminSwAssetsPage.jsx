@@ -6,7 +6,7 @@ import DataTable from '../../../components/DataTable/DataTable'
 import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import BackButton from '../../../components/BackButton/BackButton'
-import { fetchSwList } from '../../../services/assetService'
+import { fetchSwList, fetchUsers } from '../../../services/assetService'
 import common from '../../AssetPage.common.module.css'
 import styles from './AdminSwAssetsPage.module.css'
 
@@ -54,7 +54,11 @@ const COLUMNS = [
       return renderMultiLine(keys, styles.multiLine)
     },
   },
-  { key: 'relatedLink', label: '관련 링크' },
+  { key: 'relatedLink',label: '관련 링크',
+    renderCell: (row) => row.relatedLink
+          ? <a className={common.link} href={row.relatedLink} target="_blank" rel="noreferrer">{row.relatedLink}</a>
+          : '—'
+  },
   { key: 'manufacturer', label: '제조사'  },
   {
     key: 'users',
@@ -76,22 +80,38 @@ const COLUMNS = [
   { key: 'state',       label: '상태',    type: 'status' },
 ]
 
-const EMPTY_FILTER = { name: '', manufacturer: '', keyword: '' }
+const EMPTY_FILTER = { name: '', manufacturer: '', user_id: '', keyword: '' }
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminSwAssetsPage = () => {
   const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
+  // 필터 적용된 목록 (테이블용)
   const { data, isLoading } = useQuery({
     queryKey: ['swList', appliedFilters],
     queryFn:  () => fetchSwList({
       ...(appliedFilters.name.trim()         && { name:         appliedFilters.name.trim() }),
       ...(appliedFilters.manufacturer.trim() && { manufacturer: appliedFilters.manufacturer.trim() }),
+      ...(appliedFilters.user_id             && { user_id:      appliedFilters.user_id }),
     }),
   })
 
-  const rawList = data?.list ?? []
+  // 전체 목록 (select 용)
+  const { data: allSwData } = useQuery({
+    queryKey: ['swListAll'],
+    queryFn:  () => fetchSwList(),
+  })
+
+  // 유저 목록 (select 용)
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn:  () => fetchUsers(),
+  })
+
+  const rawList  = data?.list      ?? []
+  const allList  = allSwData?.list ?? []
+  const userList = usersData       ?? []
 
   const rows = rawList
     .filter((sw) => {
@@ -120,6 +140,11 @@ const AdminSwAssetsPage = () => {
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
 
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
     setAppliedFilters(EMPTY_FILTER)
@@ -141,10 +166,10 @@ const AdminSwAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.name}
-              onChange={(e) => handleFilterChange('name', e.target.value)}
+              onChange={(e) => handleSelectChange('name', e.target.value)}
             >
               <option value="">제품명 전체</option>
-              {rawList.map((sw) => (
+              {allList.map((sw) => (
                 <option key={sw.id} value={sw.name}>{sw.name}</option>
               ))}
             </select>
@@ -152,11 +177,22 @@ const AdminSwAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.manufacturer}
-              onChange={(e) => handleFilterChange('manufacturer', e.target.value)}
+              onChange={(e) => handleSelectChange('manufacturer', e.target.value)}
             >
               <option value="">제조사 전체</option>
-              {[...new Set(rawList.map((sw) => sw.manufacturer).filter(Boolean))].map((mfr) => (
+              {[...new Set(allList.map((sw) => sw.manufacturer).filter(Boolean))].map((mfr) => (
                 <option key={mfr} value={mfr}>{mfr}</option>
+              ))}
+            </select>
+
+            <select
+              className={common.filterSelect}
+              value={filterForm.user_id}
+              onChange={(e) => handleSelectChange('user_id', e.target.value)}
+            >
+              <option value="">사용자 전체</option>
+              {userList.map((user) => (
+                <option key={user.id} value={user.id}>{user.name ?? user.email}</option>
               ))}
             </select>
 

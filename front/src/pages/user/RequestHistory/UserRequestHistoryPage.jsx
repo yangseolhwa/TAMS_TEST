@@ -30,8 +30,17 @@ const SW_COLUMNS = [
   { key: 'requestedAt',     label: '요청일'           },
   { key: 'assetName',       label: '소프트웨어명'     },
   { key: 'manufacturer',    label: '제조사'           },
-  { key: 'licenseKey',      label: '라이선스 키'      },
-  { key: 'licensePassword', label: '라이선스 비밀번호' },
+  {
+   key: 'license_info',
+   label: '라이선스 키 / 비밀번호',
+   renderCell: (row) => {
+     const key = row.licenseKey
+     const pw  = row.licensePassword
+     if (!key) return '—'
+     if (!pw)  return key
+     return `${key} / ${pw}`
+   },
+  },
   { key: 'status',          label: '상태',            type: 'status' },
   { key: 'rejectionReason', label: '반려 사유'        },
 ]
