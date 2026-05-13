@@ -107,9 +107,9 @@ const PC_KEYWORD_MAP = {
   remarks:          ['remark', 'remarks', '비고'],
 };
  
-function detectDfColumns(ws) {
-  const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
+const OWNER_ITEM_NO_RE = /^(.+?)\s*item\s+no\.?$/i;
 
+function detectDfColumns(ws) {
   for (let r = 1; r <= 10; r++) {
     const row = [];
     for (let c = 1; c <= 25; c++) {
