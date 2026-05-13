@@ -207,6 +207,7 @@
    키워드 하이라이트
    ===================== */
 .highlight {
+  display: inline;
   background-color: #facc15;
   color: inherit;
   border-radius: 2px;

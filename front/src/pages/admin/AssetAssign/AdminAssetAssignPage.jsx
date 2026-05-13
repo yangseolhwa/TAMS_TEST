@@ -7,6 +7,7 @@ import TabCard from '../../../components/TabCard/TabCard'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -70,22 +71,28 @@ const AdminAssetAssignPage = () => {
     queryFn:  () => fetchUsers(),
   })
 
-  // ── 필터링 ────────────────────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
-    const kw = pcAppliedKeyword.toLowerCase()
     return pcList.filter((item) =>
-      [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [
+          item.item_number, item.item_type?.name,
+          item.manufacturer, item.spec,
+          item.serial_number, item.location,
+        ],
+        pcAppliedKeyword
+      )
     )
   }, [pcList, pcAppliedKeyword])
 
   const filteredSwList = useMemo(() => {
     if (!swAppliedKeyword) return swList
-    const kw = swAppliedKeyword.toLowerCase()
     return swList.filter((item) =>
-      [item.name, item.manufacturer, item.version]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [item.name, item.manufacturer, item.version],
+        swAppliedKeyword
+      )
     )
   }, [swList, swAppliedKeyword])
 
@@ -426,7 +433,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                    placeholder="검색어를 입력하세요"
                     value={pcKeyword}
                     onChange={(e) => setPcKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setPcAppliedKeyword(pcKeyword)}
@@ -454,7 +461,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="소프트웨어명 / 제조사 검색"
+                    placeholder="검색어를 입력하세요"
                     value={swKeyword}
                     onChange={(e) => setSwKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setSwAppliedKeyword(swKeyword)}

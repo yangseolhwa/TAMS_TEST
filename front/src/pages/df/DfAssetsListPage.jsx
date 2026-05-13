@@ -8,6 +8,7 @@ import PageHeader from '../../components/PageHeader/PageHeader'
 import ActionButton from '../../components/ActionButton/ActionButton'
 import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
+import { matchesAnyField } from '../../utils/koreanSearch'
 import {
   fetchDfDashboard,
   fetchDfItemTypes,
@@ -21,8 +22,6 @@ import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsListPage.module.css'
 
 // ── 컬럼 정의 ────────────────────────────────────────────────────────────────
-// 전체 조회: No, 프로젝트명, 분류, 소유 기관, 장비 번호,
-//            제조사, 시리얼 번호, 위치, 대여일, 반납일, 비고
 const COLUMNS = [
   { key: 'no',          label: 'No',       width: '48px' },
   { key: 'projectName', label: '프로젝트명', type: 'dash' },
@@ -92,9 +91,7 @@ const DfAssetsListPage = ({ role }) => {
     queryFn:  fetchDfDashboard,
   })
   const projectOptions = dashboard?.projectOptions ?? []
-  const typeOptions    = dashboard?.typeOptions    ?? []
 
-  // ── 분류 계층 — parentCategoryName/subCategoryName 보정용 ───────────
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
@@ -111,14 +108,23 @@ const DfAssetsListPage = ({ role }) => {
     return map
   }, [typeGroups])
 
+  // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
+  const apiParams = useMemo(() => {
+    const { keyword: _keyword, ...rest } = appliedFilters
+    return Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== '' && v != null)
+    )
+  }, [appliedFilters])
+
   const { data: assetData, isLoading } = useQuery({
-    queryKey: ['dfAssets', appliedFilters],
-    queryFn:  () => fetchDfAssets(appliedFilters),
+    queryKey: ['dfAssets', apiParams],
+    queryFn:  () => fetchDfAssets(apiParams),
   })
 
-  // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정
+  // ── parentCategoryName/subCategoryName 보정 + 클라이언트 키워드 필터 ───────
+  // 전체 컬럼 대상
   const rows = useMemo(() => {
-    return (assetData?.rows ?? []).map((row) => {
+    const allRows = (assetData?.rows ?? []).map((row) => {
       const info = typeInfoMap[row.itemTypeId]
       return {
         ...row,
@@ -126,7 +132,23 @@ const DfAssetsListPage = ({ role }) => {
         subCategoryName:    row.subCategoryName    ?? info?.childName  ?? null,
       }
     })
-  }, [assetData, typeInfoMap])
+
+    if (!appliedFilters.keyword) return allRows
+
+    return allRows
+      .filter((row) =>
+        matchesAnyField(
+          [
+            row.projectName,  row.parentCategoryName, row.subCategoryName,
+            row.ownerOrg,     row.equipmentNo,
+            row.manufacturer, row.serialNumber,
+            row.location,     row.spec,               row.remarks,
+          ],
+          appliedFilters.keyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
+  }, [assetData, typeInfoMap, appliedFilters.keyword])
 
   const isReturnedFilter = appliedFilters.state === 'returned'
 
@@ -202,7 +224,7 @@ const DfAssetsListPage = ({ role }) => {
 
   const handleExport = async () => {
     try {
-      await exportDfAssets(appliedFilters)
+      await exportDfAssets(apiParams)
     } catch (err) {
       toast.error(err.message)
     }
@@ -272,7 +294,7 @@ const DfAssetsListPage = ({ role }) => {
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="모델명 / 시리얼 / 위치 검색"
+                placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange('keyword', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

@@ -1,28 +1,42 @@
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import styles from "./DataTable.module.css";
+import { toChosung } from "../../utils/koreanSearch";
 
 // 키워드 일치 부분을 <mark>로 감싸는 헬퍼
 const applyHighlight = (text, keyword) => {
   if (!keyword || text == null || text === "") return text;
-  const str = String(text);
-  const kw  = keyword.toLowerCase();
-  const parts = [];
-  let lastIdx = 0;
-  let idx = str.toLowerCase().indexOf(kw, lastIdx);
+
+  const str        = String(text);
+  const strLower   = str.toLowerCase();
+  const kwLower    = keyword.toLowerCase();
+  const strChosung = toChosung(strLower);
+  const kwChosung  = toChosung(kwLower);
+
+  // 원본 매칭 우선, 없으면 초성 매칭
+  const useChosung = !strLower.includes(kwLower) && strChosung.includes(kwChosung);
+  const targetStr  = useChosung ? strChosung : strLower;
+  const targetKw   = useChosung ? kwChosung  : kwLower;
+
+  const parts  = [];
+  let lastIdx  = 0;
+  let idx      = targetStr.indexOf(targetKw, lastIdx);
 
   while (idx !== -1) {
+    // 초성 모드일 때도 원본 문자열에서 같은 위치를 하이라이트
     if (idx > lastIdx) parts.push(str.slice(lastIdx, idx));
     parts.push(
       <mark key={idx} className={styles.highlight}>
-        {str.slice(idx, idx + keyword.length)}
+        {str.slice(idx, idx + targetKw.length)}
       </mark>
     );
-    lastIdx = idx + keyword.length;
-    idx = str.toLowerCase().indexOf(kw, lastIdx);
+    lastIdx = idx + targetKw.length;
+    idx     = targetStr.indexOf(targetKw, lastIdx);
   }
   if (lastIdx < str.length) parts.push(str.slice(lastIdx));
-  return parts.length > 1 ? <>{parts}</> : text;
+
+  // parts.length > 0: mark가 1개뿐(전체 매칭)이어도 반환
+  return parts.length > 0 ? <>{parts}</> : text;
 };
 
 const DataTable = ({
@@ -92,10 +106,10 @@ const DataTable = ({
 
   // 컬럼 너비 스타일 계산
   const getColStyle = (col) => {
-  if (col.width) return { width: col.width, flexShrink: 0 };
-  if (col.key === 'no') return { width: '48px', flexShrink: 0 };
-  return { flex: 1 };
-} ;
+    if (col.width) return { width: col.width, flexShrink: 0 };
+    if (col.key === 'no') return { width: '48px', flexShrink: 0 };
+    return { flex: 1 };
+  };
   const checkboxColStyle = { width: '40px', flexShrink: 0 };
 
   return (

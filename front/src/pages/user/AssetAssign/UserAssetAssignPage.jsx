@@ -8,6 +8,7 @@ import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
 import Banner from '../../../components/Banner/Banner'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -39,8 +40,6 @@ const UserAssetAssignPage = () => {
   const [swAppliedKeyword, setSwAppliedKeyword] = useState('')
 
   // ── 요청 사유 상태 ────────────────────────────────────────────────────────
-  // PC: { [assetId]: string }
-  // SW: { [swId]: string }
   const [pcReasonState, setPcReasonState] = useState({})
   const [swReasonState, setSwReasonState] = useState({})
 
@@ -58,13 +57,18 @@ const UserAssetAssignPage = () => {
     queryFn:  fetchSwAvailable,
   })
 
-  // ── 필터링 ────────────────────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
-    const kw = pcAppliedKeyword.toLowerCase()
     return pcList.filter((item) =>
-      [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [
+          item.item_number, item.item_type?.name,
+          item.manufacturer, item.spec,
+          item.serial_number, item.location,
+        ],
+        pcAppliedKeyword
+      )
     )
   }, [pcList, pcAppliedKeyword])
 
@@ -73,9 +77,10 @@ const UserAssetAssignPage = () => {
       .filter((item) => (item.available_count ?? 0) > 0)
       .filter((item) => {
         if (!swAppliedKeyword) return true
-        const kw = swAppliedKeyword.toLowerCase()
-        return [item.name, item.manufacturer, item.version]
-          .filter(Boolean).join(' ').toLowerCase().includes(kw)
+        return matchesAnyField(
+          [item.name, item.manufacturer, item.version],
+          swAppliedKeyword
+        )
       })
   }, [swList, swAppliedKeyword])
 
@@ -126,8 +131,6 @@ const UserAssetAssignPage = () => {
   }
 
   // ── SW 요청 버튼 클릭 ─────────────────────────────────────────────────────
-  // 라이선스형: available_licenses[0].id 자동 선택
-  // 구독형: license_id 없이 asset_sw_id만 전송
   const handleSwRequestClick = (sw) => {
     const licenseId = sw.license_required
       ? (sw.available_licenses?.[0]?.id ?? null)
@@ -210,11 +213,11 @@ const UserAssetAssignPage = () => {
   // ── SW DataTable rows ─────────────────────────────────────────────────────
   const swRows = useMemo(() =>
     filteredSwList.map((sw, i) => ({
-      id:           sw.id,
-      no:           i + 1,
-      name:         sw.name         ?? null,
-      manufacturer: sw.manufacturer ?? null,
-      version:      sw.version      ?? null,
+      id:             sw.id,
+      no:             i + 1,
+      name:           sw.name           ?? null,
+      manufacturer:   sw.manufacturer   ?? null,
+      version:        sw.version        ?? null,
       availableCount: sw.available_count ?? null,
       // renderCell에서 sw 원본 객체가 필요하므로 보관
       _raw: sw,
@@ -223,11 +226,11 @@ const UserAssetAssignPage = () => {
 
   // ── SW DataTable columns ──────────────────────────────────────────────────
   const swColumns = useMemo(() => [
-    { key: 'no',             label: 'No',        width: '48px' },
-    { key: 'name',           label: '소프트웨어명', type: 'dash' },
-    { key: 'manufacturer',   label: '제조사',    type: 'dash'  },
-    { key: 'version',        label: '버전',      type: 'dash'  },
-    { key: 'availableCount', label: '남은 수량', type: 'dash'  },
+    { key: 'no',             label: 'No',          width: '48px' },
+    { key: 'name',           label: '소프트웨어명', type: 'dash'  },
+    { key: 'manufacturer',   label: '제조사',      type: 'dash'  },
+    { key: 'version',        label: '버전',        type: 'dash'  },
+    { key: 'availableCount', label: '남은 수량',   type: 'dash'  },
     {
       key: 'request_reason',
       label: '요청 사유',
@@ -268,12 +271,12 @@ const UserAssetAssignPage = () => {
         desc="사용 가능한 PC · SW 자산을 선택해 할당을 요청합니다."
       />
 
-
       <section className={common.section}>
         <TabCard tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-        <Banner
-          text={<>관리자 <strong>승인 후</strong> 자산이 할당됩니다. 요청 상태는 <strong>내 자산 요청 내역</strong>에서 확인할 수 있습니다.</>}
-        />
+          <Banner
+            text={<>관리자 <strong>승인 후</strong> 자산이 할당됩니다. 요청 상태는 <strong>내 자산 요청 내역</strong>에서 확인할 수 있습니다.</>}
+          />
+
           {/* PC 탭 */}
           {activeTab === 'pc' && (
             <>
@@ -282,7 +285,7 @@ const UserAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                    placeholder="검색어를 입력하세요"
                     value={pcKeyword}
                     onChange={(e) => setPcKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setPcAppliedKeyword(pcKeyword)}
@@ -310,7 +313,7 @@ const UserAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="소프트웨어명 / 제조사 검색"
+                    placeholder="검색어를 입력하세요"
                     value={swKeyword}
                     onChange={(e) => setSwKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setSwAppliedKeyword(swKeyword)}

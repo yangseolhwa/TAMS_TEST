@@ -5,12 +5,12 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ActionButton from '../../../components/ActionButton/ActionButton'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
 import common from '../../AssetPage.common.module.css'
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
-
 const CHANGE_TYPE_STATUS_MAP = {
   '등록':     { label: '등록',     color: 'green'  },
   '반납':     { label: '반납',     color: 'return' },
@@ -87,15 +87,21 @@ const AdminAssetHistoryPage = () => {
     queryFn:  () => fetchPersonalHistory(apiParams),
   })
 
-  // 클라이언트 키워드 필터
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
-    const kw = appliedKeyword.toLowerCase()
-    return rows.filter((row) => {
-      const target = [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue]
-        .filter(Boolean).join(' ').toLowerCase()
-      return target.includes(kw)
-    }).map((row, i) => ({ ...row, no: i + 1 }))
+    return rows
+      .filter((row) =>
+        matchesAnyField(
+          [
+            row.requestedAt, row.changeType,
+            row.beforeValue, row.afterValue,
+            row.assetName,   row.detail,    row.user,
+          ],
+          appliedKeyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
   }, [rows, appliedKeyword])
 
   const handleFilterChange = (key, value) =>
@@ -159,7 +165,7 @@ const AdminAssetHistoryPage = () => {
                 <input
                   type="text"
                   className={styles.filterInput}
-                  placeholder="자산명 / 처리자 검색"
+                  placeholder="검색어를 입력하세요"
                   value={filterForm.keyword}
                   onChange={(e) => handleFilterChange('keyword', e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
