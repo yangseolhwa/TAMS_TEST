@@ -6,16 +6,17 @@ import { toChosung } from "../../utils/koreanSearch";
 // 키워드 일치 부분을 <mark>로 감싸는 헬퍼
 const applyHighlight = (text, keyword) => {
   if (!keyword || text == null || text === "") return text;
-  const str            = String(text);
-  const strLower       = str.toLowerCase();
-  const keywordLower   = keyword.toLowerCase();
-  const strChosung     = toChosung(strLower);
-  const keywordChosung = toChosung(keywordLower);
+
+  const str        = String(text);
+  const strLower   = str.toLowerCase();
+  const kwLower    = keyword.toLowerCase();
+  const strChosung = toChosung(strLower);
+  const kwChosung  = toChosung(kwLower);
 
   // 원본 매칭 우선, 없으면 초성 매칭
-  const useChosung = !strLower.includes(keywordLower) && strChosung.includes(keywordChosung);
-  const targetStr  = useChosung ? strChosung  : strLower;
-  const targetKw   = useChosung ? keywordChosung : keywordLower;
+  const useChosung = !strLower.includes(kwLower) && strChosung.includes(kwChosung);
+  const targetStr  = useChosung ? strChosung : strLower;
+  const targetKw   = useChosung ? kwChosung  : kwLower;
 
   const parts  = [];
   let lastIdx  = 0;
@@ -26,13 +27,15 @@ const applyHighlight = (text, keyword) => {
     if (idx > lastIdx) parts.push(str.slice(lastIdx, idx));
     parts.push(
       <mark key={idx} className={styles.highlight}>
-        {str.slice(idx, idx + keyword.length)}
+        {str.slice(idx, idx + targetKw.length)}
       </mark>
     );
-    lastIdx = idx + keyword.length;
+    lastIdx = idx + targetKw.length;
     idx     = targetStr.indexOf(targetKw, lastIdx);
   }
   if (lastIdx < str.length) parts.push(str.slice(lastIdx));
+
+  // parts.length > 0: mark가 1개뿐(전체 매칭)이어도 반환
   return parts.length > 0 ? <>{parts}</> : text;
 };
 
