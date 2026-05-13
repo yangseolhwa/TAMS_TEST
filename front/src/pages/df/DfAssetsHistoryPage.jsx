@@ -5,6 +5,7 @@ import PageHeader from '../../components/PageHeader/PageHeader'
 import Card from '../../components/Card/Card'
 import DataTable from '../../components/DataTable/DataTable'
 import ActionButton from '../../components/ActionButton/ActionButton'
+import { matchesAnyField } from '../../utils/koreanSearch'
 import { fetchDfDashboard, fetchDfHistory } from '../../services/assetService'
 import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsHistoryPage.module.css'
@@ -93,18 +94,17 @@ const DfAssetsHistoryPage = ({ role }) => {
     queryFn:  () => fetchDfHistory(apiParams),
   })
 
-  // ── 클라이언트 키워드 필터 ────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
-    const kw = appliedKeyword.toLowerCase()
-    return rows.filter((row) => {
-      const target = [
-        row.projectName, row.category,
-        row.modelName, row.serialNumber,
-        row.prevLocation, row.nextLocation,
-      ].filter(Boolean).join(' ').toLowerCase()
-      return target.includes(kw)
-    }).map((row, i) => ({ ...row, no: i + 1 }))
+    return rows
+      .filter((row) =>
+        matchesAnyField(
+          [row.projectName, row.category, row.modelName, row.serialNumber, row.prevLocation, row.nextLocation],
+          appliedKeyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
   }, [rows, appliedKeyword])
 
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
@@ -194,7 +194,6 @@ const DfAssetsHistoryPage = ({ role }) => {
             </div>
           </div>
 
-          {/* 총 건수 */}
           <DataTable
             columns={COLUMNS}
             rows={isLoading ? [] : filteredRows}

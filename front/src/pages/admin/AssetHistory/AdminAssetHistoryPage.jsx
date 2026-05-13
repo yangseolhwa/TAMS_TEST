@@ -5,6 +5,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import ActionButton from '../../../components/ActionButton/ActionButton'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import { fetchPersonalHistory } from '../../../services/assetService'
 import styles from './AdminAssetHistoryPage.module.css'
 import common from '../../AssetPage.common.module.css'
@@ -87,15 +88,17 @@ const AdminAssetHistoryPage = () => {
     queryFn:  () => fetchPersonalHistory(apiParams),
   })
 
-  // 클라이언트 키워드 필터
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
-    const kw = appliedKeyword.toLowerCase()
-    return rows.filter((row) => {
-      const target = [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue]
-        .filter(Boolean).join(' ').toLowerCase()
-      return target.includes(kw)
-    }).map((row, i) => ({ ...row, no: i + 1 }))
+    return rows
+      .filter((row) =>
+        matchesAnyField(
+          [row.assetName, row.detail, row.user, row.beforeValue, row.afterValue],
+          appliedKeyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
   }, [rows, appliedKeyword])
 
   const handleFilterChange = (key, value) =>

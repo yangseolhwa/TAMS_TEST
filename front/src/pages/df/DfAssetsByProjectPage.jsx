@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader/PageHeader'
 import ActionButton from '../../components/ActionButton/ActionButton'
 import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
+import { matchesAnyField } from '../../utils/koreanSearch'
 import {
   fetchDfDashboard,
   fetchDfItemTypes,
@@ -106,8 +107,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   const typeOptions = dashboard?.typeOptions ?? []
 
   // ── 분류 계층 — parentCategoryName 보정용 ──────────────────────────────
-  // API 응답에서 item_type.parent 가 null 인 경우를 대비해
-  // typeGroups(typeId -> {parentName, childName}) 맵으로 보정한다
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
@@ -130,29 +129,44 @@ const DfAssetsByProjectPage = ({ role }) => {
       ?? `프로젝트 #${projectId}`
   }, [dashboard, projectId])
 
-  const queryParams = useMemo(() => ({
-    ...(projectId ? { project_id: projectId } : {}),
-    ...appliedFilters,
-  }), [projectId, appliedFilters])
+  // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
+  const apiParams = useMemo(() => {
+    const { keyword: _keyword, ...rest } = appliedFilters
+    const params = Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== '' && v != null)
+    )
+    if (projectId) params.project_id = projectId
+    return params
+  }, [projectId, appliedFilters])
 
   const { data: assetData, isLoading } = useQuery({
-    queryKey: ['dfAssets', queryParams],
-    queryFn:  () => fetchDfAssets(queryParams),
+    queryKey: ['dfAssets', apiParams],
+    queryFn:  () => fetchDfAssets(apiParams),
   })
   const allRows = assetData?.rows ?? []
 
-  // ── API 응답 보정 ─────────────────────────────────────────────────────────
-  // parentCategoryName / subCategoryName 이 null 인 경우 typeInfoMap 으로 보정
-  const resolvedRows = useMemo(() => allRows.map((row) => {
-    const info = typeInfoMap[row.itemTypeId]
-    return {
-      ...row,
-      parentCategoryName: row.parentCategoryName ?? info?.parentName ?? null,
-      subCategoryName:    row.subCategoryName    ?? info?.childName  ?? null,
-    }
-  }), [allRows, typeInfoMap])
+  // ── API 응답 보정 + 클라이언트 키워드 필터 (초성 검색 포함) ──────────────
+  const resolvedRows = useMemo(() => {
+    const corrected = allRows.map((row) => {
+      const info = typeInfoMap[row.itemTypeId]
+      return {
+        ...row,
+        parentCategoryName: row.parentCategoryName ?? info?.parentName ?? null,
+        subCategoryName:    row.subCategoryName    ?? info?.childName  ?? null,
+      }
+    })
 
-  // ── PC / PLC 분리 — resolvedRows 기준 ────────────────────────────────────
+    if (!appliedFilters.keyword) return corrected
+
+    return corrected.filter((row) =>
+      matchesAnyField(
+        [row.modelName, row.serialNumber, row.location, row.manufacturer],
+        appliedFilters.keyword
+      )
+    )
+  }, [allRows, typeInfoMap, appliedFilters.keyword])
+
+  // ── PC / PLC 분리 ─────────────────────────────────────────────────────────
   const pcRows  = useMemo(
     () => resolvedRows.filter((r) => r.parentCategoryName === 'PC')
                       .map((r, i) => ({ ...r, no: i + 1 })),
@@ -170,7 +184,6 @@ const DfAssetsByProjectPage = ({ role }) => {
   )
 
   // ── 프로젝트가 보유한 카테고리 파악 ─────────────────────────────────────
-  // 필터 결과와 무관하게 "이 프로젝트에 PC가 있으면 PC 테이블 항상 표시"
   const projectCategories = useMemo(() => {
     if (!projectId) return new Set(['PC', 'PLC'])
     const selectedProject = dashboard?.projectOptions?.find((p) => p.id === projectId)
@@ -256,7 +269,7 @@ const DfAssetsByProjectPage = ({ role }) => {
 
   const handleExport = async () => {
     try {
-      await exportDfAssets(queryParams)
+      await exportDfAssets(apiParams)
     } catch (err) {
       toast.error(err.message)
     }
@@ -387,7 +400,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             </div>
           </div>
 
-          {/* PC 테이블 — 프로젝트가 PC 자산일 때 */}
+          {/* PC 테이블 */}
           {projectCategories.has('PC') && (
             <DataTable
               columns={PC_COLUMNS}
@@ -401,7 +414,7 @@ const DfAssetsByProjectPage = ({ role }) => {
             />
           )}
 
-          {/* PLC 테이블 — 프로젝트가 PLC 자산일 때 */}
+          {/* PLC 테이블 */}
           {projectCategories.has('PLC') && (
             <DataTable
               columns={PLC_COLUMNS}

@@ -8,6 +8,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import BackButton from '../../../components/BackButton/BackButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseList,
   changeEnterpriseState,
@@ -74,14 +75,36 @@ const AdminPcAssetsPage = () => {
   const [moveLocation, setMoveLocation] = useState('')
   const [showConfirm,  setShowConfirm]  = useState(false)
 
+  // ── 초성 검색 시 API에 keyword 제외하고 클라이언트 필터링 ──────────────────
+  // keyword가 있으면 API에는 보내지 않고 전체 데이터를 받아서 프론트에서 필터
+  const apiParams = useMemo(() => {
+    const { keyword: _keyword, ...rest } = appliedFilters
+    return Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== '' && v != null)
+    )
+  }, [appliedFilters])
+
   // ── 자산 조회 ─────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ['enterpriseList', appliedFilters],
-    queryFn:  () => fetchEnterpriseList(appliedFilters),
+    queryKey: ['enterpriseList', apiParams],
+    queryFn:  () => fetchEnterpriseList(apiParams),
   })
-  const rows       = data?.rows       ?? []
+  const allRows    = data?.rows       ?? []
   const categories = data?.categories ?? []
   const itemTypes  = data?.itemTypes  ?? []
+
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
+  const rows = useMemo(() => {
+    if (!appliedFilters.keyword) return allRows
+    return allRows
+      .filter((row) =>
+        matchesAnyField(
+          [row.manufacturer, row.serialNumber, row.spec, row.location, row.itemNumber],
+          appliedFilters.keyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
+  }, [allRows, appliedFilters.keyword])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const invalidate = () => {
