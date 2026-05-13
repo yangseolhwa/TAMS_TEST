@@ -324,7 +324,7 @@ const TMPL_FONT_HEADER = { name:'맑은 고딕', size:11, bold:true };
 const TMPL_FONT_TITLE  = { name:'맑은 고딕', size:12, bold:true, color:{ argb:'FFFFFFFF' } };
  
 const TMPL_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
-const TMPL_COL_WIDTHS = [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20];
+const TMPL_COL_WIDTHS = [8, 30, 30, 25, 30, 30, 22, 8, 14, 14, 50];
  
 const downloadDfTemplate = async (req, res) => {
   const wb = new ExcelJS.Workbook();

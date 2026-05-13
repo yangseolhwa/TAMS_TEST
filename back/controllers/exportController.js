@@ -21,7 +21,6 @@ const TOTAL_TITLE_FILL       = { type: 'pattern', pattern: 'solid', fgColor: { a
 const TOTAL_SUMMARY_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5496' } };
 
 const RETURNED_PROJ_NAME_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
-const RETURNED_SUMMARY_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA0A0A0' } };
 const RETURNED_HEADER_FILL      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
 
 const FONT_BASE      = { name: '맑은 고딕', size: 11 };
@@ -313,7 +312,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
     const maxDataRows = Math.max(...summaries.map((s) => s.length + 1));
 
     chunk.forEach((projName, ci) => {
-      const isReturned= allReturnedProjects.has(projName);
+      const isReturned = allReturnedProjects.has(projName);
 
       const colB = PROJ_BLOCK_START_COL + ci * PROJ_BLOCK_WIDTH;
       const colC = colB + 1;
