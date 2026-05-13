@@ -20,6 +20,10 @@ const TOTAL_PROJ_NAME_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { a
 const TOTAL_TITLE_FILL       = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
 const TOTAL_SUMMARY_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5496' } };
 
+const RETURNED_PROJ_NAME_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
+const RETURNED_SUMMARY_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA0A0A0' } };
+const RETURNED_HEADER_FILL      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+
 const FONT_BASE      = { name: '맑은 고딕', size: 11 };
 const FONT_HEADER    = { ...FONT_BASE, bold: true };
 const FONT_PROJ_NAME = { ...FONT_BASE, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -86,7 +90,7 @@ function applyMerges(ws, dataStartRow, items, mergeRules) {
 
 // ── 통합 컬럼 정의 ────────────────────────────────────────────────
 const UNIFIED_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
-const UNIFIED_COL_WIDTHS = [8, 16, 16, 16, 22, 20, 22, 8, 14, 14, 20];
+const UNIFIED_COL_WIDTHS = [8, 30, 30, 25, 30, 30, 22, 8, 14, 14, 50];
 
 // ── 병합 규칙 ────────────────────────────────────────────────────
 function buildMergeRules(items) {
@@ -121,7 +125,7 @@ function buildProjectSheet(wb, sheetName, rawItems, isAllReturned = false) {
 
   // 프로젝트 내 모든 자산이 반납된 경우 탭 색상을 빨간색으로 표시
   if (isAllReturned) {
-    ws.properties.tabColor = { argb: 'FFFF0000' };
+    ws.properties.tabColor = { argb: 'FFC00000' };
   }
 
   ws.getColumn(1).width = 4;
@@ -136,7 +140,7 @@ function buildProjectSheet(wb, sheetName, rawItems, isAllReturned = false) {
   titleCell.fill      = TOTAL_TITLE_FILL;
   titleCell.border    = THIN_BORDER;
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(1).height = 28;
+  ws.getRow(1).height = 60;
 
   // 헤더 행 (Row 2)
   const headerRow = ws.getRow(2);
@@ -174,7 +178,7 @@ function buildProjectSheet(wb, sheetName, rawItems, isAllReturned = false) {
       cell.border    = THIN_BORDER;
       cell.alignment = { vertical: 'middle' };
     });
-    row.height = 35;
+    row.height = 40;
   });
 
   // 병합
@@ -223,7 +227,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
   titleCell.fill      = TOTAL_TITLE_FILL;
   titleCell.border    = THIN_BORDER;
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(tr).height = 28;
+  ws.getRow(tr).height = 60;
   tr++;
 
   ['분류', '구분', '수량 (EA)'].forEach((h, i) => {
@@ -234,7 +238,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
     cell.border    = THIN_BORDER;
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
   });
-  ws.getRow(tr).height = 24;
+  ws.getRow(tr).height = 40;
   tr++;
 
   const grandDataStart = tr;
@@ -251,7 +255,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       c.border    = THIN_BORDER;
       c.alignment = { vertical: 'middle' };
     });
-    row.height = 22;
+    row.height = 30;
   });
   tr += grandRows.length;
 
@@ -268,7 +272,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
   sumVal.fill        = TOTAL_HEADER_FILL;
   sumVal.border      = THIN_BORDER;
   sumVal.alignment   = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(tr).height = 22;
+  ws.getRow(tr).height = 30;
 
   {
     let gs = 0;
@@ -289,8 +293,8 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
     }
   }
 
-  ws.getColumn(TC_B).width = 12;
-  ws.getColumn(TC_C).width = 18;
+  ws.getColumn(TC_B).width = 13;
+  ws.getColumn(TC_C).width = 40;
   ws.getColumn(TC_D).width = 10;
 
   let pr = 1;
@@ -309,6 +313,8 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
     const maxDataRows = Math.max(...summaries.map((s) => s.length + 1));
 
     chunk.forEach((projName, ci) => {
+      const isReturned= allReturnedProjects.has(projName);
+
       const colB = PROJ_BLOCK_START_COL + ci * PROJ_BLOCK_WIDTH;
       const colC = colB + 1;
 
@@ -316,7 +322,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       const nameCell     = ws.getRow(pr).getCell(colB);
       nameCell.value     = projName;
       nameCell.font      = FONT_PROJ_NAME;
-      nameCell.fill      = TOTAL_PROJ_NAME_FILL;
+      nameCell.fill      = isReturned ? RETURNED_PROJ_NAME_FILL : TOTAL_PROJ_NAME_FILL;
       nameCell.border    = THIN_BORDER;
       nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -326,7 +332,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       hC.value = '수량';
       [hB, hC].forEach((c) => {
         c.font      = FONT_HEADER;
-        c.fill      = TOTAL_HEADER_FILL;
+        c.fill      = isReturned ? RETURNED_HEADER_FILL : TOTAL_HEADER_FILL;
         c.border    = THIN_BORDER;
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
@@ -351,12 +357,12 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       sC.value = totalCnt;
       [sB, sC].forEach((c) => {
         c.font      = FONT_HEADER;
-        c.fill      = TOTAL_HEADER_FILL;
+        c.fill      = isReturned ? RETURNED_HEADER_FILL : TOTAL_HEADER_FILL;
         c.border    = THIN_BORDER;
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
 
-      ws.getColumn(colB).width = 22;
+      ws.getColumn(colB).width = 35;
       ws.getColumn(colC).width = 10;
     });
 

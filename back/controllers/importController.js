@@ -338,12 +338,12 @@ const downloadDfTemplate = async (req, res) => {
  
   ws.mergeCells(1, 2, 1, lastCol);
   const titleCell     = ws.getRow(1).getCell(2);
-  titleCell.value     = 'DF 자산 등록 양식';
+  titleCell.value     = 'DF 자산 엑셀 양식';
   titleCell.font      = TMPL_FONT_TITLE;
   titleCell.fill      = TMPL_TITLE_FILL;
   titleCell.border    = TMPL_THIN;
   titleCell.alignment = { horizontal:'center', vertical:'middle' };
-  ws.getRow(1).height = 28;
+  ws.getRow(1).height = 60;
  
   TMPL_HEADERS.forEach((h, i) => {
     const cell     = ws.getRow(2).getCell(i + 2);
@@ -358,7 +358,7 @@ const downloadDfTemplate = async (req, res) => {
   TMPL_HEADERS.forEach((_, i) => {
     ws.getRow(3).getCell(i + 2).border = TMPL_THIN;
   });
-  ws.getRow(3).height = 25;
+  ws.getRow(3).height = 40;
  
   res.setHeader('Content-Disposition', 'attachment; filename="DF_IMPORT_TEMPLATE.xlsx"');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
