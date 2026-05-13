@@ -7,6 +7,7 @@ import TabCard from '../../../components/TabCard/TabCard'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -70,22 +71,24 @@ const AdminAssetAssignPage = () => {
     queryFn:  () => fetchUsers(),
   })
 
-  // ── 필터링 ────────────────────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
-    const kw = pcAppliedKeyword.toLowerCase()
     return pcList.filter((item) =>
-      [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number],
+        pcAppliedKeyword
+      )
     )
   }, [pcList, pcAppliedKeyword])
 
   const filteredSwList = useMemo(() => {
     if (!swAppliedKeyword) return swList
-    const kw = swAppliedKeyword.toLowerCase()
     return swList.filter((item) =>
-      [item.name, item.manufacturer, item.version]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [item.name, item.manufacturer, item.version],
+        swAppliedKeyword
+      )
     )
   }, [swList, swAppliedKeyword])
 

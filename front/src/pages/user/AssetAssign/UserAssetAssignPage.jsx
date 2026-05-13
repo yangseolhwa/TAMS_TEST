@@ -8,6 +8,7 @@ import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
 import Banner from '../../../components/Banner/Banner'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -58,13 +59,14 @@ const UserAssetAssignPage = () => {
     queryFn:  fetchSwAvailable,
   })
 
-  // ── 필터링 ────────────────────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
-    const kw = pcAppliedKeyword.toLowerCase()
     return pcList.filter((item) =>
-      [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number],
+        pcAppliedKeyword
+      )
     )
   }, [pcList, pcAppliedKeyword])
 
@@ -73,9 +75,10 @@ const UserAssetAssignPage = () => {
       .filter((item) => (item.available_count ?? 0) > 0)
       .filter((item) => {
         if (!swAppliedKeyword) return true
-        const kw = swAppliedKeyword.toLowerCase()
-        return [item.name, item.manufacturer, item.version]
-          .filter(Boolean).join(' ').toLowerCase().includes(kw)
+        return matchesAnyField(
+          [item.name, item.manufacturer, item.version],
+          swAppliedKeyword
+        )
       })
   }, [swList, swAppliedKeyword])
 
@@ -268,12 +271,12 @@ const UserAssetAssignPage = () => {
         desc="사용 가능한 PC · SW 자산을 선택해 할당을 요청합니다."
       />
 
-
       <section className={common.section}>
         <TabCard tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-        <Banner
-          text={<>관리자 <strong>승인 후</strong> 자산이 할당됩니다. 요청 상태는 <strong>내 자산 요청 내역</strong>에서 확인할 수 있습니다.</>}
-        />
+          <Banner
+            text={<>관리자 <strong>승인 후</strong> 자산이 할당됩니다. 요청 상태는 <strong>내 자산 요청 내역</strong>에서 확인할 수 있습니다.</>}
+          />
+
           {/* PC 탭 */}
           {activeTab === 'pc' && (
             <>

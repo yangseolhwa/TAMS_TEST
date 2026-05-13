@@ -13,6 +13,13 @@ export const ASSET_TYPES = [
   { id: "sw", label: "SW" },
 ];
 
+const CATEGORY_NAME_MAP = {
+  furniture:  '가구',
+  office:     '사무',
+  industrial: '산업',
+  electrical: '전기',
+}
+
 const KEY_TYPE_OPTIONS = [
   { value: "serial",     label: "제품키" },
   { value: "credential", label: "계정형" },
@@ -335,7 +342,7 @@ const RequestFormFields = ({
           {item.assetType === "pc" && (
             <div className={styles.extraFields}>
 
-              {/* Row 1: 카테고리 + 자산 유형 */}
+              {/* Row 1: 카테고리 + 분류 */}
               <div className={styles.selectRow}>
                 <div className={styles.selectGroup}>
                   <label className={styles.selectLabel}>
@@ -357,20 +364,22 @@ const RequestFormFields = ({
                   >
                     <option value="">선택</option>
                     {pcCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <option key={cat.id} value={cat.id}>
+                        {CATEGORY_NAME_MAP[cat.name] ?? cat.name}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div className={styles.selectGroup}>
                   <label className={styles.selectLabel}>
-                    자산 유형 <span className={styles.required}>*</span>
+                    분류 <span className={styles.required}>*</span>
                   </label>
                   {item.itemTypeId === DIRECT_INPUT ? (
                     <input
                       className={styles.input}
                       type="text"
-                      placeholder="자산 유형 직접 입력"
+                      placeholder="분류 직접 입력"
                       value={item.itemTypeName}
                       autoFocus
                       onChange={(e) => onItemChange(index, "itemTypeName", e.target.value)}
@@ -418,7 +427,7 @@ const RequestFormFields = ({
                     <select
                       className={styles.select}
                       value={item.manufacturer}
-                      disabled={!item.itemTypeId || item.itemTypeId === DIRECT_INPUT}
+                      disabled={!item.itemTypeId}
                       onChange={(e) =>
                         onItemChange(index, {
                           manufacturer:     e.target.value,
