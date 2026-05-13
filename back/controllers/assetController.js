@@ -428,6 +428,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location      ?? null,
               department_id:    asset.department_id ?? null,
+              remarks:          asset.remarks ?? null,
             }
           : {
               category_id:      Number(asset.category_id),
@@ -438,6 +439,7 @@ exports.registerEnterprise = asyncWrapper(async (req, res) => {
               acquisition_date: asset.acquisition_date,
               location:         asset.location        ?? null,
               department_id:    asset.department_id   ?? null,
+              remarks:          asset.remarks ?? null,
             }
       ),
     });
