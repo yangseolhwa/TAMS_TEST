@@ -187,13 +187,13 @@ const PROJ_BLOCK_START_COL = 6;
 const PROJ_BLOCK_WIDTH     = 3;
 const PROJS_PER_ROW        = 3;
 
-function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects) {
+function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = new Set()) {
   const ws           = wb.getWorksheet('TOTAL') || wb.addWorksheet('TOTAL');
   const projectNames = Object.keys(grouped).sort((a, b) => {
-    const isAReturend = allReturnedProjects.has(a);
+    const isAReturned = allReturnedProjects.has(a);
     const isBReturned = allReturnedProjects.has(b);
     
-    if (isAReturend !== isBReturned) return isAReturend ? 1 : -1;
+    if (isAReturned !== isBReturned) return isAReturned ? 1 : -1;
     return (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0);
   })
 
