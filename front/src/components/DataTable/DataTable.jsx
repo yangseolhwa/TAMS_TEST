@@ -6,16 +6,17 @@ import { toChosung } from "../../utils/koreanSearch";
 // 키워드 일치 부분을 <mark>로 감싸는 헬퍼
 const applyHighlight = (text, keyword) => {
   if (!keyword || text == null || text === "") return text;
-  const str            = String(text);
-  const strLower       = str.toLowerCase();
-  const keywordLower   = keyword.toLowerCase();
-  const strChosung     = toChosung(strLower);
-  const keywordChosung = toChosung(keywordLower);
+
+  const str        = String(text);
+  const strLower   = str.toLowerCase();
+  const kwLower    = keyword.toLowerCase();
+  const strChosung = toChosung(strLower);
+  const kwChosung  = toChosung(kwLower);
 
   // 원본 매칭 우선, 없으면 초성 매칭
-  const useChosung = !strLower.includes(keywordLower) && strChosung.includes(keywordChosung);
-  const targetStr  = useChosung ? strChosung  : strLower;
-  const targetKw   = useChosung ? keywordChosung : keywordLower;
+  const useChosung = !strLower.includes(kwLower) && strChosung.includes(kwChosung);
+  const targetStr  = useChosung ? strChosung : strLower;
+  const targetKw   = useChosung ? kwChosung  : kwLower;
 
   const parts  = [];
   let lastIdx  = 0;
@@ -26,13 +27,15 @@ const applyHighlight = (text, keyword) => {
     if (idx > lastIdx) parts.push(str.slice(lastIdx, idx));
     parts.push(
       <mark key={idx} className={styles.highlight}>
-        {str.slice(idx, idx + keyword.length)}
+        {str.slice(idx, idx + targetKw.length)}
       </mark>
     );
-    lastIdx = idx + keyword.length;
+    lastIdx = idx + targetKw.length;
     idx     = targetStr.indexOf(targetKw, lastIdx);
   }
   if (lastIdx < str.length) parts.push(str.slice(lastIdx));
+
+  // parts.length > 0: mark가 1개뿐(전체 매칭)이어도 반환
   return parts.length > 0 ? <>{parts}</> : text;
 };
 
@@ -70,36 +73,31 @@ const DataTable = ({
   };
 
   const renderCell = (col, row) => {
-    if (col.renderCell) return col.renderCell(row);
-
-    const value = row[col.key];
-
-    if (col.type === "assetType") {
-      if (!value) return <span className={styles.dash}>—</span>;
-      return (
-        <span className={`${styles.badge} ${styles[`assetType_${value}`]}`}>
-          {value}
-        </span>
-      );
+    if (col.renderCell) {
+      const result = col.renderCell(row)
+      if (typeof result === 'string') {
+        return highlight ? applyHighlight(result, highlight) : result
+      }
+      return result
     }
 
-    if (col.type === "status") {
-      if (!statusMap || !statusMap[value])
-        return <span className={styles.dash}>—</span>;
-      const { label, color } = statusMap[value];
+    const value = row[col.key]
+
+    if (col.type === 'status') {
+      if (!statusMap || !statusMap[value]) return <span className={styles.dash}>—</span>
+      const { label, color } = statusMap[value]
       return (
         <span className={`${styles.badge} ${styles[`status_${color}`]}`}>
           {label}
         </span>
-      );
+      )
     }
 
-    if (value == null || value === "") {
-      return <span className={styles.dash}>—</span>;
-    }
+    if (value == null || value === '') return <span className={styles.dash}>—</span>
 
-    return highlight ? applyHighlight(value, highlight) : value;
-  };
+    if (col.noHighlight || col.key === 'no') return value
+    return highlight ? applyHighlight(value, highlight) : value
+  }
 
   // 컬럼 너비 스타일 계산
   const getColStyle = (col) => {
@@ -177,7 +175,7 @@ DataTable.propTypes = {
     PropTypes.shape({
       key:   PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
-      type:  PropTypes.oneOf(["status", "assetType", "dash"]),
+      type:  PropTypes.oneOf(["assetType"]),
       width: PropTypes.string,
     })
   ).isRequired,

@@ -22,16 +22,16 @@ import styles from './AdminPcAssetsPage.module.css'
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
   { key: 'no',             label: 'No' },
-  { key: 'itemNumber',     label: '자산번호',   type: 'dash' },
-  { key: 'departmentName', label: '소관부서',   type: 'dash' },
-  { key: 'location',       label: '위치',       type: 'dash' },
-  { key: 'userName',       label: '담당자',     type: 'dash' },
-  { key: 'acquiredAt',     label: '취득일',     type: 'dash' },
-  { key: 'manufacturer',   label: '제조사',     type: 'dash' },
-  { key: 'itemTypeName',   label: '자산 종류',  type: 'dash' },
-  { key: 'spec',           label: '규격',       type: 'dash' },
-  { key: 'serialNumber',   label: '시리얼 번호', type: 'dash' },
-  { key: 'remarks',        label: '비고',       type: 'dash' },
+  { key: 'itemNumber',     label: '자산번호',      },
+  { key: 'departmentName', label: '소관부서',      },
+  { key: 'location',       label: '위치',          },
+  { key: 'userName',       label: '담당자',        },
+  { key: 'acquiredAt',     label: '취득일',        noHighlight: true },
+  { key: 'manufacturer',   label: '제조사',        },
+  { key: 'itemTypeName',   label: '자산 종류',     },
+  { key: 'spec',           label: '규격',          },
+  { key: 'serialNumber',   label: '시리얼 번호',    },
+  { key: 'remarks',        label: '비고',          },
   { key: 'state',          label: '상태',       type: 'status' },
 ]
 
@@ -100,7 +100,7 @@ const AdminPcAssetsPage = () => {
         matchesAnyField(
           [
             row.itemNumber, row.itemTypeName, row.departmentName,
-            row.location,   row.userName,     row.acquiredAt,
+            row.location,   row.userName,
             row.manufacturer, row.spec,       row.serialNumber, row.remarks,
           ],
           appliedFilters.keyword

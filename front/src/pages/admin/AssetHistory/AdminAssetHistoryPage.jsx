@@ -31,7 +31,7 @@ const STATE_STATUS_MAP = {
 }
 
 const renderValueCell = (value) => {
-  if (value == null || value === '') return <span className={styles.dash}>-</span>
+  if (value == null || value === '') return <span className={styles.dash}>—</span>
   const mapped = STATE_STATUS_MAP[value]
   if (!mapped) return <span>{value}</span>
   return (
@@ -43,7 +43,7 @@ const renderValueCell = (value) => {
 
 const COLUMNS = [
   { key: 'no',          label: 'No' },
-  { key: 'requestedAt', label: '날짜' },
+  { key: 'requestedAt', label: '날짜', noHighlight: true },
   { key: 'changeType',  label: '변경', type: 'status' },
   {
     key: 'beforeValue',
@@ -55,9 +55,9 @@ const COLUMNS = [
     label: '변경 후',
     renderCell: (row) => renderValueCell(row.afterValue),
   },
-  { key: 'assetName', label: '자산명',  renderCell: (row) => row.assetName ?? <span className={styles.dash}>-</span> },
-  { key: 'detail',    label: '상세',    renderCell: (row) => row.detail    ?? <span className={styles.dash}>-</span> },
-  { key: 'user',      label: '처리자',  renderCell: (row) => row.user      ?? <span className={styles.dash}>-</span> },
+  { key: 'assetName', label: '자산명' },
+  { key: 'detail',    label: '상세'   },
+  { key: 'user',      label: '처리자' },
 ]
 
 const EMPTY_FILTER = {
@@ -94,7 +94,7 @@ const AdminAssetHistoryPage = () => {
       .filter((row) =>
         matchesAnyField(
           [
-            row.requestedAt, row.changeType,
+            row.changeType,
             row.beforeValue, row.afterValue,
             row.assetName,   row.detail,    row.user,
           ],

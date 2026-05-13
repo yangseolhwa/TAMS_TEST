@@ -198,12 +198,12 @@ const AdminAssetAssignPage = () => {
   // ── PC DataTable columns ──────────────────────────────────────────────────
   const pcColumns = useMemo(() => [
     { key: 'no',           label: 'No',        width: '48px' },
-    { key: 'itemNumber',   label: '자산번호',  type: 'dash'  },
-    { key: 'itemTypeName', label: '자산 종류', type: 'dash'  },
-    { key: 'manufacturer', label: '제조사',    type: 'dash'  },
-    { key: 'spec',         label: '규격',      type: 'dash'  },
-    { key: 'serialNumber', label: '시리얼',    type: 'dash'  },
-    { key: 'location',     label: '위치',      type: 'dash'  },
+    { key: 'itemNumber',   label: '자산번호' },
+    { key: 'itemTypeName', label: '자산 종류',     },
+    { key: 'manufacturer', label: '제조사',        },
+    { key: 'spec',         label: '규격',          },
+    { key: 'serialNumber', label: '시리얼',        },
+    { key: 'location',     label: '위치',          },
     {
       key: 'assign_user',
       label: '담당자 지정',
