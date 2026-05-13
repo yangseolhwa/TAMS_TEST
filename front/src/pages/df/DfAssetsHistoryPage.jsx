@@ -57,7 +57,7 @@ const COLUMNS = [
     label: '변경 후',
     renderCell: (row) => renderChangedCell(row.requestType, row.nextLocation, row.nextState),
   },
-  { key: 'requestedAt', label: '날짜' },
+  { key: 'requestedAt', label: '날짜', noHighlight: true },
 ]
 
 const EMPTY_FILTER = {
@@ -182,7 +182,7 @@ const DfAssetsHistoryPage = ({ role }) => {
                 <input
                   type="text"
                   className={common.filterInput}
-                  placeholder="모델명 / 시리얼 / 위치 검색"
+                  placeholder="검색어를 입력하세요"
                   value={filterForm.keyword}
                   onChange={(e) => handleFilterChange('keyword', e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
