@@ -187,9 +187,15 @@ const PROJ_BLOCK_START_COL = 6;
 const PROJ_BLOCK_WIDTH     = 3;
 const PROJS_PER_ROW        = 3;
 
-function buildTotalSheet(wb, grouped, projectIdMap) {
+function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects) {
   const ws           = wb.getWorksheet('TOTAL') || wb.addWorksheet('TOTAL');
-  const projectNames = Object.keys(grouped).sort((a, b) => (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0));
+  const projectNames = Object.keys(grouped).sort((a, b) => {
+    const isAReturend = allReturnedProjects.has(a);
+    const isBReturned = allReturnedProjects.has(b);
+    
+    if (isAReturend !== isBReturned) return isAReturend ? 1 : -1;
+    return (projectIdMap[a] ?? 0) - (projectIdMap[b] ?? 0);
+  })
 
   const TC_B = 2, TC_C = 3, TC_D = 4;
 
@@ -410,9 +416,9 @@ const exportDf = async (req, res) => {
 
       if (!Object.prototype.hasOwnProperty.call(groupedForTotal, projName)) {
         groupedForTotal[projName] = [];
-        projectIdMap[projName]    = item.project_id; // 프로젝트 ID 기록
+        groupedForSheets[projName] = { PC: [], PLC: []};
+        projectIdMap[projName] = item.project_id;
       }
-  if (!Object.prototype.hasOwnProperty.call(groupedForSheets, projName))  groupedForSheets[projName] = { PC: [], PLC: [] };
 
       groupedForTotal[projName].push(item);
       groupedForSheets[projName][sheetType].push(item);
@@ -421,8 +427,6 @@ const exportDf = async (req, res) => {
     const wb = new ExcelJS.Workbook();
     wb.creator = 'TAMS';
     wb.created = new Date();
-
-    buildTotalSheet(wb, groupedForTotal, projectIdMap);
 
     // 프로젝트별 전체 반납 여부 판별 (groupedForTotal 기준)
     // 반납 자산이 state 쿼리 없이 포함된 export에서 프로젝트 내 모든 자산이
@@ -433,6 +437,8 @@ const exportDf = async (req, res) => {
         return allItems.length > 0 && allItems.every((item) => item.state === 'returned');
       })
     );
+
+    buildTotalSheet(wb, groupedForTotal, projectIdMap, allReturnedProjects);
 
     Object.keys(groupedForSheets)
       .sort((a, b) => {
