@@ -575,7 +575,10 @@ export const fetchDfDashboard = async () => {
           quantity: t.count ?? 0,
         })),
       }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+      .sort((a, b) => {
+        if (a.end_project !== b.end_project) return a.end_project ? 1 : -1
+        return a.name.localeCompare(b.name, 'ko')
+      })
 
     return { projects, projectOptions, typeOptions: [...typeMap.values()] }
   } catch (error) {
