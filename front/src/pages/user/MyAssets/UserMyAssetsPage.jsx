@@ -18,7 +18,6 @@ import styles from './UserMyAssetsPage.module.css'
 // ── 컬럼 정의 ─────────────────────────────────────────────────────────────────
 const SW_COLUMNS = [
   { key: 'no',               label: 'No'           },
-  { key: 'acquisition_date', label: '취득일자'     },
   { key: 'asset_name',       label: '소프트웨어명' },
   { key: 'version',          label: '버전'         },
   { key: 'manufacturer',     label: '제조사'       },
@@ -35,20 +34,21 @@ const SW_COLUMNS = [
   },
   { key: 'related_link',     label: '관련 링크',
     renderCell: (row) => row.related_link
-      ? <a className={common.link} href={row.related_link} target="_blank" rel="noreferrer">{row.related_link}</a>
-      : '—'
+    ? <a className={common.link} href={row.related_link} target="_blank" rel="noreferrer">{row.related_link}</a>
+    : '—'
   },
+  { key: 'acquisition_date', label: '취득일자'     },
   { key: 'remarks', label: '비고' },
 ]
 
 const BASE_PC_COLUMNS = [
   { key: 'no',               label: 'No'          },
-  { key: 'acquisition_date', label: '취득 일자'   },
   { key: 'item_type_name',   label: '분류'        },
   { key: 'spec',             label: '규격'        },
   { key: 'manufacturer',     label: '제조사'      },
   { key: 'serial_number',    label: '시리얼 번호' },
   { key: 'location',         label: '위치'        },
+  { key: 'acquisition_date', label: '취득 일자'   },
   { key: 'remarks',          label: '비고'        },
 ]
 // ─────────────────────────────────────────────────────────────────────────────
