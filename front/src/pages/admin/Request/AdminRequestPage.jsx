@@ -125,18 +125,14 @@ const AdminRequestPage = () => {
               ...(item.requestReason.trim() && { request_reason:   item.requestReason.trim() }),
             };
 
-            if (!item.licenseRequired) {
-              
-            } else {
-            // 라이선스형: 라이선스 키 배열 전송 (빈 값 제외)
-            body.licenses = item.licenseKeys
-              .filter((k) => k.value.trim())
-              .map((k) => ({
-                license_key:  k.value.trim(),
-                key_type:     item.keyType,
-                license_type: item.licenseType,
-                ...(item.licensePassword.trim() && { license_password: item.licensePassword.trim() }),
-              }));
+          const validKeys = item.licenseKeys.filter((k) => k.value.trim())
+          if (validKeys.length > 0) {
+            body.licenses = validKeys.map((k) => ({
+              license_key:  k.value.trim(),
+              key_type:     item.keyType,
+              license_type: item.licenseType,
+              ...(item.licensePassword.trim() && { license_password: item.licensePassword.trim() }),
+            }));
           }
 
           return {
