@@ -665,7 +665,9 @@ export const fetchDfAssets = async (params = {}) => {
     })
 
     return {
-      rows: rows.map((row, i) => ({ ...row, no: i + 1 })),
+      rows: rows
+        .sort((a, b) => (a.state === 'returned' ? 1 : 0) - (b.state === 'returned' ? 1 : 0))
+        .map((row, i) => ({ ...row, no: i + 1 })),
       projectSummaries,
     }
   } catch (error) {

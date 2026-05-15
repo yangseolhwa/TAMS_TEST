@@ -52,6 +52,9 @@
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* SW 아코디언 아이템 */

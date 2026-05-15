@@ -111,4 +111,5 @@ html, body {
   /* Table */
   --color-table-header-bg: #f2f4f9;
   --color-bg-subtle: #F7F8FA;
+  --color-btn-state-disable:     #bcbcbc;
 }
