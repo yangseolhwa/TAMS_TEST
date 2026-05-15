@@ -285,10 +285,15 @@ const RequestFormFields = ({
     return type?.manufacturers ?? [];
   };
 
-  // SW: 소프트웨어명 목록 (중복 제거)
-  const swNames = useMemo(() => [
-    ...new Set((swAssets ?? []).map((s) => s.name).filter(Boolean)),
-  ], [swAssets]);
+  // SW: licenseRequired 기준으로 소프트웨어명 목록 필터링 (item별로 다르므로 함수로)
+  const getSwNames = (licenseRequired) => [
+    ...new Set(
+      (swAssets ?? [])
+        .filter((s) => s.license_required === licenseRequired)
+        .map((s) => s.name)
+        .filter(Boolean)
+    ),
+  ];
 
   // SW: 제조사 목록 (중복 제거)
   const swManufacturers = useMemo(() => [
@@ -507,8 +512,40 @@ const RequestFormFields = ({
           {item.assetType === "sw" && (
             <div className={styles.extraFields}>
 
-              {/* Row 1: 소프트웨어명 + 제조사 */}
+              {/* Row 1: 구독형 체크박스 + 소프트웨어명 + 제조사 */}
               <div className={styles.selectRow}>
+
+                {/* 구독형 체크박스 */}
+                <div className={styles.checkboxGroup}>
+                  <label className={styles.selectLabel}>라이선스 유형</label>
+                  <div className={styles.checkboxWrapper}>
+                    <label className={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        className={styles.checkbox}
+                        checked={!item.licenseRequired}
+                        onChange={(e) =>
+                          onItemChange(index, {
+                            licenseRequired:    !e.target.checked,
+                            // 전환 시 SW 선택 및 라이선스 관련 필드 초기화
+                            swName:             "",
+                            swNameDirect:       "",
+                            swManufacturer:     "",
+                            swManufacturerName: "",
+                            version:            "",
+                            versionName:        "",
+                            licenseKeys:        [{ id: crypto.randomUUID(), value: "" }],
+                            licensePassword:    "",
+                            quantity:           "",
+                          })
+                        }
+                      />
+                      구독형
+                    </label>
+                  </div>
+                </div>
+
+                {/* 소프트웨어명 */}
                 <div className={styles.selectGroup}>
                   <label className={styles.selectLabel}>
                     소프트웨어명 <span className={styles.required}>*</span>
@@ -533,18 +570,20 @@ const RequestFormFields = ({
                           onItemChange(index, { swName: DIRECT_INPUT, swNameDirect: "" });
                           return;
                         }
-                        // 선택한 SW명으로 제조사 자동 채움
+                        // 선택한 SW명으로 제조사 + 버전 자동 채움
                         const matched = (swAssets ?? []).find((s) => s.name === selectedName);
                         onItemChange(index, {
                           swName:             selectedName,
                           swNameDirect:       "",
                           swManufacturer:     matched?.manufacturer ?? "",
                           swManufacturerName: "",
+                          version:            matched?.version ?? "",
+                          versionName:        "",
                         });
                       }}
                     >
                       <option value="">선택</option>
-                      {swNames.map((name) => (
+                      {getSwNames(item.licenseRequired).map((name) => (
                         <option key={name} value={name}>{name}</option>
                       ))}
                       <option value={DIRECT_INPUT}>직접 입력...</option>
@@ -552,6 +591,7 @@ const RequestFormFields = ({
                   )}
                 </div>
 
+                {/* 제조사 */}
                 <div className={styles.selectGroup}>
                   <label className={styles.selectLabel}>
                     제조사 <span className={styles.required}>*</span>
@@ -587,7 +627,7 @@ const RequestFormFields = ({
                 </div>
               </div>
 
-              {/* Row 2: 버전 + 취득일 + 라이선스 필요 여부 */}
+              {/* Row 2: 버전 + 취득일 + 수량 */}
               <div className={styles.inputRow}>
                 <div className={styles.inputGroup}>
                   <label className={styles.selectLabel}>버전</label>
@@ -631,46 +671,6 @@ const RequestFormFields = ({
                   />
                 </div>
 
-                {/* 라이선스형 / 구독형 라디오 버튼 */}
-                <div className={styles.inputGroup}>
-                  <label className={styles.selectLabel}>라이선스 유형</label>
-                  <div className={styles.radioGroup}>
-                    <label className={styles.radioLabel}>
-                      <input
-                        type="radio"
-                        name={`licenseRequired-${item.id}`}
-                        checked={item.licenseRequired === true}
-                        onChange={() =>
-                          onItemChange(index, {
-                            licenseRequired: true,
-                            quantity:        "",
-                          })
-                        }
-                      />
-                      라이선스형
-                    </label>
-                    <label className={styles.radioLabel}>
-                      <input
-                        type="radio"
-                        name={`licenseRequired-${item.id}`}
-                        checked={item.licenseRequired === false}
-                        onChange={() =>
-                          onItemChange(index, {
-                            licenseRequired: false,
-                            licenseKeys:     [{ id: crypto.randomUUID(), value: "" }],
-                            licensePassword: "",
-                            quantity:        "",
-                          })
-                        }
-                      />
-                      구독형
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 3: 수량 / 공통 필드 */}
-              <div className={styles.inputRow}>
                 <div className={styles.inputGroup}>
                   <label className={styles.selectLabel}>
                     수량 <span className={styles.required}>*</span>
@@ -684,6 +684,10 @@ const RequestFormFields = ({
                     onChange={(e) => onItemChange(index, "quantity", e.target.value)}
                   />
                 </div>
+              </div>
+
+              {/* Row 3: 관련 링크 + 비고 + 요청 사유 */}
+              <div className={styles.inputRow}>
                 <div className={styles.inputGroup}>
                   <label className={styles.selectLabel}>관련 링크</label>
                   <input
@@ -716,14 +720,11 @@ const RequestFormFields = ({
                 </div>
               </div>
 
-              {/* 라이선스형일 때만 라이선스 입력 토글 표시 */}
-              {item.licenseRequired && (
-                <SwLicenseSection
-                  item={item}
-                  index={index}
-                  onItemChange={onItemChange}
-                />
-              )}
+              <SwLicenseSection
+                item={item}
+                index={index}
+                onItemChange={onItemChange}
+              />
 
             </div>
           )}

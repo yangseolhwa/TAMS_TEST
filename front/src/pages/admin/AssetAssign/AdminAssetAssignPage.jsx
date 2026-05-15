@@ -266,11 +266,9 @@ const AdminAssetAssignPage = () => {
   // ── SW 아코디언 렌더링 ────────────────────────────────────────────────────
   const renderSwAccordion = () => {
     if (swLoading) return <div className={styles.empty}>불러오는 중...</div>
-    if (filteredSwList.length === 0) return <div className={styles.empty}>할당 가능한 SW 자산이 없습니다.</div>
 
     const subscriptionList = filteredSwList.filter((sw) => sw.license_required === false && (sw.available_count ?? 0) > 0)
     const licensedList     = filteredSwList.filter((sw) => sw.license_required !== false)
-    const hasBothTypes     = subscriptionList.length > 0 && licensedList.length > 0
 
     const renderSubscriptionRow = (sw) => {
       const swUserId = swAssignState[`sw-${sw.id}`]?.userId ?? ''
@@ -395,10 +393,14 @@ const AdminAssetAssignPage = () => {
           <div className={styles.th}>할당</div>
         </div>
 
+        {filteredSwList.length === 0 && (
+          <div className={styles.empty}>데이터가 없습니다.</div>
+        )}
+
         {/* 구독형 그룹 */}
         {subscriptionList.length > 0 && (
           <>
-            {hasBothTypes && <div className={styles.groupTitle}>구독형</div>}
+            {subscriptionList.length > 0 && <div className={styles.groupTitle}>구독형</div>}
             {subscriptionList.map(renderSubscriptionRow)}
           </>
         )}
@@ -406,7 +408,7 @@ const AdminAssetAssignPage = () => {
         {/* 라이선스형 그룹 */}
         {licensedList.length > 0 && (
           <>
-            {hasBothTypes && <div className={styles.groupTitle}>라이선스형</div>}
+            {licensedList.length > 0 && <div className={styles.groupTitle}>라이선스형</div>}
             {licensedList.map(renderLicensedRow)}
           </>
         )}
@@ -423,7 +425,16 @@ const AdminAssetAssignPage = () => {
       />
 
       <section className={common.section}>
-        <TabCard tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
+        <TabCard 
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab)
+            setPcKeyword('')
+            setPcAppliedKeyword('')
+            setSwKeyword('')
+            setSwAppliedKeyword('')
+          }}>
 
           {/* PC 탭 */}
           {activeTab === 'pc' && (
