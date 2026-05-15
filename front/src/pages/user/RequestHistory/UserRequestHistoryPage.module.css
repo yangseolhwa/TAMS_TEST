@@ -63,3 +63,22 @@
   min-width: 0;
   min-height: 0;
 }
+
+/* =====================
+   삭제 버튼
+   ===================== */
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.deleteBtn:hover {
+  color: var(--color-error);
+}

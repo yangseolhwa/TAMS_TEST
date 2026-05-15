@@ -9,6 +9,13 @@
   flex-wrap: wrap;
 }
 
+.filterRightGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .filterSelect {
   height: 36px;
   padding: 0 10px;
@@ -26,33 +33,9 @@
 .filterSelect:hover  { border-color: var(--color-border); }
 .filterSelect:focus  { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
 
-.filterDate {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  outline: none;
-  transition: border-color var(--transition-fast);
-  cursor: pointer;
-}
-
-.filterDate:hover { border-color: var(--color-border); }
-.filterDate:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus-ring); }
-
-.dateSeparator {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
 .filterSearchWrap {
   display: flex;
   align-items: center;
-  margin-left: auto;
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
   overflow: hidden;

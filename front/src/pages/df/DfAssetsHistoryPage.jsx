@@ -5,6 +5,7 @@ import PageHeader from '../../components/PageHeader/PageHeader'
 import Card from '../../components/Card/Card'
 import DataTable from '../../components/DataTable/DataTable'
 import ActionButton from '../../components/ActionButton/ActionButton'
+import { matchesAnyField } from '../../utils/koreanSearch'
 import { fetchDfDashboard, fetchDfHistory } from '../../services/assetService'
 import common from '../AssetPage.common.module.css'
 import styles from './DfAssetsHistoryPage.module.css'
@@ -56,7 +57,7 @@ const COLUMNS = [
     label: '변경 후',
     renderCell: (row) => renderChangedCell(row.requestType, row.nextLocation, row.nextState),
   },
-  { key: 'requestedAt', label: '날짜' },
+  { key: 'requestedAt', label: '날짜', noHighlight: true },
 ]
 
 const EMPTY_FILTER = {
@@ -77,7 +78,6 @@ const DfAssetsHistoryPage = ({ role }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const projectOptions = dashboard?.projectOptions ?? []
   const typeOptions    = dashboard?.typeOptions    ?? []
@@ -92,26 +92,29 @@ const DfAssetsHistoryPage = ({ role }) => {
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['dfHistory', apiParams],
     queryFn:  () => fetchDfHistory(apiParams),
-    refetchOnWindowFocus: false,
   })
 
-  // ── 클라이언트 키워드 필터 ────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 (초성 검색 포함) ────────────────────────────────
   const filteredRows = useMemo(() => {
     if (!appliedKeyword) return rows
-    const kw = appliedKeyword.toLowerCase()
-    return rows.filter((row) => {
-      const target = [
-        row.projectName, row.category,
-        row.modelName, row.serialNumber,
-        row.prevLocation, row.nextLocation,
-      ].filter(Boolean).join(' ').toLowerCase()
-      return target.includes(kw)
-    }).map((row, i) => ({ ...row, no: i + 1 }))
+    return rows
+      .filter((row) =>
+        matchesAnyField(
+          [row.projectName, row.category, row.modelName, row.serialNumber, row.prevLocation, row.nextLocation],
+          appliedKeyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
   }, [rows, appliedKeyword])
 
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -120,7 +123,7 @@ const DfAssetsHistoryPage = ({ role }) => {
   }
 
   const handleSearch = () => {
-    setAppliedFilters(filterForm)
+    setAppliedFilters((prev) => ({ ...prev, from: filterForm.from, to: filterForm.to, keyword: filterForm.keyword }))
     setAppliedKeyword(filterForm.keyword)
   }
 
@@ -138,7 +141,7 @@ const DfAssetsHistoryPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.project_id}
-              onChange={(e) => handleFilterChange('project_id', e.target.value)}
+              onChange={(e) => handleSelectChange('project_id', e.target.value)}
             >
               <option value="">전체 프로젝트</option>
               {projectOptions.map((p) => (
@@ -149,7 +152,7 @@ const DfAssetsHistoryPage = ({ role }) => {
             <select
               className={common.filterSelect}
               value={filterForm.asset_type_id}
-              onChange={(e) => handleFilterChange('asset_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('asset_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
               {typeOptions.map((t) => (
@@ -157,39 +160,40 @@ const DfAssetsHistoryPage = ({ role }) => {
               ))}
             </select>
 
-            {/* 날짜 범위 */}
-            <input
-              type="date"
-              className={styles.filterDate}
-              value={filterForm.from}
-              onChange={(e) => handleFilterChange('from', e.target.value)}
-            />
-            <span className={styles.dateSeparator}>~</span>
-            <input
-              type="date"
-              className={styles.filterDate}
-              value={filterForm.to}
-              onChange={(e) => handleFilterChange('to', e.target.value)}
-            />
-
             <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
-            <div className={common.filterSearchWrap}>
+            <div className={styles.filterRightGroup}>
+              {/* 날짜 범위 */}
               <input
-                type="text"
-                className={common.filterInput}
-                placeholder="모델명 / 시리얼 / 위치 검색"
-                value={filterForm.keyword}
-                onChange={(e) => handleFilterChange('keyword', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                type="date"
+                className={common.filterDate}
+                value={filterForm.from}
+                onChange={(e) => handleFilterChange('from', e.target.value)}
               />
-              <button className={common.filterSearchBtn} onClick={handleSearch}>
-                <Search size={14} />
-              </button>
+              <span className={common.dateSeparator}>~</span>
+              <input
+                type="date"
+                className={common.filterDate}
+                value={filterForm.to}
+                onChange={(e) => handleFilterChange('to', e.target.value)}
+              />
+
+              <div className={common.filterSearchWrap}>
+                <input
+                  type="text"
+                  className={common.filterInput}
+                  placeholder="검색어를 입력하세요"
+                  value={filterForm.keyword}
+                  onChange={(e) => handleFilterChange('keyword', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button className={common.filterSearchBtn} onClick={handleSearch}>
+                  <Search size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* 총 건수 */}
           <DataTable
             columns={COLUMNS}
             rows={isLoading ? [] : filteredRows}

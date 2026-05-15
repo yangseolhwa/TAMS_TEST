@@ -51,17 +51,11 @@ const DfAssetsRegisterPage = ({ role }) => {
   // ── 직접 입력 여부 & 파생 값 ──────────────────────────────────────────────
   const isDirect       = form.assetTypeId.startsWith(DIRECT_PREFIX)
   const directParentId = isDirect ? Number(form.assetTypeId.replace(DIRECT_PREFIX, '')) : null
-  const directParentName = useMemo(() => {
-    if (!isDirect || directParentId == null) return ''
-    // typeGroups에서 대분류 이름 찾기
-    return (window.__dfTypeGroupsCache ?? []).find((g) => g.id === directParentId)?.name ?? ''
-  }, [isDirect, directParentId])
 
   // ── 프로젝트 옵션 (대시보드) ───────────────────────────────────────────────
   const { data: dashboard } = useQuery({
     queryKey: ['dfDashboard'],
     queryFn:  fetchDfDashboard,
-    refetchOnWindowFocus: false,
   })
   const projectOptions = dashboard?.projectOptions ?? []
 
@@ -69,8 +63,6 @@ const DfAssetsRegisterPage = ({ role }) => {
   const { data: typeGroups = [] } = useQuery({
     queryKey: ['dfItemTypes'],
     queryFn:  fetchDfItemTypes,
-    refetchOnWindowFocus: false,
-    onSuccess: (data) => { window.__dfTypeGroupsCache = data },
   })
 
   // ── 선택된 프로젝트의 대분류(PC/PLC) 기준 필터링 ──────────────────────────
@@ -229,7 +221,7 @@ const DfAssetsRegisterPage = ({ role }) => {
     <div className={common.page}>
       <PageHeader
         title="DF 자산 등록"
-        desc="DF 장비의 등록, 조회 및 위치 변동을 수행합니다."
+        desc="프로젝트별 DF 자산을 등록합니다."
       />
 
       <section className={common.section}>

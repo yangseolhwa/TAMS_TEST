@@ -8,6 +8,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import BackButton from '../../../components/BackButton/BackButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseList,
   changeEnterpriseState,
@@ -21,16 +22,16 @@ import styles from './AdminPcAssetsPage.module.css'
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
   { key: 'no',             label: 'No' },
-  { key: 'itemNumber',     label: '자산번호',   type: 'dash' },
-  { key: 'departmentName', label: '소관부서',   type: 'dash' },
-  { key: 'location',       label: '위치',       type: 'dash' },
-  { key: 'userName',       label: '담당자',     type: 'dash' },
-  { key: 'acquiredAt',     label: '취득일',     type: 'dash' },
-  { key: 'manufacturer',   label: '제조사',     type: 'dash' },
-  { key: 'itemTypeName',   label: '자산 종류',  type: 'dash' },
-  { key: 'spec',           label: '규격',       type: 'dash' },
-  { key: 'serialNumber',   label: '시리얼 번호', type: 'dash' },
-  { key: 'remarks',        label: '비고',       type: 'dash' },
+  { key: 'itemNumber',     label: '자산번호',      },
+  { key: 'departmentName', label: '소관부서',      },
+  { key: 'location',       label: '위치',          },
+  { key: 'userName',       label: '담당자',        },
+  { key: 'acquiredAt',     label: '취득일',        noHighlight: true },
+  { key: 'manufacturer',   label: '제조사',        },
+  { key: 'itemTypeName',   label: '자산 종류',     },
+  { key: 'spec',           label: '규격',          },
+  { key: 'serialNumber',   label: '시리얼 번호',    },
+  { key: 'remarks',        label: '비고',          },
   { key: 'state',          label: '상태',       type: 'status' },
 ]
 
@@ -51,6 +52,13 @@ const EMPTY_FILTER = {
   state:        '',
   keyword:      '',
 }
+
+const CATEGORY_NAME_MAP = {
+  furniture:  '가구',
+  office:     '사무',
+  industrial: '산업',
+  electrical: '전기',
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminPcAssetsPage = () => {
@@ -67,15 +75,39 @@ const AdminPcAssetsPage = () => {
   const [moveLocation, setMoveLocation] = useState('')
   const [showConfirm,  setShowConfirm]  = useState(false)
 
+  // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
+  const apiParams = useMemo(() => {
+    const { keyword: _keyword, ...rest } = appliedFilters
+    return Object.fromEntries(
+      Object.entries(rest).filter(([, v]) => v !== '' && v != null)
+    )
+  }, [appliedFilters])
+
   // ── 자산 조회 ─────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ['enterpriseList', appliedFilters],
-    queryFn:  () => fetchEnterpriseList(appliedFilters),
-    refetchOnWindowFocus: false,
+    queryKey: ['enterpriseList', apiParams],
+    queryFn:  () => fetchEnterpriseList(apiParams),
   })
-  const rows       = data?.rows       ?? []
+  const allRows    = data?.rows       ?? []
   const categories = data?.categories ?? []
   const itemTypes  = data?.itemTypes  ?? []
+
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
+  const rows = useMemo(() => {
+    if (!appliedFilters.keyword) return allRows
+    return allRows
+      .filter((row) =>
+        matchesAnyField(
+          [
+            row.itemNumber, row.itemTypeName, row.departmentName,
+            row.location,   row.userName,
+            row.manufacturer, row.spec,       row.serialNumber, row.remarks,
+          ],
+          appliedFilters.keyword
+        )
+      )
+      .map((row, i) => ({ ...row, no: i + 1 }))
+  }, [allRows, appliedFilters.keyword])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const invalidate = () => {
@@ -108,6 +140,11 @@ const AdminPcAssetsPage = () => {
   // ── 필터 핸들러 ───────────────────────────────────────────────────────────
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -166,18 +203,20 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.category_id}
-              onChange={(e) => handleFilterChange('category_id', e.target.value)}
+              onChange={(e) => handleSelectChange('category_id', e.target.value)}
             >
               <option value="">카테고리 전체</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {CATEGORY_NAME_MAP[c.name] ?? c.name}
+                </option>
               ))}
             </select>
 
             <select
               className={common.filterSelect}
               value={filterForm.item_type_id}
-              onChange={(e) => handleFilterChange('item_type_id', e.target.value)}
+              onChange={(e) => handleSelectChange('item_type_id', e.target.value)}
             >
               <option value="">자산 종류 전체</option>
               {itemTypes.map((t) => (
@@ -188,7 +227,7 @@ const AdminPcAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+              onChange={(e) => handleSelectChange('state', e.target.value)}
             >
               <option value="">자산 상태 전체</option>
               {PC_STATE_OPTIONS.map((opt) => (
@@ -202,7 +241,7 @@ const AdminPcAssetsPage = () => {
               <input
                 type="text"
                 className={common.filterInput}
-                placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                placeholder="검색어를 입력하세요"
                 value={filterForm.keyword}
                 onChange={(e) => handleFilterChange('keyword', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

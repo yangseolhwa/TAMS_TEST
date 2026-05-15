@@ -193,7 +193,7 @@ const UserRequestPage = () => {
           (item.itemTypeId && item.itemTypeId !== DIRECT_INPUT) ||
           item.itemTypeName.trim();
         if (!hasItemType) {
-          toast.error("PC: 자산 유형을 선택하거나 직접 입력해주세요.");
+          toast.error("PC: 분류를 선택하거나 직접 입력해주세요.");
           return;
         }
         const manufacturer = item.manufacturer === DIRECT_INPUT

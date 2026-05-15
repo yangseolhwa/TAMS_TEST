@@ -7,6 +7,7 @@ import TabCard from '../../../components/TabCard/TabCard'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
+import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
   fetchSwAvailable,
@@ -58,37 +59,40 @@ const AdminAssetAssignPage = () => {
   const { data: pcList = [], isLoading: pcLoading } = useQuery({
     queryKey: ['enterpriseAvailable'],
     queryFn:  fetchEnterpriseAvailable,
-    refetchOnWindowFocus: false,
   })
 
   const { data: swList = [], isLoading: swLoading } = useQuery({
     queryKey: ['swAvailable'],
     queryFn:  fetchSwAvailable,
-    refetchOnWindowFocus: false,
   })
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn:  () => fetchUsers(),
-    refetchOnWindowFocus: false,
   })
 
-  // ── 필터링 ────────────────────────────────────────────────────────────────
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
   const filteredPcList = useMemo(() => {
     if (!pcAppliedKeyword) return pcList
-    const kw = pcAppliedKeyword.toLowerCase()
     return pcList.filter((item) =>
-      [item.manufacturer, item.serial_number, item.spec, item.location, item.item_number]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [
+          item.item_number, item.item_type?.name,
+          item.manufacturer, item.spec,
+          item.serial_number, item.location,
+        ],
+        pcAppliedKeyword
+      )
     )
   }, [pcList, pcAppliedKeyword])
 
   const filteredSwList = useMemo(() => {
     if (!swAppliedKeyword) return swList
-    const kw = swAppliedKeyword.toLowerCase()
     return swList.filter((item) =>
-      [item.name, item.manufacturer, item.version]
-        .filter(Boolean).join(' ').toLowerCase().includes(kw)
+      matchesAnyField(
+        [item.name, item.manufacturer, item.version],
+        swAppliedKeyword
+      )
     )
   }, [swList, swAppliedKeyword])
 
@@ -100,7 +104,8 @@ const AdminAssetAssignPage = () => {
       queryClient.invalidateQueries({ queryKey: ['enterpriseAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
-      setPcAssignState((prev) => { const next = { ...prev }; delete next[confirm.assetId]; return next })
+      queryClient.invalidateQueries({ queryKey: ['enterpriseList'] })
+      setPcAssignState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },
@@ -113,12 +118,8 @@ const AdminAssetAssignPage = () => {
       queryClient.invalidateQueries({ queryKey: ['swAvailable'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['personalHistory'] })
-      setSwAssignState((prev) => {
-        const next = { ...prev }
-        if (confirm.type === 'sw-subscription') delete next[`sw-${confirm.swId}`]
-        else delete next[confirm.licenseId]
-        return next
-      })
+      queryClient.invalidateQueries({ queryKey: ['swList'] })
+      setSwAssignState({})
       setConfirm(null)
     },
     onError: (err) => { toast.error(err.message); setConfirm(null) },
@@ -197,12 +198,12 @@ const AdminAssetAssignPage = () => {
   // ── PC DataTable columns ──────────────────────────────────────────────────
   const pcColumns = useMemo(() => [
     { key: 'no',           label: 'No',        width: '48px' },
-    { key: 'itemNumber',   label: '자산번호',  type: 'dash'  },
-    { key: 'itemTypeName', label: '자산 종류', type: 'dash'  },
-    { key: 'manufacturer', label: '제조사',    type: 'dash'  },
-    { key: 'spec',         label: '규격',      type: 'dash'  },
-    { key: 'serialNumber', label: '시리얼',    type: 'dash'  },
-    { key: 'location',     label: '위치',      type: 'dash'  },
+    { key: 'itemNumber',   label: '자산번호' },
+    { key: 'itemTypeName', label: '자산 종류',     },
+    { key: 'manufacturer', label: '제조사',        },
+    { key: 'spec',         label: '규격',          },
+    { key: 'serialNumber', label: '시리얼',        },
+    { key: 'location',     label: '위치',          },
     {
       key: 'assign_user',
       label: '담당자 지정',
@@ -432,7 +433,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="제조사 / 시리얼 / 규격 / 위치 검색"
+                    placeholder="검색어를 입력하세요"
                     value={pcKeyword}
                     onChange={(e) => setPcKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setPcAppliedKeyword(pcKeyword)}
@@ -460,7 +461,7 @@ const AdminAssetAssignPage = () => {
                   <input
                     type="text"
                     className={common.filterInput}
-                    placeholder="소프트웨어명 / 제조사 검색"
+                    placeholder="검색어를 입력하세요"
                     value={swKeyword}
                     onChange={(e) => setSwKeyword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && setSwAppliedKeyword(swKeyword)}

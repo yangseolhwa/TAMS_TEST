@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'react-bootstrap-icons'
 import Card from '../../../components/Card/Card'
@@ -6,7 +6,8 @@ import DataTable from '../../../components/DataTable/DataTable'
 import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import BackButton from '../../../components/BackButton/BackButton'
-import { fetchSwList } from '../../../services/assetService'
+import { matchesAnyField } from '../../../utils/koreanSearch'
+import { fetchSwList, fetchUsers } from '../../../services/assetService'
 import common from '../../AssetPage.common.module.css'
 import styles from './AdminSwAssetsPage.module.css'
 
@@ -54,14 +55,18 @@ const COLUMNS = [
       return renderMultiLine(keys, styles.multiLine)
     },
   },
-  { key: 'relatedLink', label: '관련 링크' },
+  { key: 'relatedLink', label: '관련 링크',
+    renderCell: (row) => row.relatedLink
+      ? <a className={common.link} href={row.relatedLink} target="_blank" rel="noreferrer">{row.relatedLink}</a>
+      : '—'
+  },
   { key: 'manufacturer', label: '제조사'  },
   {
     key: 'users',
     label: '사용자',
     renderCell: (row) => {
       const { sharedLicenses, otherLicenses } = splitLicenses(row.licenses)
-        
+
       // shared: 사용자 여러 명 multiLine / 나머지: 각 라이선스별 1명
       const users = [
         ...sharedLicenses.map((l) => l.user?.name ?? l.user?.email),
@@ -76,50 +81,77 @@ const COLUMNS = [
   { key: 'state',       label: '상태',    type: 'status' },
 ]
 
-const EMPTY_FILTER = { name: '', manufacturer: '', keyword: '' }
+const EMPTY_FILTER = { name: '', manufacturer: '', user_id: '', keyword: '' }
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminSwAssetsPage = () => {
   const [filterForm,     setFilterForm]     = useState(EMPTY_FILTER)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTER)
 
+  // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
+  const apiParams = useMemo(() => ({
+    ...(appliedFilters.name.trim()         && { name:         appliedFilters.name.trim() }),
+    ...(appliedFilters.manufacturer.trim() && { manufacturer: appliedFilters.manufacturer.trim() }),
+    ...(appliedFilters.user_id             && { user_id:      appliedFilters.user_id }),
+  }), [appliedFilters])
+
+  // 필터 적용된 목록 (테이블용)
   const { data, isLoading } = useQuery({
-    queryKey: ['swList', appliedFilters],
-    queryFn:  () => fetchSwList({
-      ...(appliedFilters.name.trim()         && { name:         appliedFilters.name.trim() }),
-      ...(appliedFilters.manufacturer.trim() && { manufacturer: appliedFilters.manufacturer.trim() }),
-    }),
-    refetchOnWindowFocus: false,
+    queryKey: ['swList', apiParams],
+    queryFn:  () => fetchSwList(apiParams),
   })
 
-  const rawList = data?.list ?? []
+  // 전체 목록 (select 용)
+  const { data: allSwData } = useQuery({
+    queryKey: ['swListAll'],
+    queryFn:  () => fetchSwList(),
+  })
 
-  const rows = rawList
-    .filter((sw) => {
-      if (!appliedFilters.keyword) return true
-      const kw = appliedFilters.keyword.toLowerCase()
-      return (
-        sw.name?.toLowerCase().includes(kw) ||
-        sw.manufacturer?.toLowerCase().includes(kw) ||
-        sw.version?.toLowerCase().includes(kw)
-      )
-    })
-    .map((sw, i) => ({
-      id:           sw.id,
-      no:           i + 1,
-      productName:  sw.name         ?? null,
-      version:      sw.version      ?? null,
-      manufacturer: sw.manufacturer ?? null,
-      usedCount:    sw.in_use_count    ?? 0,
-      remainCount:  sw.available_count ?? 0,
-      relatedLink:  sw.related_link ?? null,
-      remarks:      sw.remarks      ?? null,
-      state:        sw.state,
-      licenses:     sw.licenses     ?? [],
-    }))
+  // 유저 목록 (select 용)
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn:  () => fetchUsers(),
+  })
+
+  const rawList  = data?.list      ?? []
+  const allList  = allSwData?.list ?? []
+  const userList = usersData       ?? []
+
+  // ── 클라이언트 키워드 필터 — 전체 컬럼 대상 ──────────────────────────────
+  const rows = useMemo(() =>
+    rawList
+      .filter((sw) => matchesAnyField(
+        [
+          sw.name, sw.manufacturer, sw.version, sw.remarks,
+          sw.related_link,
+          ...(sw.licenses ?? []).flatMap((l) => [
+            l.license_key, l.license_password, l.user?.name, l.user?.email,
+          ]),
+        ],
+        appliedFilters.keyword
+      ))
+      .map((sw, i) => ({
+        id:           sw.id,
+        no:           i + 1,
+        productName:  sw.name         ?? null,
+        version:      sw.version      ?? null,
+        manufacturer: sw.manufacturer ?? null,
+        usedCount:    sw.in_use_count    ?? 0,
+        remainCount:  sw.available_count ?? 0,
+        relatedLink:  sw.related_link ?? null,
+        remarks:      sw.remarks      ?? null,
+        state:        sw.state,
+        licenses:     sw.licenses     ?? [],
+      })),
+  [rawList, appliedFilters.keyword])
 
   const handleFilterChange = (key, value) =>
     setFilterForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSelectChange = (key, value) => {
+    setFilterForm((prev) => ({ ...prev, [key]: value }))
+    setAppliedFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleFilterReset = () => {
     setFilterForm(EMPTY_FILTER)
@@ -142,10 +174,10 @@ const AdminSwAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.name}
-              onChange={(e) => handleFilterChange('name', e.target.value)}
+              onChange={(e) => handleSelectChange('name', e.target.value)}
             >
               <option value="">제품명 전체</option>
-              {rawList.map((sw) => (
+              {allList.map((sw) => (
                 <option key={sw.id} value={sw.name}>{sw.name}</option>
               ))}
             </select>
@@ -153,20 +185,26 @@ const AdminSwAssetsPage = () => {
             <select
               className={common.filterSelect}
               value={filterForm.manufacturer}
-              onChange={(e) => handleFilterChange('manufacturer', e.target.value)}
+              onChange={(e) => handleSelectChange('manufacturer', e.target.value)}
             >
               <option value="">제조사 전체</option>
-              {[...new Set(rawList.map((sw) => sw.manufacturer).filter(Boolean))].map((mfr) => (
+              {[...new Set(allList.map((sw) => sw.manufacturer).filter(Boolean))].map((mfr) => (
                 <option key={mfr} value={mfr}>{mfr}</option>
               ))}
             </select>
 
-            <ActionButton
-              variant="white"
-              size="sm"
-              label="초기화"
-              onClick={handleFilterReset}
-            />
+            <select
+              className={common.filterSelect}
+              value={filterForm.user_id}
+              onChange={(e) => handleSelectChange('user_id', e.target.value)}
+            >
+              <option value="">사용자 전체</option>
+              {userList.map((user) => (
+                <option key={user.id} value={user.id}>{user.name ?? user.email}</option>
+              ))}
+            </select>
+
+            <ActionButton variant="white" size="sm" label="초기화" onClick={handleFilterReset} />
 
             <div className={common.filterSearchWrap}>
               <input

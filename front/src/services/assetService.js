@@ -7,26 +7,37 @@ import api from './httpClient'
 import { ENDPOINTS } from './endpoints'
 
 const CATEGORY_NAME_MAP = {
-      furniture:  '가구',
-      office:     '사무',
-      industrial: '산업',
-      electrical: '전기',
-    }
+  furniture:  '가구',
+  office:     '사무',
+  industrial: '산업',
+  electrical: '전기',
+}
 
-    // item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
-    const convertItemNumber = (itemNumber) => {
-      if (!itemNumber) return null
-      const parts = itemNumber.split('-')
-      const korName = CATEGORY_NAME_MAP[parts[0]]
-      if (!korName) return itemNumber
-      parts[0] = korName
-      return parts.join('-')
-    }
+// item_number의 카테고리 부분만 한글로 변환 (예: office-A-1 → 사무-A-1)
+const convertItemNumber = (itemNumber) => {
+  if (!itemNumber) return null
+  const parts = itemNumber.split('-')
+  const korName = CATEGORY_NAME_MAP[parts[0]]
+  if (!korName) return itemNumber
+  parts[0] = korName
+  return parts.join('-')
+}
 
-    // 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
-    const categoryOrderMap = new Map(
-      Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
-    )
+// 카테고리 순서를 Map으로 캐싱 — sort 내부에서 반복 계산 방지
+const categoryOrderMap = new Map(
+  Object.keys(CATEGORY_NAME_MAP).map((key, i) => [key, i])
+)
+
+const downloadBlob = (data, filename) => {
+  const url  = window.URL.createObjectURL(new Blob([data]))
+  const link = document.createElement('a')
+  link.href  = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  개인 자산
@@ -109,6 +120,7 @@ export const fetchMyAssets = async () => {
       asset_name:       sw.name            ?? null,
       version:          sw.version         ?? null,
       manufacturer:     sw.manufacturer    ?? null,
+      acquisition_date: sw.acquisition_date      ?? null,
       license_key:      license.license_key    ?? null,
       license_password: license.license_password ?? null,
       related_link:     sw.related_link    ?? null,
@@ -221,8 +233,6 @@ export const rejectSwRequest = async (requestId, rejectReason) => {
 // ─────────────────────────────────────────────────────────────────
 // 요청 목록 조회 
 // ─────────────────────────────────────────────────────────────────
-const REQUEST_TYPE_LABEL = { register: '등록', return: '반납', assign: '할당' }
-
 export const fetchAssetRequests = async () => {
   const { data } = await api.get(ENDPOINTS.ASSETS.REQUESTS)
 
@@ -233,13 +243,15 @@ export const fetchAssetRequests = async () => {
     return {
       id:              `req-ent-${item.id}`,
       no:              i + 1,
+      requestType:     item.request_type ?? null,
       requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
       userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
-      itemTypeName:    item.item_type?.name ?? parsed.item_type_name ?? null,
+      itemTypeName:    item.item_type?.name ?? item.asset?.item_type?.name ?? parsed.item_type_name ?? null,
       manufacturer:    item.asset?.manufacturer  ?? parsed.manufacturer  ?? null,
       serialNumber:    item.asset?.serial_number ?? parsed.serial_number ?? null,
       spec:            item.asset?.spec          ?? parsed.spec          ?? null,
       status:          item.status?.toUpperCase(),
+      requestReason:   item.request_reason ?? null,
       rejectionReason: item.rejection_reason ?? null,
     }
   })
@@ -251,6 +263,7 @@ export const fetchAssetRequests = async () => {
     return {
       id:              `req-sw-${item.id}`,
       no:              i + 1,
+      requestType:     item.request_type ?? null,
       requestedAt:     item.request_date ? item.request_date.slice(0, 10) : null,
       userName:        item.requester?.profile?.name ?? item.requester?.email ?? null,
       assetName:       item.sw?.name          ?? parsed.name         ?? null,
@@ -259,6 +272,7 @@ export const fetchAssetRequests = async () => {
       licenseKey:      item.license_detail?.license_key ?? parsed.licenses?.[0]?.license_key ?? parsed.license_key ?? null,
       licensePassword: item.license_detail?.license_password ?? parsed.license_password ?? parsed.licenses?.[0]?.license_password ?? null,
       status:          item.status?.toUpperCase(),
+      requestReason:   item.request_reason ?? null,
       rejectionReason: item.rejection_reason ?? null,
     }
   })
@@ -555,6 +569,7 @@ export const fetchDfDashboard = async () => {
         id:    proj.id,
         name:  proj.name,
         total: proj.total_count ?? 0,
+        end_project: proj.end_project ?? false,
         items: (proj.by_type ?? []).map((t) => ({
           itemType: t.type_name,
           quantity: t.count ?? 0,
@@ -718,14 +733,7 @@ export const exportDfAssets = async (params = {}) => {
     ? match[1]
     : `TAMS_DF_DOWNLOAD_${new Date().toISOString().slice(0, 10)}.xlsx`
 
-  const url  = window.URL.createObjectURL(new Blob([response.data]))
-  const link = document.createElement('a')
-  link.href  = url
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.URL.revokeObjectURL(url)
+  downloadBlob(response.data, filename)
 }
 
 export const downloadDfTemplate = async () => {
@@ -735,14 +743,7 @@ export const downloadDfTemplate = async () => {
     const match       = disposition.match(/filename="(.+)"/)
     const filename    = match ? match[1] : 'TAMS_DF_양식.xlsx'
 
-    const url  = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href  = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(response.data, filename)
   } catch (error) {
     throw new Error(error.response?.data?.message ?? '양식 다운로드에 실패했습니다.')
   }

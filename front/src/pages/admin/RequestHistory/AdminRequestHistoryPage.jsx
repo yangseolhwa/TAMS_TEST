@@ -21,25 +21,43 @@ import {
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const PC_COLUMNS = [
-  { key: "no",           label: "No"       },
-  { key: "requestedAt",  label: "요청일"   },
-  { key: "userName",     label: "요청자"   },
-  { key: "itemTypeName", label: "자산 종류" },
-  { key: "manufacturer", label: "제조사"   },
-  { key: "spec",         label: "규격"     },
-  { key: "serialNumber", label: "시리얼"   },
+  { key: "no",            label: "No"       },
+  { key: "requestedAt",   label: "요청일"   },
+  { key: "requestType",   label: "요청 유형", type: "status" },
+  { key: "userName",      label: "요청자"   },
+  { key: "itemTypeName",  label: "자산 종류" },
+  { key: "manufacturer",  label: "제조사"   },
+  { key: "spec",          label: "규격"     },
+  { key: "serialNumber",  label: "시리얼"   },
+  { key: "requestReason", label: "요청 사유" },
 ];
 
 const SW_COLUMNS = [
-  { key: "no",             label: "No"            },
-  { key: "requestedAt",    label: "요청일"        },
-  { key: "userName",       label: "요청자"        },
-  { key: "assetName",      label: "소프트웨어명"  },
-  { key: "manufacturer",   label: "제조사"        },
-  { key: "version",        label: "버전"          },
-  { key: "licenseKey",     label: "라이선스 키"   },
-  { key: "licensePassword", label: "라이선스 PW"  },
+  { key: "no",              label: "No"            },
+  { key: "requestedAt",     label: "요청일"        },
+  { key: "requestType",   label: "요청 유형", type: "status" },
+  { key: "userName",        label: "요청자"        },
+  { key: "assetName",       label: "소프트웨어명"  },
+  { key: "manufacturer",    label: "제조사"        },
+  { key: "version",         label: "버전"          },
+  {
+    key: 'license_info',
+    label: '라이선스 키 / 비밀번호',
+    renderCell: (row) => {
+      const key = row.licenseKey
+      const pw  = row.licensePassword
+      if (!key) return '—'
+      if (!pw)  return key
+      return `${key} / ${pw}`
+    } 
+  },
+  { key: "requestReason",   label: "요청 사유" },
 ];
+
+const REQUEST_TYPE_STATUS_MAP = {
+  register: { label: '등록', color: 'green'  },
+  assign:   { label: '할당', color: 'purple' },
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminRequestHistoryPage = () => {
@@ -54,8 +72,6 @@ const AdminRequestHistoryPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["assetRequests"],
     queryFn: fetchAssetRequests,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
   });
 
   const pcRows = useMemo(() => data?.enterpriseRows ?? [], [data]);
@@ -154,7 +170,7 @@ const AdminRequestHistoryPage = () => {
             columns={pcColumns}
             rows={isLoading ? [] : pcRows}
             selectable={false}
-            totalCount={pcRows.length}
+            statusMap={REQUEST_TYPE_STATUS_MAP}
           />
         </Card>
       </section>
@@ -173,7 +189,7 @@ const AdminRequestHistoryPage = () => {
             columns={swColumns}
             rows={isLoading ? [] : swRows}
             selectable={false}
-            totalCount={swRows.length}
+            statusMap={REQUEST_TYPE_STATUS_MAP}
           />
         </Card>
       </section>
