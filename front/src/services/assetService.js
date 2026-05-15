@@ -575,7 +575,10 @@ export const fetchDfDashboard = async () => {
           quantity: t.count ?? 0,
         })),
       }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+      .sort((a, b) => {
+        if (a.end_project !== b.end_project) return a.end_project ? 1 : -1
+        return a.name.localeCompare(b.name, 'ko')
+      })
 
     return { projects, projectOptions, typeOptions: [...typeMap.values()] }
   } catch (error) {
@@ -662,7 +665,9 @@ export const fetchDfAssets = async (params = {}) => {
     })
 
     return {
-      rows: rows.map((row, i) => ({ ...row, no: i + 1 })),
+      rows: rows
+        .sort((a, b) => (a.state === 'returned' ? 1 : 0) - (b.state === 'returned' ? 1 : 0))
+        .map((row, i) => ({ ...row, no: i + 1 })),
       projectSummaries,
     }
   } catch (error) {
