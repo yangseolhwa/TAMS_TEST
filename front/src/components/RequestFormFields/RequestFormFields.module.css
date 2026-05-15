@@ -92,6 +92,15 @@
   height: 36px;
 }
 
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+  min-width: auto;
+  margin-right: 8px;
+}
+
 .checkbox {
   width: 16px;
   height: 16px;
@@ -298,3 +307,4 @@
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border-light);
 }
+
