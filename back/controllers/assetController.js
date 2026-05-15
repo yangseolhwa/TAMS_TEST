@@ -642,7 +642,8 @@ exports.registerSw = asyncWrapper(async (req, res) => {
           license_password: lic.license_password ?? null,
           key_type:         lic.key_type         ?? null,
           license_type:     lic.license_type     ?? 'per_seat',
-          issue_date:       lic.issue_date        ?? null,
+          user_note:        lic.user_note        ?? null,
+          issue_date:       lic.issue_date       ?? null,
           add_quantity:     1,
         }),
       }));
@@ -676,6 +677,7 @@ exports.registerSw = asyncWrapper(async (req, res) => {
         license_password: lic.license_password ?? null,
         key_type:         lic.key_type,
         license_type:     lic.license_type    ?? 'per_seat',
+        user_note:        lic.user_note       ?? null,
         issue_date:       lic.issue_date      ?? null,
       }),
     }));
@@ -1299,7 +1301,7 @@ exports.approveSw = asyncWrapper(async (req, res) => {
       const subLicense = await AssetSwLicense.create({
         asset_sw_id:      targetSw.id,
         user_id:          request.requester_id,
-        user_note:        null,
+        user_note:        parsedData.user_note        ?? null,
         license_key:      parsedData.license_key      ?? null,
         license_password: parsedData.license_password ?? null,
         key_type:         parsedData.key_type         ?? null,
@@ -2241,11 +2243,15 @@ exports.requestSwAssign = asyncWrapper(async (req, res) => {
   }
 
   // 라이선스형: 해당 license_id에 대한 pending 요청이 이미 있는지 확인
+  // JSON_EXTRACT로 정확한 값 비교 (Op.like는 license_id:1이 11, 21 등도 매칭하는 버그 있음)
   const existingLicPending = await AssetSwRequest.findOne({
     where: {
       request_type: 'assign',
       status:       'pending',
-      new_asset_data: { [Op.like]: `%"license_id":${Number(license_id)}%` },
+      [Op.and]: sequelize.where(
+        sequelize.fn('JSON_EXTRACT', sequelize.col('new_asset_data'), '$.license_id'),
+        Number(license_id)
+      ),
     },
   });
   if (existingLicPending) {
