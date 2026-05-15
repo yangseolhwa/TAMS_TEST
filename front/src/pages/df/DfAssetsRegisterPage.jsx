@@ -224,9 +224,8 @@ const DfAssetsRegisterPage = ({ role }) => {
         desc="프로젝트별 DF 자산을 등록합니다."
       />
 
-      <section className={common.section}>
+      <section>
         <Card>
-
           {/* 카드 상단: 엑셀 관련 버튼 */}
           <div className={styles.cardHeader}>
             <button type="button" className={styles.templateBtn}

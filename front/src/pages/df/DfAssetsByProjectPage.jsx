@@ -456,11 +456,6 @@ const DfAssetsByProjectPage = ({ role }) => {
             />
           )}
 
-          {selectedIds.length > 0 && (
-            <p className={styles.selectedCount}>
-              {selectedIds.length}개 선택됨
-            </p>
-          )}
         </Card>
       </section>
 
