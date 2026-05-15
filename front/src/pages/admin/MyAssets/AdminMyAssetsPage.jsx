@@ -30,7 +30,7 @@ const AdminMyAssetsPage = () => {
         password:    lic.license_password ?? null,
         keyType:     lic.key_type,
         licenseType: lic.license_type,
-        user:        lic.user?.name ?? lic.user?.email ?? '-',
+        user:        lic.user?.name ?? lic.user_note ?? lic.user?.email ?? '-',
         userNote: lic.user_note ?? null,
       })),
     })),
