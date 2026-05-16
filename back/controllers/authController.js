@@ -237,3 +237,77 @@ exports.getUsers = asyncWrapper(async (req, res) => {
 
   res.status(200).json({ total: result.length, users: result });
 });
+
+// ─────────────────────────────────────────
+// 계정 전환 (admin ↔ user)
+// POST /api/auth/switch-role
+// ─────────────────────────────────────────
+exports.switchRole = asyncWrapper(async (req, res) => {
+  const { userId } = req.user;
+  const { refreshToken } = req.cookies;
+
+  const currentUser = await User.findByPk(userId, {
+    include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+  });
+  if (!currentUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+  if (!currentUser.linked_user_id) {
+    return res.status(403).json({ message: '연결된 계정이 없습니다. 관리자에게 문의하세요.' });
+  }
+
+  const targetUser = await User.findByPk(currentUser.linked_user_id, {
+    include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+  });
+  if (!targetUser) {
+    return res.status(404).json({ message: '연결된 계정을 찾을 수 없습니다.' });
+  }
+
+  // 기존 RT 폐기
+  if (refreshToken) {
+    const hashedOld = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const oldToken  = await RefreshToken.findOne({
+      where: { token: hashedOld, is_revoked: false },
+    });
+    if (oldToken) {
+      oldToken.is_revoked = true;
+      await oldToken.save();
+    }
+  }
+
+  // 새 AT 발급 (target user 기준)
+  const newAccessToken = jwt.sign(
+    { userId: targetUser.id, role: targetUser.role },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES },
+  );
+
+  // 새 RT 발급 및 DB 저장
+  const newRefreshValue = crypto.randomBytes(32).toString('hex');
+  const hashedNew       = crypto.createHash('sha256').update(newRefreshValue).digest('hex');
+
+  await RefreshToken.create({
+    user_id:    targetUser.id,
+    token:      hashedNew,
+    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_MS),
+    is_revoked: false,
+  });
+
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'Strict',
+    secure:   process.env.NODE_ENV === 'production',
+  };
+
+  const roleLabel = targetUser.role === 'admin' ? '관리자' : '일반 사용자';
+
+  res
+    .cookie('accessToken',  newAccessToken,  { ...cookieOptions, maxAge: ACCESS_TOKEN_EXPIRATION_MS })
+    .cookie('refreshToken', newRefreshValue, { ...cookieOptions, maxAge: REFRESH_TOKEN_EXPIRATION_MS })
+    .status(200)
+    .json({
+      name:    targetUser.profile?.name ?? null,
+      email:   targetUser.email,
+      role:    targetUser.role,
+      message: `${roleLabel} 계정으로 전환되었습니다.`,
+    });
+});
