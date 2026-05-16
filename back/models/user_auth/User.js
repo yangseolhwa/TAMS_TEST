@@ -5,6 +5,11 @@ const User = sequelize.define('User', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   email: { type: DataTypes.STRING(100), allowNull: false, unique: true },
   role: { type: DataTypes.ENUM('admin', 'user'), allowNull: false, defaultValue: 'user' },
+  linked_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+  }
 }, {
   tableName: 'users',
   timestamps: true,
