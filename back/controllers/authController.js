@@ -262,35 +262,45 @@ exports.switchRole = asyncWrapper(async (req, res) => {
     return res.status(404).json({ message: '연결된 계정을 찾을 수 없습니다.' });
   }
 
-  // 기존 RT 폐기
-  if (refreshToken) {
-    const hashedOld = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const oldToken  = await RefreshToken.findOne({
-      where: { token: hashedOld, is_revoked: false },
-    });
-    if (oldToken) {
-      oldToken.is_revoked = true;
-      await oldToken.save();
-    }
+  // 양방향 연결 검증
+  if (targetUser.linked_user_id !== userId) {
+    return res.status(403).json({ message: '양방향으로 연결되지 않은 계정입니다.' });
   }
 
-  // 새 AT 발급 (target user 기준)
+  // RT 폐기 + 새 RT 저장을 트랜잭션으로 묶음
+  const newRefreshValue = await sequelize.transaction(async (t) => {
+    // 기존 RT 폐기
+    if (refreshToken) {
+      const hashedOld = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const oldToken  = await RefreshToken.findOne({
+        where: { token: hashedOld, is_revoked: false },
+        transaction: t,
+      });
+      if (oldToken) {
+        oldToken.is_revoked = true;
+        await oldToken.save({ transaction: t });
+      }
+    }
+
+    // 새 RT 발급 및 DB 저장
+    const value     = crypto.randomBytes(32).toString('hex');
+    const hashedNew = crypto.createHash('sha256').update(value).digest('hex');
+    await RefreshToken.create({
+      user_id:    targetUser.id,
+      token:      hashedNew,
+      expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_MS),
+      is_revoked: false,
+    }, { transaction: t });
+
+    return value;
+  });
+
+  // AT는 DB 불필요하므로 트랜잭션 밖에서 발급
   const newAccessToken = jwt.sign(
     { userId: targetUser.id, role: targetUser.role },
     process.env.JWT_ACCESS_SECRET,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES },
   );
-
-  // 새 RT 발급 및 DB 저장
-  const newRefreshValue = crypto.randomBytes(32).toString('hex');
-  const hashedNew       = crypto.createHash('sha256').update(newRefreshValue).digest('hex');
-
-  await RefreshToken.create({
-    user_id:    targetUser.id,
-    token:      hashedNew,
-    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_MS),
-    is_revoked: false,
-  });
 
   const cookieOptions = {
     httpOnly: true,

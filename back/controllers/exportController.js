@@ -202,7 +202,6 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
 
   const grandMap = {};
   for (const name of projectNames) {
-    const isReturned = allReturnedProjects.has(name);
     for (const item of grouped[name]) {
       // 반납 프로젝트(빨간 시트)는 현행 유지, 그 외는 사용 중인 장비만 집계
       if (item.state !== 'in_use') continue;
