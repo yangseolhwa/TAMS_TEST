@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const sequelize = require('../config/db');
 const { Op } = require("sequelize");
 const { User, RefreshToken, Profile, Department } = require("../models");
 const asyncWrapper = require("../middleware/asyncWrapper");
