@@ -20,9 +20,6 @@ const TOTAL_PROJ_NAME_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { a
 const TOTAL_TITLE_FILL       = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
 const TOTAL_SUMMARY_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5496' } };
 
-const RETURNED_PROJ_NAME_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF808080' } };
-const RETURNED_HEADER_FILL      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
-
 const FONT_BASE      = { name: '맑은 고딕', size: 11 };
 const FONT_HEADER    = { ...FONT_BASE, bold: true };
 const FONT_PROJ_NAME = { ...FONT_BASE, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -88,8 +85,8 @@ function applyMerges(ws, dataStartRow, items, mergeRules) {
 }
 
 // ── 통합 컬럼 정의 ────────────────────────────────────────────────
-const UNIFIED_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '대여일', '반납일', '비고'];
-const UNIFIED_COL_WIDTHS = [8, 30, 30, 25, 30, 30, 22, 8, 14, 14, 50];
+const UNIFIED_HEADERS    = ['No', 'Item', '두산 Item No', 'Manufacturer', 'Product Name', 'Model Number', 'Serial Number', 'QTY', '장비 위치', '대여일', '반납일', '비고'];
+const UNIFIED_COL_WIDTHS = [8, 30, 30, 25, 30, 30, 22, 8, 22, 14, 14, 50];
 
 // ── 병합 규칙 ────────────────────────────────────────────────────
 function buildMergeRules(items) {
@@ -107,7 +104,7 @@ function buildMergeRules(items) {
     { col: 5,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}` },
     { col: 6,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}` },
     { col: 7,  keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}${S}${gmn(i)}` },
-    { col: 10, keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}${S}${gmn(i)}${S}${gd(i)}` },
+    { col: 11, keyFn: (i) => `${gi(i)}${S}${ge(i)}${S}${gm(i)}${S}${gp(i)}${S}${gmn(i)}${S}${gd(i)}` },
   ];
 }
 
@@ -166,6 +163,7 @@ function buildProjectSheet(wb, sheetName, rawItems, isAllReturned = false) {
       item.model_number                 || '-',
       item.serial_number                || '-',
       item.quantity                     ?? '-',
+      item.location                     || '-',
       formatDate(item.acquisition_date) || '-',
       formatDate(item.return_date)      || '-',
       item.remarks                      || '-',
@@ -205,11 +203,13 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
   const grandMap = {};
   for (const name of projectNames) {
     for (const item of grouped[name]) {
+      // 반납 프로젝트(빨간 시트)는 현행 유지, 그 외는 사용 중인 장비만 집계
+      if (item.state !== 'in_use') continue;
       const parent = item.item_type?.parent?.name ?? '-';
       const type   = item.item_type?.name         ?? '-';
       const key    = `${parent}\x00${type}`;
       if (!grandMap[key]) grandMap[key] = { parent, type, count: 0 };
-      grandMap[key].count += 1;
+      grandMap[key].count += (item.quantity ?? 0);
     }
   }
   const grandRows = Object.values(grandMap).sort((a, b) => {
@@ -302,18 +302,22 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
     const chunk = projectNames.slice(blockStart, blockStart + PROJS_PER_ROW);
 
     const summaries = chunk.map((name) => {
+      const isReturned = allReturnedProjects.has(name);
       const typeCount = {};
       grouped[name].forEach((item) => {
         const label = item.item_type?.name ?? '장비';
-        typeCount[label] = (typeCount[label] || 0) + 1;
+        // 분류 항목은 state 무관하게 모두 등록 (0으로 초기화)
+        if (!Object.prototype.hasOwnProperty.call(typeCount, label)) typeCount[label] = 0;
+        // 반납 프로젝트(빨간 시트)는 현행 유지, 그 외는 사용 중인 장비만 수량 집계
+        if (item.state === 'in_use') {
+          typeCount[label] += (item.quantity ?? 0);
+        }
       });
       return Object.entries(typeCount).sort(([a], [b]) => a.localeCompare(b, 'ko'));
     });
     const maxDataRows = Math.max(...summaries.map((s) => s.length + 1));
 
     chunk.forEach((projName, ci) => {
-      const isReturned = allReturnedProjects.has(projName);
-
       const colB = PROJ_BLOCK_START_COL + ci * PROJ_BLOCK_WIDTH;
       const colC = colB + 1;
 
@@ -321,7 +325,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       const nameCell     = ws.getRow(pr).getCell(colB);
       nameCell.value     = projName;
       nameCell.font      = FONT_PROJ_NAME;
-      nameCell.fill      = isReturned ? RETURNED_PROJ_NAME_FILL : TOTAL_PROJ_NAME_FILL;
+      nameCell.fill      = TOTAL_PROJ_NAME_FILL;
       nameCell.border    = THIN_BORDER;
       nameCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -331,7 +335,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       hC.value = '수량';
       [hB, hC].forEach((c) => {
         c.font      = FONT_HEADER;
-        c.fill      = isReturned ? RETURNED_HEADER_FILL : TOTAL_HEADER_FILL;
+        c.fill      = TOTAL_HEADER_FILL;
         c.border    = THIN_BORDER;
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
@@ -356,7 +360,7 @@ function buildTotalSheet(wb, grouped, projectIdMap = { }, allReturnedProjects = 
       sC.value = totalCnt;
       [sB, sC].forEach((c) => {
         c.font      = FONT_HEADER;
-        c.fill      = isReturned ? RETURNED_HEADER_FILL : TOTAL_HEADER_FILL;
+        c.fill      = TOTAL_HEADER_FILL;
         c.border    = THIN_BORDER;
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });

@@ -237,3 +237,87 @@ exports.getUsers = asyncWrapper(async (req, res) => {
 
   res.status(200).json({ total: result.length, users: result });
 });
+
+// ─────────────────────────────────────────
+// 계정 전환 (admin ↔ user)
+// POST /api/auth/switch-role
+// ─────────────────────────────────────────
+exports.switchRole = asyncWrapper(async (req, res) => {
+  const { userId } = req.user;
+  const { refreshToken } = req.cookies;
+
+  const currentUser = await User.findByPk(userId, {
+    include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+  });
+  if (!currentUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+  if (!currentUser.linked_user_id) {
+    return res.status(403).json({ message: '연결된 계정이 없습니다. 관리자에게 문의하세요.' });
+  }
+
+  const targetUser = await User.findByPk(currentUser.linked_user_id, {
+    include: [{ model: Profile, as: 'profile', attributes: ['name'] }],
+  });
+  if (!targetUser) {
+    return res.status(404).json({ message: '연결된 계정을 찾을 수 없습니다.' });
+  }
+
+  // 양방향 연결 검증
+  if (targetUser.linked_user_id !== userId) {
+    return res.status(403).json({ message: '양방향으로 연결되지 않은 계정입니다.' });
+  }
+
+  // RT 폐기 + 새 RT 저장을 트랜잭션으로 묶음
+  const newRefreshValue = await sequelize.transaction(async (t) => {
+    // 기존 RT 폐기
+    if (refreshToken) {
+      const hashedOld = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const oldToken  = await RefreshToken.findOne({
+        where: { token: hashedOld, is_revoked: false },
+        transaction: t,
+      });
+      if (oldToken) {
+        oldToken.is_revoked = true;
+        await oldToken.save({ transaction: t });
+      }
+    }
+
+    // 새 RT 발급 및 DB 저장
+    const value     = crypto.randomBytes(32).toString('hex');
+    const hashedNew = crypto.createHash('sha256').update(value).digest('hex');
+    await RefreshToken.create({
+      user_id:    targetUser.id,
+      token:      hashedNew,
+      expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRATION_MS),
+      is_revoked: false,
+    }, { transaction: t });
+
+    return value;
+  });
+
+  // AT는 DB 불필요하므로 트랜잭션 밖에서 발급
+  const newAccessToken = jwt.sign(
+    { userId: targetUser.id, role: targetUser.role },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES },
+  );
+
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'Strict',
+    secure:   process.env.NODE_ENV === 'production',
+  };
+
+  const roleLabel = targetUser.role === 'admin' ? '관리자' : '일반 사용자';
+
+  res
+    .cookie('accessToken',  newAccessToken,  { ...cookieOptions, maxAge: ACCESS_TOKEN_EXPIRATION_MS })
+    .cookie('refreshToken', newRefreshValue, { ...cookieOptions, maxAge: REFRESH_TOKEN_EXPIRATION_MS })
+    .status(200)
+    .json({
+      name:    targetUser.profile?.name ?? null,
+      email:   targetUser.email,
+      role:    targetUser.role,
+      message: `${roleLabel} 계정으로 전환되었습니다.`,
+    });
+});
