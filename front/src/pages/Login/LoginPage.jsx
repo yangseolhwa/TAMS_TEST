@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import Logo from '../Logo/Logo'
+import Logo from '../../components/Logo/Logo'
 import useLoginForm from '../../hooks/useLoginForm'
 import bgImg from '../../assets/background.png'
 import styles from './LoginPage.module.css'
