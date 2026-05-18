@@ -68,29 +68,29 @@ function App() {
 
         <Route element={<DefaultLayout role={role} name={name} hasLinkedAccount={hasLinkedAccount} onLogout={handleLogout} onRoleSwitch={handleRoleSwitch} />}>
           {/* Admin */}
-          <Route path="/admin/my-assets"             element={role === 'admin' ? <AdminMyAssetsPage />         : <Navigate to="/login" replace />} />
-          <Route path="/admin/my-assets/request"     element={role === 'admin' ? <AdminRequestPage />          : <Navigate to="/login" replace />} />
-          <Route path="/admin/my-assets/assign"      element={role === 'admin' ? <AdminAssetAssignPage />      : <Navigate to="/login" replace />} />
-          <Route path="/admin/my-assets/request-history" element={role === 'admin' ? <AdminRequestHistoryPage /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/my-assets/history"     element={role === 'admin' ? <AdminAssetHistoryPage />     : <Navigate to="/login" replace />} />
-          <Route path="/admin/pc-assets"             element={role === 'admin' ? <AdminPcAssetsPage />         : <Navigate to="/login" replace />} />
-          <Route path="/admin/sw-assets"             element={role === 'admin' ? <AdminSwAssetsPage />         : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/dashboard"   element={role === 'admin' ? <DfDashboardPage    role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/list"        element={role === 'admin' ? <DfAssetsListPage   role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/by-project"  element={role === 'admin' ? <DfAssetsByProjectPage role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/register"    element={role === 'admin' ? <DfAssetsRegisterPage role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/admin/df-assets/history"     element={role === 'admin' ? <DfAssetsHistoryPage role={role} /> : <Navigate to="/login" replace />} />
+          <Route path="/admin/my-assets"                 element={!role ? <Navigate to="/login" replace /> : <AdminMyAssetsPage />} />
+          <Route path="/admin/my-assets/request"         element={!role ? <Navigate to="/login" replace /> : <AdminRequestPage />} />
+          <Route path="/admin/my-assets/assign"          element={!role ? <Navigate to="/login" replace /> : <AdminAssetAssignPage />} />
+          <Route path="/admin/my-assets/request-history" element={!role ? <Navigate to="/login" replace /> : <AdminRequestHistoryPage />} />
+          <Route path="/admin/my-assets/history"         element={!role ? <Navigate to="/login" replace /> : <AdminAssetHistoryPage />} />
+          <Route path="/admin/pc-assets"                 element={!role ? <Navigate to="/login" replace /> : <AdminPcAssetsPage />} />
+          <Route path="/admin/sw-assets"                 element={!role ? <Navigate to="/login" replace /> : <AdminSwAssetsPage />} />
+          <Route path="/admin/df-assets/dashboard"       element={!role ? <Navigate to="/login" replace /> : <DfDashboardPage    role={role} />} />
+          <Route path="/admin/df-assets/list"            element={!role ? <Navigate to="/login" replace /> : <DfAssetsListPage   role={role} />} />
+          <Route path="/admin/df-assets/by-project"      element={!role ? <Navigate to="/login" replace /> : <DfAssetsByProjectPage role={role} />} />
+          <Route path="/admin/df-assets/register"        element={!role ? <Navigate to="/login" replace /> : <DfAssetsRegisterPage role={role} />} />
+          <Route path="/admin/df-assets/history"         element={!role ? <Navigate to="/login" replace /> : <DfAssetsHistoryPage role={role} />} />
 
           {/* User */}
-          <Route path="/user/my-assets"             element={role === 'user' ? <UserMyAssetsPage />         : <Navigate to="/login" replace />} />
-          <Route path="/user/my-assets/request"     element={role === 'user' ? <UserRequestPage />          : <Navigate to="/login" replace />} />
-          <Route path="/user/my-assets/history"     element={role === 'user' ? <UserRequestHistoryPage />   : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/dashboard"   element={role === 'user' ? <DfDashboardPage    role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/list"        element={role === 'user' ? <DfAssetsListPage   role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/by-project"  element={role === 'user' ? <DfAssetsByProjectPage role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/register"    element={role === 'user' ? <DfAssetsRegisterPage role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/user/df-assets/history"     element={role === 'user' ? <DfAssetsHistoryPage role={role} /> : <Navigate to="/login" replace />} />
-          <Route path="/user/my-assets/assign"      element={role === 'user' ? <UserAssetAssignPage /> : <Navigate to="/login" replace />} />
+          <Route path="/user/my-assets"             element={!role ? <Navigate to="/login" replace /> : <UserMyAssetsPage />} />
+          <Route path="/user/my-assets/request"     element={!role ? <Navigate to="/login" replace /> : <UserRequestPage />} />
+          <Route path="/user/my-assets/history"     element={!role ? <Navigate to="/login" replace /> : <UserRequestHistoryPage />} />
+          <Route path="/user/df-assets/dashboard"   element={!role ? <Navigate to="/login" replace /> : <DfDashboardPage    role={role} />} />
+          <Route path="/user/df-assets/list"        element={!role ? <Navigate to="/login" replace /> : <DfAssetsListPage   role={role} />} />
+          <Route path="/user/df-assets/by-project"  element={!role ? <Navigate to="/login" replace /> : <DfAssetsByProjectPage role={role} />} />
+          <Route path="/user/df-assets/register"    element={!role ? <Navigate to="/login" replace /> : <DfAssetsRegisterPage role={role} />} />
+          <Route path="/user/df-assets/history"     element={!role ? <Navigate to="/login" replace /> : <DfAssetsHistoryPage role={role} />} />
+          <Route path="/user/my-assets/assign"      element={!role ? <Navigate to="/login" replace /> : <UserAssetAssignPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
