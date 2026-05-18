@@ -41,7 +41,7 @@ const useLoginForm = ({ onLoginSuccess }) => {
       if (data?.role) {
         // name이 없을 경우 email 앞부분을 fallback으로 사용
         const name = data.name ?? email.split('@')[0]
-        onLoginSuccess?.(data.role, name)
+        onLoginSuccess?.(data.role, name, data.has_linked_account ?? false)
       } else {
         throw new Error('로그인 응답이 올바르지 않습니다.')
       }

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
-import LoginPage from './components/Login/LoginPage'
+import LoginPage from './pages/Login/LoginPage'
 import DefaultLayout from './layouts/DefaultLayout/DefaultLayout'
 import AdminMyAssetsPage from './pages/admin/MyAssets/AdminMyAssetsPage'
 import AdminRequestPage from './pages/admin/Request/AdminRequestPage'
@@ -22,19 +22,36 @@ import DfAssetsHistoryPage from './pages/df/DfAssetsHistoryPage'
 function App() {
   const [role, setRole] = useState(sessionStorage.getItem('role'))
   const [name, setName] = useState(sessionStorage.getItem('userName'))
+  const [hasLinkedAccount, setHasLinkedAccount] = useState(sessionStorage.getItem('hasLinkedAccount') === 'true')
 
-  const handleLoginSuccess = (role, name) => {
+  const handleLoginSuccess = (role, name, hasLinkedAccount) => {
     sessionStorage.setItem('role',     role)
     sessionStorage.setItem('userName', name)
+    sessionStorage.setItem('hasLinkedAccount', String(hasLinkedAccount))
     setRole(role)
     setName(name)
+    setHasLinkedAccount(hasLinkedAccount)
   }
 
   const handleLogout = () => {
     sessionStorage.removeItem('role')
     sessionStorage.removeItem('userName')
+    sessionStorage.removeItem('hasLinkedAccount')
     setRole(null)
     setName(null)
+    setHasLinkedAccount(false)
+  }
+
+  const handleRoleSwitch = async (newRole, newName) => {
+    try {
+      sessionStorage.setItem('role', newRole)
+      sessionStorage.setItem('userName', newName)
+      setRole(newRole)
+      setName(newName)
+      setHasLinkedAccount(true)
+    } catch (err) {
+      console.error(err.message)
+    }
   }
 
   return (
@@ -49,7 +66,7 @@ function App() {
           }
         />
 
-        <Route element={<DefaultLayout role={role} name={name} onLogout={handleLogout} />}>
+        <Route element={<DefaultLayout role={role} name={name} hasLinkedAccount={hasLinkedAccount} onLogout={handleLogout} onRoleSwitch={handleRoleSwitch} />}>
           {/* Admin */}
           <Route path="/admin/my-assets"             element={role === 'admin' ? <AdminMyAssetsPage />         : <Navigate to="/login" replace />} />
           <Route path="/admin/my-assets/request"     element={role === 'admin' ? <AdminRequestPage />          : <Navigate to="/login" replace />} />
