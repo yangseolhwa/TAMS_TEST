@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import logoImg from '../../assets/logo.png'
 import { PersonCircle, ChevronLeft, ChevronRight } from 'react-bootstrap-icons'
-import { logout } from '../../services/authService'
+import { logout, switchRole } from '../../services/authService'
+import Switch from 'react-switch'
 import styles from './DefaultLayout.module.css'
 import toast from 'react-hot-toast'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
@@ -52,22 +53,13 @@ const TABS_BY_ROLE = {
   ],
 }
 
-const DefaultLayout = ({ role, name, onLogout }) => {
+const DefaultLayout = ({ role, name, hasLinkedAccount, onLogout, onRoleSwitch }) => {
   const navigate  = useNavigate()
   const location  = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const TABS      = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
   const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
-
-  // 헤더 표시 이름
-  // user  → "김철수"
-  // admin → "김철수 (admin)"
-  const displayName = name
-    ? role === 'admin'
-      ? `${name} (admin)`
-      : name
-    : role
 
   const handleLogout = async () => {
     try {
@@ -85,20 +77,51 @@ const DefaultLayout = ({ role, name, onLogout }) => {
     }
   }
 
-  return (
+  const handleRoleSwitch = async () => {
+    try {
+      const data = await switchRole()
+      sessionStorage.setItem('role', data.role)
+      sessionStorage.setItem('userName', data.name)
+      onRoleSwitch(data.role, data.name)  // 상태만 업데이트
+    } catch (err) {
+      console.error(err.message)
+    }
+  }
+
+return (
     <div className={styles.wrapper}>
 
+      {/* Header */}
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
           <img src={logoImg} alt="TAMS" className={styles.logoImg} />
         </div>
         <div className={styles.headerRight}>
-          <div className={styles.profile}>
-            <PersonCircle className={styles.profileIcon} />
-            <span className={styles.profileName}>{displayName}</span>
+          {hasLinkedAccount && (
+            <div className={styles.roleToggleWrap} title={role === 'admin' ? 'User로 전환' : 'Admin으로 전환'}>
+              <span className={`${styles.roleLabel} ${role !== 'admin' ? styles.roleLabelActive : ''}`}>User</span>
+              <Switch
+                checked={role === 'admin'}
+                onChange={handleRoleSwitch}
+                onColor="#1E2D45"
+                offColor="#718096"
+                uncheckedIcon={false}
+                checkedIcon={false}
+                height={20}
+                width={36}
+                handleDiameter={14}
+              />
+              <span className={`${styles.roleLabel} ${role === 'admin' ? styles.roleLabelActive : ''}`}>Admin</span>
+            </div>
+          )}
+          <div className={styles.profileGroup}>
+            <div className={styles.profile}>
+              <PersonCircle className={styles.profileIcon} />
+              <span className={styles.profileName}>{name}</span>
+            </div>
+            <button className={styles.logoutBtn} onClick={handleLogout}>로그아웃</button>
           </div>
-          <button className={styles.logoutBtn} onClick={handleLogout}>로그아웃</button>
         </div>
       </header>
 
@@ -169,7 +192,6 @@ const DefaultLayout = ({ role, name, onLogout }) => {
       <footer className={styles.footer}>
         {/* 푸터 영역 */}
       </footer>
-
     </div>
   )
 }

@@ -80,17 +80,23 @@ exports.login = asyncWrapper(async (req, res) => {
     secure: process.env.NODE_ENV === "production",
   };
 
+  // linked_account 정보 조회
+  const linkedAccount = user.linked_user_id
+  ? await User.findByPk(user.linked_user_id, { attributes: ['id', 'role'] })
+  : null;
+
   res
-    .cookie("accessToken", accessToken, {
-      ...cookieOptions,
-      maxAge: ACCESS_TOKEN_EXPIRATION_MS,
-    })
-    .cookie("refreshToken", refreshTokenValue, {
-      ...cookieOptions,
-      maxAge: REFRESH_TOKEN_EXPIRATION_MS,
-    })
+    .cookie('accessToken', accessToken, { ...cookieOptions, maxAge: ACCESS_TOKEN_EXPIRATION_MS })
+    .cookie('refreshToken', refreshTokenValue, { ...cookieOptions, maxAge: REFRESH_TOKEN_EXPIRATION_MS })
     .status(200)
-    .json({ name: user.profile?.name ?? null, email: user.email, role: user.role, message: "로그인 성공" });
+    .json({
+      name:               user.profile?.name ?? null,
+      email:              user.email,
+      role:               user.role,
+      has_linked_account: user.linked_user_id !== null,
+      linked_account:     linkedAccount ? { id: linkedAccount.id, role: linkedAccount.role } : null,
+      message:            '로그인 성공',
+  });
 });
 
 exports.logout = asyncWrapper(async (req, res) => {
@@ -311,14 +317,21 @@ exports.switchRole = asyncWrapper(async (req, res) => {
 
   const roleLabel = targetUser.role === 'admin' ? '관리자' : '일반 사용자';
 
+  // 전환 후 응답에도 동일하게 추가
+  const linkedAccountAfter = targetUser.linked_user_id
+    ? await User.findByPk(targetUser.linked_user_id, { attributes: ['id', 'role'] })
+    : null;
+
   res
     .cookie('accessToken',  newAccessToken,  { ...cookieOptions, maxAge: ACCESS_TOKEN_EXPIRATION_MS })
     .cookie('refreshToken', newRefreshValue, { ...cookieOptions, maxAge: REFRESH_TOKEN_EXPIRATION_MS })
     .status(200)
     .json({
-      name:    targetUser.profile?.name ?? null,
-      email:   targetUser.email,
-      role:    targetUser.role,
-      message: `${roleLabel} 계정으로 전환되었습니다.`,
+      name:               targetUser.profile?.name ?? null,
+      email:              targetUser.email,
+      role:               targetUser.role,
+      has_linked_account: targetUser.linked_user_id !== null,
+      linked_account:     linkedAccountAfter ? { id: linkedAccountAfter.id, role: linkedAccountAfter.role } : null,
+      message:            `${roleLabel} 계정으로 전환되었습니다.`,
     });
 });

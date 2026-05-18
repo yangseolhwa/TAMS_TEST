@@ -4,6 +4,7 @@ export const ENDPOINTS = {
     LOGOUT:  '/auth/logout',
     REFRESH: '/auth/refresh',
     USERS:   '/auth/users',
+    SWITCH_ROLE: '/auth/switch-role',
   },
   ASSETS: {
     // 개인 자산
