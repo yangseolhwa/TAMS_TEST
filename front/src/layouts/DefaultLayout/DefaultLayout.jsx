@@ -83,6 +83,7 @@ const DefaultLayout = ({ role, name, hasLinkedAccount, onLogout, onRoleSwitch })
       sessionStorage.setItem('role', data.role)
       sessionStorage.setItem('userName', data.name)
       onRoleSwitch(data.role, data.name)  // 상태만 업데이트
+      navigate(`/${data.role}/my-assets`, { replace: true })
     } catch (err) {
       console.error(err.message)
     }
