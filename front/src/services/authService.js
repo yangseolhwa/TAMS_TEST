@@ -32,3 +32,18 @@ export const logout = async () => {
     throw new Error(message)
   }
 }
+
+/**
+ * admin ↔ user 계정 전환
+ * @returns {Promise<{ role: string, name: string }>}
+ * @throws {Error} 전환 실패 시
+ */
+export const switchRole = async () => {
+  try {
+    const { data } = await api.post(ENDPOINTS.AUTH.SWITCH_ROLE)
+    return data
+  } catch (error) {
+    const message = error.response?.data?.message ?? '계정 전환에 실패했습니다.'
+    throw new Error(message)
+  }
+}
