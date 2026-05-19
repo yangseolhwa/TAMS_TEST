@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import logoImg from '../../assets/logo.png'
-import { PersonCircle, ChevronLeft, ChevronRight } from 'react-bootstrap-icons'
+import { PersonCircle, ChevronDown, ChevronUp, ChevronDoubleLeft, ChevronDoubleRight } from 'react-bootstrap-icons'
 import { logout, switchRole } from '../../services/authService'
 import Switch from 'react-switch'
 import styles from './DefaultLayout.module.css'
@@ -13,11 +13,11 @@ const TABS_BY_ROLE = {
       id: 'my-assets',
       label: '내 자산 관리',
       menus: [
-        { id: 'my-assets-list',            label: '내 자산 현황',    path: 'my-assets'        },
-        { id: 'my-assets-request',         label: '내 자산 등록',    path: 'request'          },
-        { id: 'my-assets-assign',          label: '내 자산 할당',       path: 'assign'           },
+        { id: 'my-assets-list',            label: '내 자산 현황',     path: 'my-assets'       },
+        { id: 'my-assets-request',         label: '내 자산 등록',     path: 'request'         },
+        { id: 'my-assets-assign',          label: '내 자산 할당',     path: 'assign'          },
         { id: 'my-assets-request-history', label: '내 자산 요청 내역', path: 'request-history' },
-        { id: 'my-assets-history',         label: '내 자산 히스토리', path: 'history'          },
+        { id: 'my-assets-history',         label: '내 자산 히스토리', path: 'history'         },
       ],
     },
     {
@@ -35,10 +35,10 @@ const TABS_BY_ROLE = {
       id: 'my-assets',
       label: '내 자산 관리',
       menus: [
-        { id: 'my-assets-list',    label: '내 자산 현황',    path: 'my-assets' },
-        { id: 'my-assets-request', label: '내 자산 등록 요청', path: 'request'  },
-        { id: 'my-assets-assign', label: '내 자산 할당 요청', path: 'assign' },
-        { id: 'my-assets-history', label: '내 자산 요청 내역', path: 'history'  },
+        { id: 'my-assets-list',    label: '내 자산 현황',     path: 'my-assets' },
+        { id: 'my-assets-request', label: '내 자산 등록 요청', path: 'request'   },
+        { id: 'my-assets-assign',  label: '내 자산 할당 요청', path: 'assign'    },
+        { id: 'my-assets-history', label: '내 자산 요청 내역', path: 'history'   },
       ],
     },
     {
@@ -54,12 +54,27 @@ const TABS_BY_ROLE = {
 }
 
 const DefaultLayout = ({ role, name, hasLinkedAccount, onLogout, onRoleSwitch }) => {
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const TABS = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
+
+  // 현재 활성 탭 (pathname 기준)
+  const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
+
+  // 사이드바 열림/닫힘
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const TABS      = TABS_BY_ROLE[role] ?? TABS_BY_ROLE['user']
-  const activeTab = TABS.find((tab) => location.pathname.split('/').includes(tab.id)) ?? TABS[0]
+  // 대분류별 접힘/펼침 상태 (기본: 현재 활성 탭만 열림)
+  const [openGroups, setOpenGroups] = useState(() => {
+    const init = {}
+    TABS.forEach((tab) => { init[tab.id] = tab.id === activeTab.id })
+    return init
+  })
+
+  const toggleGroup = (tabId) => {
+    setOpenGroups((prev) => ({ ...prev, [tabId]: !prev[tabId] }))
+  }
 
   const handleLogout = async () => {
     try {
@@ -82,17 +97,16 @@ const DefaultLayout = ({ role, name, hasLinkedAccount, onLogout, onRoleSwitch })
       const data = await switchRole()
       sessionStorage.setItem('role', data.role)
       sessionStorage.setItem('userName', data.name)
-      onRoleSwitch(data.role, data.name)  // 상태만 업데이트
+      onRoleSwitch(data.role, data.name)
       navigate(`/${data.role}/my-assets`, { replace: true })
     } catch (err) {
       console.error(err.message)
     }
   }
 
-return (
+  return (
     <div className={styles.wrapper}>
 
-      {/* Header */}
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLogo}>
@@ -126,59 +140,66 @@ return (
         </div>
       </header>
 
-      {/* Navigation Tab Bar */}
-      <nav className={styles.nav}>
-        <div className={styles.navTabs}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              className={`${styles.tab} ${activeTab.id === tab.id ? styles.tabActive : ''}`}
-              onClick={() => navigate(`/${role}/${tab.id}${tab.id === 'df-assets' ? '/dashboard' : ''}`)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
       {/* Body (Sidebar + Content) */}
       <div className={styles.body}>
 
         {/* Sidebar */}
         <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
           <div className={styles.sidebarInner}>
+
+            {/* 닫기 버튼 */}
             <div className={styles.sidebarHeader}>
-              <span className={styles.sidebarTitle}>{activeTab.label}</span>
-              <button
-                className={styles.sidebarToggle}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <ChevronLeft />
+              <button className={styles.sidebarToggle} onClick={() => setSidebarOpen(false)}>
+                <ChevronDoubleLeft size={14} />
               </button>
             </div>
-            <ul className={styles.sidebarMenu}>
-              {activeTab.menus.map((menu) => (
-                <li key={menu.id}>
-                  <Link
-                    to={`/${role}/${activeTab.id}/${menu.path}`}
-                    className={`${styles.sidebarMenuItem} ${location.pathname.endsWith('/' + menu.path) ? styles.sidebarMenuItemActive : ''}`}
-                  >
-                    <span className={styles.sidebarMenuDot} />
-                    <span className={styles.sidebarMenuLabel}>{menu.label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+
+            {/* 대분류 + 하위 메뉴 */}
+            <nav className={styles.sidebarNav}>
+              {TABS.map((tab) => {
+                const isGroupOpen = openGroups[tab.id]
+                return (
+                  <div key={tab.id} className={styles.sidebarGroup}>
+                    {/* 대분류 버튼 */}
+                    <button
+                      className={`${styles.sidebarGroupBtn} ${activeTab.id === tab.id ? styles.sidebarGroupBtnActive : ''}`}
+                      onClick={() => toggleGroup(tab.id)}
+                    >
+                      <span className={styles.sidebarGroupLabel}>{tab.label}</span>
+                      {isGroupOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+
+                    {/* 하위 메뉴 */}
+                    {isGroupOpen && (
+                      <ul className={styles.sidebarMenu}>
+                        {tab.menus.map((menu) => {
+                          const to = menu.path === tab.id ? `/${role}/${tab.id}` : `/${role}/${tab.id}/${menu.path}`
+                          const isActive = location.pathname === to
+                          return (
+                            <li key={menu.id}>
+                              <Link
+                                to={to}
+                                className={`${styles.sidebarMenuItem} ${isActive ? styles.sidebarMenuItemActive : ''}`}
+                              >
+                                <span className={styles.sidebarMenuLabel}>{menu.label}</span>
+                              </Link>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </nav>
+
           </div>
         </aside>
 
         {/* 닫혔을 때 토글 버튼 */}
         {!sidebarOpen && (
-          <button
-            className={styles.sidebarOpenBtn}
-            onClick={() => setSidebarOpen(true)}
-          >
-            <ChevronRight />
+          <button className={styles.sidebarOpenBtn} onClick={() => setSidebarOpen(true)}>
+            <ChevronDoubleRight size={14} />
           </button>
         )}
 

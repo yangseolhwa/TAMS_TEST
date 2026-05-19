@@ -130,9 +130,7 @@ const DfAssetsHistoryPage = ({ role }) => {
   return (
     <div className={common.page}>
       <PageHeader
-        title="DF 자산 히스토리"
-        desc="자산 이동, 상태 변경, 반납, 등록에 관한 모든 이력을 조회합니다."
-      />
+        title="DF 자산 히스토리" />
 
       <section className={common.section}>
         <Card>

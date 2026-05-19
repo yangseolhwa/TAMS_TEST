@@ -419,10 +419,7 @@ const AdminAssetAssignPage = () => {
   // ── 렌더링 ────────────────────────────────────────────────────────────────
   return (
     <div className={common.page}>
-      <PageHeader
-        title="자산 할당"
-        desc="미사용 PC · SW 자산을 사용자에게 할당합니다."
-      />
+      <PageHeader title="자산 할당" />
 
       <section className={common.section}>
         <TabCard 

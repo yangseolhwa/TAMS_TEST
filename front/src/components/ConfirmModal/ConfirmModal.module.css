@@ -13,7 +13,7 @@
   border-radius: var(--radius-lg);
   padding: 28px 28px 24px;
   width: 360px;
-  box-shadow: 0 8px 32px rgba(30, 45, 69, 0.18);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -64,7 +64,7 @@
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
-  color: #ffffff;
+  color: var(--color-surface);
   border: 1px solid transparent;
   border-radius: 7px;
   cursor: pointer;

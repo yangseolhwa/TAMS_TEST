@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ActionButton from "../../../components/ActionButton/ActionButton";
-import Banner from "../../../components/Banner/Banner";
 import Card from "../../../components/Card/Card";
 import DataTable from "../../../components/DataTable/DataTable";
 import ConfirmModal from "../../../components/ConfirmModal/ConfirmModal";
@@ -151,11 +150,6 @@ const AdminRequestHistoryPage = () => {
   return (
     <div className={common.page}>
       <PageHeader title="내 자산 요청 내역" />
-
-      <Banner
-        text={<>사용자의 <strong>등록 요청</strong>을 승인하거나 반려할 수 있습니다.</>}
-      />
-
       {/* PC 섹션 */}
       <section className={styles.section}>
         <div className={styles.summaryWrap}>

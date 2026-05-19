@@ -7,7 +7,6 @@ import Card from '../../components/Card/Card'
 import DataTable from '../../components/DataTable/DataTable'
 import PageHeader from '../../components/PageHeader/PageHeader'
 import ActionButton from '../../components/ActionButton/ActionButton'
-import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import { matchesAnyField } from '../../utils/koreanSearch'
 import {
@@ -120,10 +119,10 @@ const DfAssetsByProjectPage = ({ role }) => {
     return map
   }, [typeGroups])
 
+  // 프로젝트명 (breadcrumbExtra로 전달)
   const projectName = useMemo(() => {
-    if (!projectId) return '프로젝트별 자산 조회'
-    return dashboard?.projectOptions?.find((p) => p.id === projectId)?.name
-      ?? `프로젝트 #${projectId}`
+    if (!projectId) return null
+    return dashboard?.projectOptions?.find((p) => p.id === projectId)?.name ?? null
   }, [dashboard, projectId])
 
   // ── keyword는 API에 보내지 않고 클라이언트에서 필터링 ──────────────────────
@@ -340,8 +339,8 @@ const DfAssetsByProjectPage = ({ role }) => {
   return (
     <div className={common.page}>
       <PageHeader
-        title={projectName}
-        desc={<BackButton label="DF 자산 현황" to={`/${role}/df-assets/dashboard`} />}
+        title={projectName ?? 'DF 자산 현황'}
+        breadcrumbExtra={projectName ?? undefined}
       />
 
       <section className={common.section}>

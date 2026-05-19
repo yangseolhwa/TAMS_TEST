@@ -6,7 +6,6 @@ import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
-import BackButton from '../../../components/BackButton/BackButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
@@ -191,10 +190,7 @@ const AdminPcAssetsPage = () => {
 
   return (
     <div className={common.page}>
-      <PageHeader
-        title="PC 전체 조회"
-        desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
-      />
+      <PageHeader title="PC 전체 조회" />
 
       <section className={common.section}>
         <Card>

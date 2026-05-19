@@ -6,7 +6,6 @@ import Card from '../../components/Card/Card'
 import DataTable from '../../components/DataTable/DataTable'
 import PageHeader from '../../components/PageHeader/PageHeader'
 import ActionButton from '../../components/ActionButton/ActionButton'
-import BackButton from '../../components/BackButton/BackButton'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import { matchesAnyField } from '../../utils/koreanSearch'
 import {
@@ -242,10 +241,7 @@ const DfAssetsListPage = ({ role }) => {
 
   return (
     <div className={common.page}>
-      <PageHeader
-        title="DF 자산 전체 조회"
-        desc={<BackButton label="DF 자산 현황" to={`/${role}/df-assets/dashboard`} />}
-      />
+      <PageHeader title="DF 자산 전체 조회" />
 
       <section className={common.section}>
         <Card>

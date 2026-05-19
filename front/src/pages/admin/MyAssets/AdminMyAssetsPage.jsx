@@ -63,7 +63,7 @@ const AdminMyAssetsPage = () => {
   if (isLoading) {
     return (
       <div className={common.page}>
-        <PageHeader title="내 자산 현황" desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요." />
+        <PageHeader title="내 자산 현황" />
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>불러오는 중...</p>
       </div>
     )
@@ -138,9 +138,7 @@ const AdminMyAssetsPage = () => {
   return (
     <div className={common.page}>
       <PageHeader
-        title="내 자산 현황"
-        desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
-      />
+        title="내 자산 현황" />
 
       {/* SW 현황 대시보드 */}
       <section className={styles.section}>

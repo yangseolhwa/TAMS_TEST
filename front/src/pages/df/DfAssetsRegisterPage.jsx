@@ -220,9 +220,7 @@ const DfAssetsRegisterPage = ({ role }) => {
   return (
     <div className={common.page}>
       <PageHeader
-        title="DF 자산 등록"
-        desc="프로젝트별 DF 자산을 등록합니다."
-      />
+        title="DF 자산 등록" />
 
       <section>
         <Card>
