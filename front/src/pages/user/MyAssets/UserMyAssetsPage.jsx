@@ -206,10 +206,7 @@ const UserMyAssetsPage = () => {
 
   return (
     <div className={common.page}>
-      <PageHeader
-        title="내 자산 현황"
-        desc="소프트웨어 및 PC 장비 자산을 조회하고 관리하세요."
-      />
+      <PageHeader title="내 자산 현황" />
 
       {/* SW 섹션 */}
       <section className={styles.section}>

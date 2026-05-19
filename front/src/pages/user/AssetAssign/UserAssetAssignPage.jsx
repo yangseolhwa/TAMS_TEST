@@ -7,7 +7,6 @@ import TabCard from '../../../components/TabCard/TabCard'
 import ActionButton from '../../../components/ActionButton/ActionButton'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import DataTable from '../../../components/DataTable/DataTable'
-import Banner from '../../../components/Banner/Banner'
 import { matchesAnyField } from '../../../utils/koreanSearch'
 import {
   fetchEnterpriseAvailable,
@@ -266,17 +265,10 @@ const UserAssetAssignPage = () => {
   // ── 렌더링 ────────────────────────────────────────────────────────────────
   return (
     <div className={common.page}>
-      <PageHeader
-        title="내 자산 할당 요청"
-        desc="사용 가능한 PC · SW 자산을 선택해 할당을 요청합니다."
-      />
+      <PageHeader title="내 자산 할당 요청" />
 
       <section className={common.section}>
         <TabCard tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-          <Banner
-            text={<>관리자 <strong>승인 후</strong> 자산이 할당됩니다. 요청 상태는 <strong>내 자산 요청 내역</strong>에서 확인할 수 있습니다.</>}
-          />
-
           {/* PC 탭 */}
           {activeTab === 'pc' && (
             <>

@@ -5,7 +5,6 @@ import Card from '../../../components/Card/Card'
 import DataTable from '../../../components/DataTable/DataTable'
 import PageHeader from '../../../components/PageHeader/PageHeader'
 import ActionButton from '../../../components/ActionButton/ActionButton'
-import BackButton from '../../../components/BackButton/BackButton'
 import { matchesAnyField } from '../../../utils/koreanSearch'
 import { fetchSwList, fetchUsers } from '../../../services/assetService'
 import common from '../../AssetPage.common.module.css'
@@ -162,10 +161,7 @@ const AdminSwAssetsPage = () => {
 
   return (
     <div className={common.page}>
-      <PageHeader
-        title="SW 전체 조회"
-        desc={<BackButton label="내 자산 관리" to="/admin/my-assets" />}
-      />
+      <PageHeader title="SW 전체 조회" />
 
       <section className={common.section}>
         <Card>

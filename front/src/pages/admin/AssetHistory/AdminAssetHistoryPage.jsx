@@ -125,10 +125,7 @@ const AdminAssetHistoryPage = () => {
 
   return (
     <div className={common.page}>
-      <PageHeader
-        title="내 자산 히스토리"
-        desc="반납, 등록, 위치 이동에 관한 모든 이력을 조회합니다."
-      />
+      <PageHeader title="내 자산 히스토리" />
 
       <section className={common.section}>
         <Card>
