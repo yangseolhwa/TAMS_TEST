@@ -1752,38 +1752,60 @@ exports.getDfDashboard = asyncWrapper(async (req, res) => {
     ],
   });
 
+  // 1단계: 프로젝트별로 그룹화 + end_project 판별
   const projectMap = {};
   for (const item of items) {
     const pid   = item.project_id;
     const pname = item.project?.name ?? '미지정';
 
     if (!projectMap[pid]) {
-      projectMap[pid] = { id: pid, name: pname, total_count: 0, by_type: {}, all_returned: true };
+      projectMap[pid] = { id: pid, name: pname, all_returned: true, items: [] };
     }
 
-    projectMap[pid].total_count += 1;
+    projectMap[pid].items.push(item);
 
     if (item.state !== 'returned') {
       projectMap[pid].all_returned = false;
     }
-
-    const tid   = item.asset_type_id;
-    const tname = item.item_type?.name ?? '미분류';
-    if (!projectMap[pid].by_type[tid]) {
-      projectMap[pid].by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
-    }
-    projectMap[pid].by_type[tid].count += 1;
   }
 
-  const projects = Object.values(projectMap).map((p) => ({
-    id:          p.id,
-    name:        p.name,
-    total_count: p.total_count,
-    by_type:     Object.values(p.by_type).sort((a, b) => b.count - a.count),
-    end_project: p.all_returned,
-  })).sort((a, b) => a.name.localeCompare(b.name));
+  // 2단계: 집계
+  // - end_project=false: 모든 type 노출, in_use·stored만 count 집계 (returned → count 0)
+  // - end_project=true : 모든 type 노출, count는 전부 0 (종료 프로젝트 표시용)
+  const ACTIVE_STATES = new Set(['in_use', 'stored']);
+  let globalTotal = 0;
 
-  res.status(200).json({ total: items.length, projects });
+  const projects = Object.values(projectMap).map((p) => {
+    const isEndProject = p.all_returned;
+
+    const by_type = {};
+    for (const item of p.items) {
+      const tid   = item.asset_type_id;
+      const tname = item.item_type?.name ?? '미분류';
+      if (!by_type[tid]) {
+        by_type[tid] = { type_id: tid, type_name: tname, count: 0 };
+      }
+      // end_project=false: in_use·stored만 count 증가 / returned는 등록만
+      // end_project=true : count는 항상 0 유지
+      if (!isEndProject && ACTIVE_STATES.has(item.state)) {
+        by_type[tid].count += 1;
+      }
+    }
+
+    const byTypeList  = Object.values(by_type).sort((a, b) => b.count - a.count);
+    const activeTotal = byTypeList.reduce((acc, t) => acc + t.count, 0);
+    globalTotal += activeTotal;
+
+    return {
+      id:          p.id,
+      name:        p.name,
+      total_count: activeTotal,
+      by_type:     byTypeList,
+      end_project: isEndProject,
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.status(200).json({ total: globalTotal, projects });
 });
 
 
