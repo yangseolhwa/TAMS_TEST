@@ -6,7 +6,7 @@ import DataTable from "../../../components/DataTable/DataTable";
 import styles from "./UserRequestHistoryPage.module.css";
 import common from '../../AssetPage.common.module.css'
 import { fetchAssetRequests } from "../../../services/assetService";
-import { XSquare } from "react-bootstrap-icons";
+import { XSquareFill } from "react-bootstrap-icons";
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 const STATUS_MAP = {
@@ -76,7 +76,7 @@ const UserRequestHistoryPage = () => {
       if (row.status === 'PENDING') return null
       return (
         <button className={styles.deleteBtn} onClick={() => handleHide(row.id)} title="삭제">
-          <XSquare size={16} />
+          <XSquareFill size={16} />
         </button>
       )
     },
