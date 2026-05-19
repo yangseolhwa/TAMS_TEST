@@ -38,7 +38,7 @@
 .innerTabActive {
   color: var(--color-primary);
   font-weight: 700;
-  border-bottom: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .content {
