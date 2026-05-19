@@ -401,7 +401,7 @@ export const fetchUsers = async (keyword = '') => {
   try {
     const params = keyword.trim() ? { keyword: keyword.trim() } : {}
     const { data } = await api.get(ENDPOINTS.AUTH.USERS, { params })
-    return data.users ?? []
+    return (data.users ?? []).filter((u) => u.role === 'user')
   } catch (error) {
     throw new Error(error.response?.data?.message ?? '유저 목록 조회에 실패했습니다.')
   }
