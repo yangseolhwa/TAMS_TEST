@@ -10,6 +10,56 @@
   gap: 4px;
 }
 
+/* =====================
+   Breadcrumb
+   ===================== */
+.breadcrumbWrap {
+  display: flex;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.breadcrumbSeparator {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 0 6px;
+}
+
+/* 링크: 밑줄로 링크임을 시각적으로 표시 */
+.breadcrumbLink {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-primary);
+}
+
+/* 현재 위치: 링크 아님 — 밑줄·hover 없음 */
+.breadcrumbCurrent {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* =====================
+   Title
+   ===================== */
 .pageTitle {
   font-size: 20px;
   font-weight: 700;
@@ -17,23 +67,14 @@
   margin: 0;
 }
 
-.pageDesc {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
+/* =====================
+   Right (날짜)
+   ===================== */
 .pageHeaderRight {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-}
-
-.pageActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .pageDate {

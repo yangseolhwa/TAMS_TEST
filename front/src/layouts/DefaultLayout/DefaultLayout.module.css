@@ -90,48 +90,6 @@
 }
 
 /* =====================
-   Navigation Tab Bar
-   ===================== */
-.nav {
-  background-color: var(--color-surface);
-  flex-shrink: 0;
-  padding: 0 32px;
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.navTabs {
-  display: flex;
-  align-items: flex-end;
-  height: 44px;
-  gap: 4px;
-}
-
-.tab {
-  padding: 0 20px;
-  height: 36px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-border);
-  background-color: var(--color-surface);
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-  white-space: nowrap;
-}
-
-.tab:hover {
-  color: var(--color-primary);
-}
-
-.tabActive {
-  color: var(--color-primary);
-  background-color: var(--color-surface);
-  border-color: var(--color-border-light);
-}
-
-/* =====================
    Body (Sidebar + Content)
    ===================== */
 .body {
@@ -167,29 +125,23 @@
   height: 100%;
 }
 
+/* =====================
+   Sidebar 헤더 (닫기 버튼)
+   ===================== */
 .sidebarHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 12px 12px 16px;
+  justify-content: flex-end;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--color-border-light);
 }
 
-.sidebarTitle {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .sidebarToggle {
-  width: 24px;
-  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   background: none;
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
@@ -204,20 +156,76 @@
   color: var(--color-primary);
 }
 
+/* =====================
+   Sidebar 네비게이션
+   ===================== */
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* =====================
+   대분류 그룹
+   ===================== */
+.sidebarGroup {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* 대분류 버튼 */
+.sidebarGroupBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.sidebarGroupBtn:hover {
+  color: var(--color-primary);
+  background-color: var(--color-primary-tint);
+}
+
+/* 열려있는(펼쳐진) 대분류 — 배경 강조 */
+.sidebarGroupBtnActive {
+  color: var(--color-primary);
+  font-weight: 700;
+  background-color: var(--color-bg);
+}
+
+.sidebarGroupLabel {
+  white-space: nowrap;
+}
+
+/* =====================
+   하위 메뉴
+   ===================== */
 .sidebarMenu {
   list-style: none;
-  padding: 8px 0;
+  padding: 0 0 4px 0;
   margin: 0;
 }
 
 .sidebarMenuItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
+  padding: 8px 16px 8px 24px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -226,32 +234,22 @@
 
 .sidebarMenuItem:hover {
   background-color: var(--color-bg);
-  color: var(--color-text);
-}
-
-.sidebarMenuDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--color-border);
-  flex-shrink: 0;
-  transition: background-color var(--transition-fast);
+  color: var(--color-primary);
 }
 
 .sidebarMenuLabel {
   white-space: nowrap;
 }
 
+/* 활성 메뉴 — 왼쪽 세로선 식별자 + 색상/굵기 강조 */
 .sidebarMenuItemActive {
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: 700;
+  border-left: 3px solid var(--color-primary);
+  padding-left: 21px;
 }
 
-.sidebarMenuItemActive .sidebarMenuDot {
-  background-color: var(--color-primary);
-}
-
-/* 닫혔을 때 토글 버튼 */
+/* 닫혔을 때 열기 버튼 — 사이드바/본문 경계선에 위치 */
 .sidebarOpenBtn {
   width: 20px;
   height: 48px;
@@ -338,16 +336,6 @@
   .header {
     padding: 0 20px;
     height: 56px;
-  }
-
-  .nav {
-    padding: 0 20px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav::-webkit-scrollbar {
-    display: none;
   }
 
   .main {
